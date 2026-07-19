@@ -2,8 +2,6 @@
 description: Crea o modifica un commit seguro con Conventional Commits
 agent: build
 model: opencode-go/deepseek-v4-flash
-permission:
-  bash: allow
 ------------
 
 Crea el commit solicitado usando `$ARGUMENTS`.
