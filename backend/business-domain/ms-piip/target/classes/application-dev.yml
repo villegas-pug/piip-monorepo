@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@myatp_low
+    username: ADMIN
+    password: OracleA7dbPass2026
+    driver-class-name: oracle.jdbc.OracleDriver
+
+    hikari:
+      data-source-properties:
+        oracle.net.tns_admin: ${ORACLE_DEV_TNS_ADMIN}

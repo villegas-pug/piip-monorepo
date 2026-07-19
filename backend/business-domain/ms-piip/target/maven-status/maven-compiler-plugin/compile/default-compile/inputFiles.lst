@@ -1,0 +1,16 @@
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/exception/TipoDocumentoExceptionHandler.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/repository/TipoDocumentoJpaRepository.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/repository/TipoDocumentoRepositoryImpl.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/exception/TipoDocumentoNotFoundException.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/service/impl/TipoDocumentoServiceImpl.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/config/OpenApiConfig.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/config/JwtConfig.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/config/SecurityConfig.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/service/TipoDocumentoService.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/mapper/TipoDocumentoMapper.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/config/SharedComponentScanConfig.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/repository/TipoDocumentoRepository.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/dto/TipoDocumentoResponse.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/PiipApplication.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/controller/TipoDocumentoController.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/java/pe/gob/midagri/piip/tipodocumento/entity/TipoDocumentoEntity.java

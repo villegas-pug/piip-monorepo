@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: ms-piip
+  profiles:
+    active: ${PROFILE:dev}
+  datasource:
+    hikari:
+      initialization-fail-timeout: -1
+      connection-timeout: 60000
+      validation-timeout: 5000
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://rcgv-services-dev.duckdns.org/keycloak/realms/piip
+  servlet:
+    multipart:
+      max-request-size: 10MB
+      max-file-size: 10MB
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+
+piip:
+  jwt:
+    audience: ms-piip
+
+server:
+  port: ${PORT:4001}
+  servlet:
+    context-path: /api/ms-piip/v1

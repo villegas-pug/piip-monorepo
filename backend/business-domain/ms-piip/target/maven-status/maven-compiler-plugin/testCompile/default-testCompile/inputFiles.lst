@@ -1,0 +1,3 @@
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/microservice-piip/src/test/java/pe/gob/midagri/piip/tipodocumento/service/impl/TipoDocumentoServiceImplTest.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/microservice-piip/src/test/java/pe/gob/midagri/piip/tipodocumento/repository/TipoDocumentoJpaRepositoryIntegrationTest.java
+/home/rovidev/work-space/projects/piip-app/backend/business-domain/microservice-piip/src/test/java/pe/gob/midagri/piip/PiipApplicationTests.java

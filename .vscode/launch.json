@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-PiipApplication<ms-piip>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "pe.gob.midagri.piip.PiipApplication",
+      "projectName": "ms-piip",
+      "env": {
+        "ORACLE_DEV_TNS_ADMIN": "/home/rovidev/work-space/projects/piip-app/backend/business-domain/ms-piip/src/main/resources/oracle/wallet"
+      }
+    }
+  ]
+}

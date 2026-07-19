@@ -1,0 +1,1080 @@
+-- ============================================================================
+-- PIIP MIDAGRI - Migracion inicial Oracle 19c
+-- Archivo : 001_baseline_kallpa_piip.sql
+-- Esquema : KALLPA_PIIP
+-- Alcance : DDL base + catalogos iniciales. No importa datos del Excel legado.
+-- Nota    : Las tablas y secuencias se crean con DDL directo; ejecutar una sola vez.
+-- Ejecucion: SQL Developer (Run Script/F5), SQLcl o SQL*Plus.
+-- ============================================================================
+
+SET DEFINE OFF
+SET VERIFY OFF
+SET FEEDBACK ON
+SET SERVEROUTPUT ON SIZE UNLIMITED
+SET SQLBLANKLINES ON
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+
+PROMPT [001] Validando esquema de ejecucion...
+
+/* DECLARE
+    v_usuario VARCHAR2(128) := UPPER(USER);
+BEGIN
+    IF v_usuario <> 'KALLPA_PIIP' THEN
+        RAISE_APPLICATION_ERROR(
+            -20001,
+            'La migracion debe ejecutarse conectado como KALLPA_PIIP. Usuario actual: ' || v_usuario
+        );
+    END IF;
+END;
+/ */
+
+PROMPT [002] Creando secuencias...
+
+CREATE SEQUENCE SEQ_UNIDAD_EJECUTORA START WITH 2 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USUARIO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USUARIO_ROL_UNIDAD START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_PROYECTO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_PROYECTO_UO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_TRANSICION_ESTADO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_DOCUMENTO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_SECUENCIA_CODIGO START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AUDITORIA_ACCESO START WITH 1 INCREMENT BY 1 CACHE 50 NOCYCLE;
+CREATE SEQUENCE SEQ_AUDITORIA_EVENTO START WITH 1 INCREMENT BY 1 CACHE 50 NOCYCLE;
+
+PROMPT [003] Creando tablas base en orden de dependencia...
+
+-- UNIDAD_EJECUTORA
+CREATE TABLE UNIDAD_EJECUTORA (
+            ID_UNIDAD          NUMBER(10)                  NOT NULL,
+            CODIGO_UNIDAD      VARCHAR2(20 CHAR)            NOT NULL,
+            NOMBRE             VARCHAR2(200 CHAR)           NOT NULL,
+            DESCRIPCION        VARCHAR2(500 CHAR),
+            NIVEL_JERARQUICO   NUMBER(2)                   NOT NULL,
+            ID_UNIDAD_PADRE    NUMBER(10),
+            ACTIVO             CHAR(1 CHAR) DEFAULT 'S'     NOT NULL,
+            FECHA_ACTIVACION   DATE DEFAULT SYSDATE        NOT NULL,
+            CREADO_POR         VARCHAR2(100 CHAR)           NOT NULL,
+            FECHA_CREACION     TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            MODIFICADO_POR     VARCHAR2(100 CHAR),
+            FECHA_MODIFICACION TIMESTAMP(6)
+        );
+
+-- USUARIO
+CREATE TABLE USUARIO (
+            ID_USUARIO     NUMBER(10)                        NOT NULL,
+            KEYCLOAK_ID    VARCHAR2(36 CHAR)                 NOT NULL,
+            LOGIN          VARCHAR2(100 CHAR)                NOT NULL,
+            NOMBRE_COMPLETO VARCHAR2(300 CHAR)               NOT NULL,
+            CORREO         VARCHAR2(200 CHAR)                NOT NULL,
+            ACTIVO         CHAR(1 CHAR) DEFAULT 'S'          NOT NULL,
+            CREADO_POR     VARCHAR2(100 CHAR)                NOT NULL,
+            FECHA_CREACION TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL
+        );
+
+-- ROL
+CREATE TABLE ROL (
+            ID_ROL       NUMBER(5)         NOT NULL,
+            NOMBRE_ROL   VARCHAR2(50 CHAR) NOT NULL,
+            DESCRIPCION  VARCHAR2(500 CHAR),
+            NIVEL_ACCESO NUMBER(2)         NOT NULL
+        );
+
+-- USUARIO_ROL_UNIDAD
+CREATE TABLE USUARIO_ROL_UNIDAD (
+            ID_USR_ROL_UNIDAD NUMBER(10)                 NOT NULL,
+            ID_USUARIO        NUMBER(10)                 NOT NULL,
+            ID_ROL            NUMBER(5)                  NOT NULL,
+            ID_UNIDAD         NUMBER(10)                 NOT NULL,
+            ACTIVO            CHAR(1 CHAR) DEFAULT 'S'   NOT NULL,
+            FECHA_ASIGNACION  DATE DEFAULT SYSDATE      NOT NULL,
+            ASIGNADO_POR      VARCHAR2(100 CHAR)         NOT NULL
+        );
+
+-- PROYECTO
+CREATE TABLE PROYECTO (
+            ID_PROYECTO          NUMBER(12)                        NOT NULL,
+            CODIGO               VARCHAR2(25 CHAR)                 NOT NULL,
+            CODIGO_ORIGEN        VARCHAR2(50 CHAR),
+            TIPO_REGISTRO        VARCHAR2(20 CHAR)                 NOT NULL,
+            NOMBRE               VARCHAR2(500 CHAR)                NOT NULL,
+            TIPO_SOLUCION        VARCHAR2(30 CHAR)                 NOT NULL,
+            FUENTE_ORIGEN        VARCHAR2(50 CHAR)                 NOT NULL,
+            DESCRIPCION          CLOB                              NOT NULL,
+            OBJETIVO_PEI         VARCHAR2(500 CHAR)                NOT NULL,
+            ACTIVIDAD_POI        VARCHAR2(500 CHAR)                NOT NULL,
+            ADMINISTRACION       VARCHAR2(10 CHAR)                 NOT NULL,
+            ESTADO               VARCHAR2(30 CHAR) DEFAULT 'PRESENTADO' NOT NULL,
+            TIPO_PRODUCTO_FINAL  VARCHAR2(40 CHAR),
+            RESULTADOS_CLAVE     CLOB,
+            FECHA_INICIO         DATE DEFAULT SYSDATE             NOT NULL,
+            FECHA_CIERRE         DATE,
+            ID_UNIDAD_EJECUTORA  NUMBER(10)                        NOT NULL,
+            ID_RESPONSABLE       NUMBER(10)                        NOT NULL,
+            CREADO_POR           VARCHAR2(100 CHAR)                NOT NULL,
+            FECHA_CREACION       TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            MODIFICADO_POR       VARCHAR2(100 CHAR),
+            FECHA_MODIFICACION   TIMESTAMP(6)
+        );
+
+-- PROYECTO_UNIDAD_ORGANICA
+CREATE TABLE PROYECTO_UNIDAD_ORGANICA (
+            ID_PROY_UO  NUMBER(12)         NOT NULL,
+            ID_PROYECTO NUMBER(12)         NOT NULL,
+            NRO_ORDEN   NUMBER(3)          NOT NULL,
+            DESCRIPCION VARCHAR2(300 CHAR) NOT NULL,
+            ABREVIATURA VARCHAR2(20 CHAR)  NOT NULL
+        );
+
+-- TRANSICION_PERMITIDA
+CREATE TABLE TRANSICION_PERMITIDA (
+            ID_TRANS_PERM      NUMBER(5)                NOT NULL,
+            ESTADO_ORIGEN      VARCHAR2(30 CHAR)        NOT NULL,
+            ESTADO_DESTINO     VARCHAR2(30 CHAR)        NOT NULL,
+            ID_ROL_REQUERIDO   NUMBER(5)                NOT NULL,
+            DOC_OBLIGATORIO    CHAR(1 CHAR) DEFAULT 'N' NOT NULL,
+            OBS_OBLIGATORIO    CHAR(1 CHAR) DEFAULT 'N' NOT NULL,
+            ACTIVO             CHAR(1 CHAR) DEFAULT 'S' NOT NULL
+        );
+
+-- TIPO_DOCUMENTO
+CREATE TABLE TIPO_DOCUMENTO (
+            ID_TIPO_DOC      NUMBER(5)                 NOT NULL,
+            NOMBRE           VARCHAR2(200 CHAR)        NOT NULL,
+            ESTADO_ASOCIADO  VARCHAR2(30 CHAR)         NOT NULL,
+            OBLIGATORIO      CHAR(1 CHAR) DEFAULT 'N'  NOT NULL,
+            DESCRIPCION      VARCHAR2(500 CHAR),
+            ANEXO_NT         VARCHAR2(20 CHAR),
+            ACTIVO           CHAR(1 CHAR) DEFAULT 'S'  NOT NULL
+        );
+
+-- DOCUMENTO
+CREATE TABLE DOCUMENTO (
+            ID_DOCUMENTO          NUMBER(12)                        NOT NULL,
+            ID_PROYECTO           NUMBER(12)                        NOT NULL,
+            ID_TIPO_DOC           NUMBER(5)                         NOT NULL,
+            ESTADO_AL_CARGAR      VARCHAR2(30 CHAR)                 NOT NULL,
+            NOMBRE_ORIGINAL       VARCHAR2(500 CHAR)                NOT NULL,
+            NOMBRE_STORAGE        VARCHAR2(700 CHAR)                NOT NULL,
+            MIME_TYPE             VARCHAR2(100 CHAR)                NOT NULL,
+            TAMANO_BYTES          NUMBER(12)                        NOT NULL,
+            HASH_SHA256           VARCHAR2(64 CHAR)                 NOT NULL,
+            ID_USUARIO_CARGA      NUMBER(10)                        NOT NULL,
+            FECHA_CARGA           TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            ACTIVO                CHAR(1 CHAR) DEFAULT 'S'          NOT NULL,
+            INMUTABLE             CHAR(1 CHAR) DEFAULT 'N'          NOT NULL,
+            SCAN_ANTIVIRUS        VARCHAR2(10 CHAR) DEFAULT 'PENDIENTE' NOT NULL,
+            NUMERO_VERSION        NUMBER(5) DEFAULT 1               NOT NULL,
+            ID_DOCUMENTO_ANTERIOR NUMBER(12),
+            CLASIFICACION         VARCHAR2(50 CHAR)
+        );
+
+-- TRANSICION_ESTADO
+CREATE TABLE TRANSICION_ESTADO (
+            ID_TRANSICION       NUMBER(12)                        NOT NULL,
+            ID_PROYECTO         NUMBER(12)                        NOT NULL,
+            ESTADO_ANTERIOR     VARCHAR2(30 CHAR)                 NOT NULL,
+            ESTADO_NUEVO        VARCHAR2(30 CHAR)                 NOT NULL,
+            ID_USUARIO          NUMBER(10)                        NOT NULL,
+            ID_ROL_EFECTIVO     NUMBER(5)                         NOT NULL,
+            ID_UNIDAD_EFECTIVA  NUMBER(10)                        NOT NULL,
+            FECHA_TRANSICION    TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            OBSERVACIONES       VARCHAR2(2000 CHAR),
+            ID_DOCUMENTO_REF    NUMBER(12)
+        );
+
+-- SECUENCIA_CODIGO
+CREATE TABLE SECUENCIA_CODIGO (
+            ID_SECUENCIA  NUMBER(10)          NOT NULL,
+            ANIO          NUMBER(4)           NOT NULL,
+            ID_UNIDAD     NUMBER(10)          NOT NULL,
+            ULTIMO_NUMERO NUMBER(5) DEFAULT 0 NOT NULL
+        );
+
+-- AUDITORIA_ACCESO
+CREATE TABLE AUDITORIA_ACCESO (
+            ID_AUDIT         NUMBER(15)                        NOT NULL,
+            ID_USUARIO       NUMBER(10),
+            ENDPOINT         VARCHAR2(300 CHAR)                NOT NULL,
+            METODO_HTTP      VARCHAR2(10 CHAR)                 NOT NULL,
+            CODIGO_RESPUESTA NUMBER(3)                         NOT NULL,
+            IP_CLIENTE       VARCHAR2(45 CHAR)                 NOT NULL,
+            FECHA_HORA       TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            DURACION_MS      NUMBER(8)
+        );
+
+-- AUDITORIA_EVENTO
+CREATE TABLE AUDITORIA_EVENTO (
+            ID_EVENTO     NUMBER(15)                        NOT NULL,
+            TIPO_EVENTO   VARCHAR2(100 CHAR)                NOT NULL,
+            ENTIDAD_TIPO  VARCHAR2(50 CHAR)                 NOT NULL,
+            ENTIDAD_ID    NUMBER(15)                        NOT NULL,
+            PAYLOAD_JSON  CLOB                              NOT NULL,
+            ID_USUARIO    NUMBER(10),
+            FECHA_EVENTO  TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
+            PROCESADO     CHAR(1 CHAR) DEFAULT 'N'          NOT NULL
+        );
+
+PROMPT [004] Creando o validando restricciones de integridad...
+
+DECLARE
+    PROCEDURE asegurar_restriccion(
+        p_nombre IN VARCHAR2,
+        p_tabla  IN VARCHAR2,
+        p_ddl    IN VARCHAR2
+    ) IS
+        v_total  PLS_INTEGER;
+        v_tabla  USER_CONSTRAINTS.TABLE_NAME%TYPE;
+        v_estado USER_CONSTRAINTS.STATUS%TYPE;
+        v_validada USER_CONSTRAINTS.VALIDATED%TYPE;
+        v_tipo USER_CONSTRAINTS.CONSTRAINT_TYPE%TYPE;
+        v_tipo_esperado USER_CONSTRAINTS.CONSTRAINT_TYPE%TYPE;
+        v_columnas VARCHAR2(4000);
+        v_columnas_esperadas VARCHAR2(4000);
+        v_tabla_referenciada USER_CONSTRAINTS.TABLE_NAME%TYPE;
+        v_tabla_referenciada_esperada USER_CONSTRAINTS.TABLE_NAME%TYPE;
+        v_condicion VARCHAR2(4000);
+        v_condicion_esperada VARCHAR2(4000);
+    BEGIN
+        SELECT COUNT(*), MIN(TABLE_NAME), MIN(STATUS), MIN(VALIDATED), MIN(CONSTRAINT_TYPE)
+          INTO v_total, v_tabla, v_estado, v_validada, v_tipo
+          FROM USER_CONSTRAINTS
+         WHERE CONSTRAINT_NAME = UPPER(p_nombre);
+
+        IF v_total = 0 THEN
+            EXECUTE IMMEDIATE p_ddl;
+            DBMS_OUTPUT.PUT_LINE('  + Restriccion creada: ' || UPPER(p_nombre));
+        ELSE
+            v_tipo_esperado := CASE
+                WHEN REGEXP_LIKE(p_ddl, 'PRIMARY[[:space:]]+KEY', 'i') THEN 'P'
+                WHEN REGEXP_LIKE(p_ddl, 'FOREIGN[[:space:]]+KEY', 'i') THEN 'R'
+                WHEN REGEXP_LIKE(p_ddl, 'UNIQUE[[:space:]]*\(', 'i') THEN 'U'
+                WHEN REGEXP_LIKE(p_ddl, 'CHECK[[:space:]]*\(', 'i') THEN 'C'
+                ELSE NULL
+            END;
+
+            IF v_total <> 1 OR v_tabla <> UPPER(p_tabla) OR
+               v_tipo_esperado IS NULL OR v_tipo <> v_tipo_esperado THEN
+                RAISE_APPLICATION_ERROR(
+                    -20010,
+                    'Restriccion incompatible: ' || UPPER(p_nombre)
+                );
+            END IF;
+
+            IF v_estado <> 'ENABLED' OR v_validada <> 'VALIDATED' THEN
+                EXECUTE IMMEDIATE
+                    'ALTER TABLE ' || UPPER(p_tabla) ||
+                    ' ENABLE VALIDATE CONSTRAINT ' || UPPER(p_nombre);
+            END IF;
+
+            IF v_tipo = 'C' THEN
+                SELECT SEARCH_CONDITION_VC
+                  INTO v_condicion
+                  FROM USER_CONSTRAINTS
+                 WHERE CONSTRAINT_NAME = UPPER(p_nombre);
+
+                v_condicion_esperada := REGEXP_SUBSTR(
+                    p_ddl, 'CHECK[[:space:]]*\((.*)\)[[:space:]]*$', 1, 1, 'i', 1);
+                v_condicion := REGEXP_REPLACE(
+                    REPLACE(UPPER(v_condicion), '"', ''), '[[:space:]]', '');
+                v_condicion_esperada := REGEXP_REPLACE(
+                    REPLACE(UPPER(v_condicion_esperada), '"', ''), '[[:space:]]', '');
+
+                IF v_condicion <> v_condicion_esperada THEN
+                    RAISE_APPLICATION_ERROR(
+                        -20011,
+                        'Restriccion CHECK incompatible: ' || UPPER(p_nombre)
+                    );
+                END IF;
+            ELSIF v_tipo IN ('P', 'U', 'R') THEN
+                SELECT LISTAGG(COLUMN_NAME, ',') WITHIN GROUP (ORDER BY POSITION)
+                  INTO v_columnas
+                  FROM USER_CONS_COLUMNS
+                 WHERE CONSTRAINT_NAME = UPPER(p_nombre)
+                   AND TABLE_NAME = UPPER(p_tabla);
+
+                v_columnas_esperadas := CASE v_tipo
+                    WHEN 'P' THEN REGEXP_SUBSTR(
+                        p_ddl, 'PRIMARY[[:space:]]+KEY[[:space:]]*\(([^()]*)\)', 1, 1, 'i', 1)
+                    WHEN 'U' THEN REGEXP_SUBSTR(
+                        p_ddl, 'UNIQUE[[:space:]]*\(([^()]*)\)', 1, 1, 'i', 1)
+                    WHEN 'R' THEN REGEXP_SUBSTR(
+                        p_ddl, 'FOREIGN[[:space:]]+KEY[[:space:]]*\(([^()]*)\)', 1, 1, 'i', 1)
+                END;
+                v_columnas_esperadas := REGEXP_REPLACE(
+                    UPPER(v_columnas_esperadas), '[[:space:]]', '');
+
+                IF v_columnas <> v_columnas_esperadas THEN
+                    RAISE_APPLICATION_ERROR(
+                        -20013,
+                        'Restriccion con columnas incompatibles: ' || UPPER(p_nombre)
+                    );
+                END IF;
+
+                IF v_tipo = 'R' THEN
+                    SELECT padre.TABLE_NAME
+                      INTO v_tabla_referenciada
+                      FROM USER_CONSTRAINTS hija
+                      JOIN USER_CONSTRAINTS padre
+                        ON padre.CONSTRAINT_NAME = hija.R_CONSTRAINT_NAME
+                     WHERE hija.CONSTRAINT_NAME = UPPER(p_nombre);
+
+                    v_tabla_referenciada_esperada := UPPER(REGEXP_SUBSTR(
+                        p_ddl,
+                        'REFERENCES[[:space:]]+([A-Z0-9_]+)',
+                        1,
+                        1,
+                        'i',
+                        1
+                    ));
+
+                    IF v_tabla_referenciada <> v_tabla_referenciada_esperada THEN
+                        RAISE_APPLICATION_ERROR(
+                            -20012,
+                            'Restriccion con tabla referenciada incompatible: ' || UPPER(p_nombre)
+                        );
+                    END IF;
+                END IF;
+            END IF;
+
+            DBMS_OUTPUT.PUT_LINE('  = Restriccion existente: ' || UPPER(p_nombre));
+        END IF;
+    END asegurar_restriccion;
+BEGIN
+    -- UNIDAD_EJECUTORA
+    asegurar_restriccion('PK_UNIDAD_EJECUTORA', 'UNIDAD_EJECUTORA',
+        'ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT PK_UNIDAD_EJECUTORA PRIMARY KEY (ID_UNIDAD)');
+    asegurar_restriccion('UK_UE_CODIGO', 'UNIDAD_EJECUTORA',
+        'ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT UK_UE_CODIGO UNIQUE (CODIGO_UNIDAD)');
+    asegurar_restriccion('FK_UE_PADRE', 'UNIDAD_EJECUTORA',
+        'ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT FK_UE_PADRE FOREIGN KEY (ID_UNIDAD_PADRE) REFERENCES UNIDAD_EJECUTORA (ID_UNIDAD)');
+    asegurar_restriccion('CK_UE_ACTIVO', 'UNIDAD_EJECUTORA',
+        q'~ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT CK_UE_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+    asegurar_restriccion('CK_UE_NIVEL', 'UNIDAD_EJECUTORA',
+        'ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT CK_UE_NIVEL CHECK (NIVEL_JERARQUICO >= 1)');
+    asegurar_restriccion('CK_UE_JERARQUIA', 'UNIDAD_EJECUTORA',
+        'ALTER TABLE UNIDAD_EJECUTORA ADD CONSTRAINT CK_UE_JERARQUIA CHECK ((NIVEL_JERARQUICO = 1 AND ID_UNIDAD_PADRE IS NULL) OR (NIVEL_JERARQUICO > 1 AND ID_UNIDAD_PADRE IS NOT NULL))');
+
+    -- USUARIO
+    asegurar_restriccion('PK_USUARIO', 'USUARIO',
+        'ALTER TABLE USUARIO ADD CONSTRAINT PK_USUARIO PRIMARY KEY (ID_USUARIO)');
+    asegurar_restriccion('UK_USUARIO_KC', 'USUARIO',
+        'ALTER TABLE USUARIO ADD CONSTRAINT UK_USUARIO_KC UNIQUE (KEYCLOAK_ID)');
+    asegurar_restriccion('UK_USUARIO_LOGIN', 'USUARIO',
+        'ALTER TABLE USUARIO ADD CONSTRAINT UK_USUARIO_LOGIN UNIQUE (LOGIN)');
+    asegurar_restriccion('UK_USUARIO_CORREO', 'USUARIO',
+        'ALTER TABLE USUARIO ADD CONSTRAINT UK_USUARIO_CORREO UNIQUE (CORREO)');
+    asegurar_restriccion('CK_USR_ACTIVO', 'USUARIO',
+        q'~ALTER TABLE USUARIO ADD CONSTRAINT CK_USR_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+    asegurar_restriccion('CK_USR_KEYCLOAK_ID', 'USUARIO',
+        q'~ALTER TABLE USUARIO ADD CONSTRAINT CK_USR_KEYCLOAK_ID CHECK (REGEXP_LIKE(KEYCLOAK_ID, '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$'))~');
+
+    -- ROL Y ALCANCE
+    asegurar_restriccion('PK_ROL', 'ROL',
+        'ALTER TABLE ROL ADD CONSTRAINT PK_ROL PRIMARY KEY (ID_ROL)');
+    asegurar_restriccion('UK_ROL_NOMBRE', 'ROL',
+        'ALTER TABLE ROL ADD CONSTRAINT UK_ROL_NOMBRE UNIQUE (NOMBRE_ROL)');
+    asegurar_restriccion('CK_ROL_NIVEL', 'ROL',
+        'ALTER TABLE ROL ADD CONSTRAINT CK_ROL_NIVEL CHECK (NIVEL_ACCESO BETWEEN 1 AND 10)');
+
+    asegurar_restriccion('PK_USR_ROL_UNIDAD', 'USUARIO_ROL_UNIDAD',
+        'ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT PK_USR_ROL_UNIDAD PRIMARY KEY (ID_USR_ROL_UNIDAD)');
+    asegurar_restriccion('UK_URU_USR_ROL_UNI', 'USUARIO_ROL_UNIDAD',
+        'ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT UK_URU_USR_ROL_UNI UNIQUE (ID_USUARIO, ID_ROL, ID_UNIDAD)');
+    asegurar_restriccion('FK_URU_USUARIO', 'USUARIO_ROL_UNIDAD',
+        'ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT FK_URU_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('FK_URU_ROL', 'USUARIO_ROL_UNIDAD',
+        'ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT FK_URU_ROL FOREIGN KEY (ID_ROL) REFERENCES ROL (ID_ROL)');
+    asegurar_restriccion('FK_URU_UNIDAD', 'USUARIO_ROL_UNIDAD',
+        'ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT FK_URU_UNIDAD FOREIGN KEY (ID_UNIDAD) REFERENCES UNIDAD_EJECUTORA (ID_UNIDAD)');
+    asegurar_restriccion('CK_URU_ACTIVO', 'USUARIO_ROL_UNIDAD',
+        q'~ALTER TABLE USUARIO_ROL_UNIDAD ADD CONSTRAINT CK_URU_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+
+    -- PROYECTO
+    asegurar_restriccion('PK_PROYECTO', 'PROYECTO',
+        'ALTER TABLE PROYECTO ADD CONSTRAINT PK_PROYECTO PRIMARY KEY (ID_PROYECTO)');
+    asegurar_restriccion('UK_PROYECTO_CODIGO', 'PROYECTO',
+        'ALTER TABLE PROYECTO ADD CONSTRAINT UK_PROYECTO_CODIGO UNIQUE (CODIGO)');
+    asegurar_restriccion('FK_PROY_UNIDAD', 'PROYECTO',
+        'ALTER TABLE PROYECTO ADD CONSTRAINT FK_PROY_UNIDAD FOREIGN KEY (ID_UNIDAD_EJECUTORA) REFERENCES UNIDAD_EJECUTORA (ID_UNIDAD)');
+    asegurar_restriccion('FK_PROY_RESPONSABLE', 'PROYECTO',
+        'ALTER TABLE PROYECTO ADD CONSTRAINT FK_PROY_RESPONSABLE FOREIGN KEY (ID_RESPONSABLE) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('CK_PROY_TIPO_REG', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_TIPO_REG CHECK (TIPO_REGISTRO IN ('INICIATIVA','PROYECTO'))~');
+    asegurar_restriccion('CK_PROY_TIPO_SOL', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_TIPO_SOL CHECK (TIPO_SOLUCION IN ('POTENCIAL_ADAPTABLE','POR_DEFINIR'))~');
+    asegurar_restriccion('CK_PROY_ADMIN', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_ADMIN CHECK (ADMINISTRACION IN ('OM','OGTI','OM-OGTI'))~');
+    asegurar_restriccion('CK_PROY_ESTADO', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_ESTADO CHECK (ESTADO IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_PROY_PROD_FINAL', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_PROD_FINAL CHECK (TIPO_PRODUCTO_FINAL IS NULL OR TIPO_PRODUCTO_FINAL IN ('PROTOTIPO_CONCEPTUALIZADO','SOLUCION_FUNCIONAL'))~');
+    asegurar_restriccion('CK_PROY_FUENTE', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_FUENTE CHECK (FUENTE_ORIGEN IN ('FICHA_INICIATIVA','CONCURSO_INTERNO','INNOVACION_ABIERTA','PROPUESTA_JEFATURA','OTROS'))~');
+    asegurar_restriccion('CK_PROY_FECHAS', 'PROYECTO',
+        'ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_FECHAS CHECK (FECHA_CIERRE IS NULL OR FECHA_CIERRE >= FECHA_INICIO)');
+    asegurar_restriccion('CK_PROY_CODIGO', 'PROYECTO',
+        q'~ALTER TABLE PROYECTO ADD CONSTRAINT CK_PROY_CODIGO CHECK (REGEXP_LIKE(CODIGO, '^[0-9]{4}-[A-Z0-9_]{1,13}-[0-9]{5}$'))~');
+
+    -- UNIDADES ORGANICAS DEL PROYECTO
+    asegurar_restriccion('PK_PROYECTO_UO', 'PROYECTO_UNIDAD_ORGANICA',
+        'ALTER TABLE PROYECTO_UNIDAD_ORGANICA ADD CONSTRAINT PK_PROYECTO_UO PRIMARY KEY (ID_PROY_UO)');
+    asegurar_restriccion('UK_PUO_PROY_ORDEN', 'PROYECTO_UNIDAD_ORGANICA',
+        'ALTER TABLE PROYECTO_UNIDAD_ORGANICA ADD CONSTRAINT UK_PUO_PROY_ORDEN UNIQUE (ID_PROYECTO, NRO_ORDEN)');
+    asegurar_restriccion('FK_PUORG_PROYECTO', 'PROYECTO_UNIDAD_ORGANICA',
+        'ALTER TABLE PROYECTO_UNIDAD_ORGANICA ADD CONSTRAINT FK_PUORG_PROYECTO FOREIGN KEY (ID_PROYECTO) REFERENCES PROYECTO (ID_PROYECTO)');
+    asegurar_restriccion('CK_PUORG_NRO', 'PROYECTO_UNIDAD_ORGANICA',
+        'ALTER TABLE PROYECTO_UNIDAD_ORGANICA ADD CONSTRAINT CK_PUORG_NRO CHECK (NRO_ORDEN >= 1)');
+
+    -- TRANSICIONES PERMITIDAS
+    asegurar_restriccion('PK_TRANS_PERMITIDA', 'TRANSICION_PERMITIDA',
+        'ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT PK_TRANS_PERMITIDA PRIMARY KEY (ID_TRANS_PERM)');
+    asegurar_restriccion('UK_TP_ESTADOS', 'TRANSICION_PERMITIDA',
+        'ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT UK_TP_ESTADOS UNIQUE (ESTADO_ORIGEN, ESTADO_DESTINO)');
+    asegurar_restriccion('FK_TP_ROL', 'TRANSICION_PERMITIDA',
+        'ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT FK_TP_ROL FOREIGN KEY (ID_ROL_REQUERIDO) REFERENCES ROL (ID_ROL)');
+    asegurar_restriccion('CK_TP_DOC', 'TRANSICION_PERMITIDA',
+        q'~ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_DOC CHECK (DOC_OBLIGATORIO IN ('S','N'))~');
+    asegurar_restriccion('CK_TP_OBS', 'TRANSICION_PERMITIDA',
+        q'~ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_OBS CHECK (OBS_OBLIGATORIO IN ('S','N'))~');
+    asegurar_restriccion('CK_TP_ACTIVO', 'TRANSICION_PERMITIDA',
+        q'~ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+    asegurar_restriccion('CK_TP_ORIGEN', 'TRANSICION_PERMITIDA',
+        q'~ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_ORIGEN CHECK (ESTADO_ORIGEN IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_TP_DESTINO', 'TRANSICION_PERMITIDA',
+        q'~ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_DESTINO CHECK (ESTADO_DESTINO IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_TP_ESTADOS_DIST', 'TRANSICION_PERMITIDA',
+        'ALTER TABLE TRANSICION_PERMITIDA ADD CONSTRAINT CK_TP_ESTADOS_DIST CHECK (ESTADO_ORIGEN <> ESTADO_DESTINO)');
+
+    -- TIPOS DOCUMENTALES
+    asegurar_restriccion('PK_TIPO_DOCUMENTO', 'TIPO_DOCUMENTO',
+        'ALTER TABLE TIPO_DOCUMENTO ADD CONSTRAINT PK_TIPO_DOCUMENTO PRIMARY KEY (ID_TIPO_DOC)');
+    asegurar_restriccion('UK_TIPO_DOC_NOMBRE', 'TIPO_DOCUMENTO',
+        'ALTER TABLE TIPO_DOCUMENTO ADD CONSTRAINT UK_TIPO_DOC_NOMBRE UNIQUE (NOMBRE)');
+    asegurar_restriccion('CK_TD_ESTADO', 'TIPO_DOCUMENTO',
+        q'~ALTER TABLE TIPO_DOCUMENTO ADD CONSTRAINT CK_TD_ESTADO CHECK (ESTADO_ASOCIADO IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_TD_OBLIGATORIO', 'TIPO_DOCUMENTO',
+        q'~ALTER TABLE TIPO_DOCUMENTO ADD CONSTRAINT CK_TD_OBLIGATORIO CHECK (OBLIGATORIO IN ('S','N'))~');
+    asegurar_restriccion('CK_TD_ACTIVO', 'TIPO_DOCUMENTO',
+        q'~ALTER TABLE TIPO_DOCUMENTO ADD CONSTRAINT CK_TD_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+
+    -- DOCUMENTOS
+    asegurar_restriccion('PK_DOCUMENTO', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT PK_DOCUMENTO PRIMARY KEY (ID_DOCUMENTO)');
+    asegurar_restriccion('UK_DOC_STORAGE', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT UK_DOC_STORAGE UNIQUE (NOMBRE_STORAGE)');
+    asegurar_restriccion('UK_DOC_PROY_TIPO_VER', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT UK_DOC_PROY_TIPO_VER UNIQUE (ID_PROYECTO, ID_TIPO_DOC, NUMERO_VERSION)');
+    asegurar_restriccion('FK_DOC_PROYECTO', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT FK_DOC_PROYECTO FOREIGN KEY (ID_PROYECTO) REFERENCES PROYECTO (ID_PROYECTO)');
+    asegurar_restriccion('FK_DOC_TIPO', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT FK_DOC_TIPO FOREIGN KEY (ID_TIPO_DOC) REFERENCES TIPO_DOCUMENTO (ID_TIPO_DOC)');
+    asegurar_restriccion('FK_DOC_USUARIO', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT FK_DOC_USUARIO FOREIGN KEY (ID_USUARIO_CARGA) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('FK_DOC_ANTERIOR', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT FK_DOC_ANTERIOR FOREIGN KEY (ID_DOCUMENTO_ANTERIOR) REFERENCES DOCUMENTO (ID_DOCUMENTO)');
+    asegurar_restriccion('CK_DOC_TAMANO', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_TAMANO CHECK (TAMANO_BYTES > 0 AND TAMANO_BYTES <= 26214400)');
+    asegurar_restriccion('CK_DOC_ACTIVO', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_ACTIVO CHECK (ACTIVO IN ('S','N'))~');
+    asegurar_restriccion('CK_DOC_INMUTABLE', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_INMUTABLE CHECK (INMUTABLE IN ('S','N'))~');
+    asegurar_restriccion('CK_DOC_SCAN', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_SCAN CHECK (SCAN_ANTIVIRUS IN ('LIMPIO','INFECTADO','PENDIENTE'))~');
+    asegurar_restriccion('CK_DOC_VERSION', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_VERSION CHECK (NUMERO_VERSION >= 1)');
+    asegurar_restriccion('CK_DOC_ANTERIOR_DIST', 'DOCUMENTO',
+        'ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_ANTERIOR_DIST CHECK (ID_DOCUMENTO_ANTERIOR IS NULL OR ID_DOCUMENTO_ANTERIOR <> ID_DOCUMENTO)');
+    asegurar_restriccion('CK_DOC_ESTADO', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_ESTADO CHECK (ESTADO_AL_CARGAR IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_DOC_HASH', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_HASH CHECK (REGEXP_LIKE(HASH_SHA256, '^[0-9A-Fa-f]{64}$'))~');
+    asegurar_restriccion('CK_DOC_MIME', 'DOCUMENTO',
+        q'~ALTER TABLE DOCUMENTO ADD CONSTRAINT CK_DOC_MIME CHECK (MIME_TYPE = 'application/pdf' OR MIME_TYPE LIKE 'application/vnd.openxmlformats-officedocument.%' OR MIME_TYPE IN ('image/jpeg','image/png'))~');
+
+    -- HISTORIAL DE ESTADOS
+    asegurar_restriccion('PK_TRANSICION_ESTADO', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT PK_TRANSICION_ESTADO PRIMARY KEY (ID_TRANSICION)');
+    asegurar_restriccion('FK_TE_PROYECTO', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT FK_TE_PROYECTO FOREIGN KEY (ID_PROYECTO) REFERENCES PROYECTO (ID_PROYECTO)');
+    asegurar_restriccion('FK_TE_USUARIO', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT FK_TE_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('FK_TE_ROL', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT FK_TE_ROL FOREIGN KEY (ID_ROL_EFECTIVO) REFERENCES ROL (ID_ROL)');
+    asegurar_restriccion('FK_TE_UNIDAD', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT FK_TE_UNIDAD FOREIGN KEY (ID_UNIDAD_EFECTIVA) REFERENCES UNIDAD_EJECUTORA (ID_UNIDAD)');
+    asegurar_restriccion('FK_TE_DOCUMENTO', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT FK_TE_DOCUMENTO FOREIGN KEY (ID_DOCUMENTO_REF) REFERENCES DOCUMENTO (ID_DOCUMENTO)');
+    asegurar_restriccion('CK_TE_ANTERIOR', 'TRANSICION_ESTADO',
+        q'~ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT CK_TE_ANTERIOR CHECK (ESTADO_ANTERIOR IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_TE_NUEVO', 'TRANSICION_ESTADO',
+        q'~ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT CK_TE_NUEVO CHECK (ESTADO_NUEVO IN ('PRESENTADO','INICIATIVA_APROBADA','INICIATIVA_ARCHIVADA','PROYECTO_EJECUCION','PRODUCTO_APROBADO','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+    asegurar_restriccion('CK_TE_ESTADOS_DIST', 'TRANSICION_ESTADO',
+        'ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT CK_TE_ESTADOS_DIST CHECK (ESTADO_ANTERIOR <> ESTADO_NUEVO)');
+    asegurar_restriccion('CK_TE_OBSERVACION', 'TRANSICION_ESTADO',
+        q'~ALTER TABLE TRANSICION_ESTADO ADD CONSTRAINT CK_TE_OBSERVACION CHECK ((ESTADO_NUEVO = 'INICIATIVA_ARCHIVADA' AND OBSERVACIONES IS NOT NULL AND LENGTH(TRIM(OBSERVACIONES)) >= 20) OR (ESTADO_NUEVO IN ('PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO') AND OBSERVACIONES IS NOT NULL AND LENGTH(TRIM(OBSERVACIONES)) >= 1) OR ESTADO_NUEVO NOT IN ('INICIATIVA_ARCHIVADA','PRODUCTO_NO_APROBADO','SUSPENDIDO','CANCELADO'))~');
+
+    -- CORRELATIVOS
+    asegurar_restriccion('PK_SECUENCIA_CODIGO', 'SECUENCIA_CODIGO',
+        'ALTER TABLE SECUENCIA_CODIGO ADD CONSTRAINT PK_SECUENCIA_CODIGO PRIMARY KEY (ID_SECUENCIA)');
+    asegurar_restriccion('UK_SC_ANIO_UNIDAD', 'SECUENCIA_CODIGO',
+        'ALTER TABLE SECUENCIA_CODIGO ADD CONSTRAINT UK_SC_ANIO_UNIDAD UNIQUE (ANIO, ID_UNIDAD)');
+    asegurar_restriccion('FK_SC_UNIDAD', 'SECUENCIA_CODIGO',
+        'ALTER TABLE SECUENCIA_CODIGO ADD CONSTRAINT FK_SC_UNIDAD FOREIGN KEY (ID_UNIDAD) REFERENCES UNIDAD_EJECUTORA (ID_UNIDAD)');
+    asegurar_restriccion('CK_SC_ANIO', 'SECUENCIA_CODIGO',
+        'ALTER TABLE SECUENCIA_CODIGO ADD CONSTRAINT CK_SC_ANIO CHECK (ANIO >= 2024)');
+    asegurar_restriccion('CK_SC_NUMERO', 'SECUENCIA_CODIGO',
+        'ALTER TABLE SECUENCIA_CODIGO ADD CONSTRAINT CK_SC_NUMERO CHECK (ULTIMO_NUMERO BETWEEN 0 AND 99999)');
+
+    -- AUDITORIA
+    asegurar_restriccion('PK_AUDITORIA_ACCESO', 'AUDITORIA_ACCESO',
+        'ALTER TABLE AUDITORIA_ACCESO ADD CONSTRAINT PK_AUDITORIA_ACCESO PRIMARY KEY (ID_AUDIT)');
+    asegurar_restriccion('FK_AA_USUARIO', 'AUDITORIA_ACCESO',
+        'ALTER TABLE AUDITORIA_ACCESO ADD CONSTRAINT FK_AA_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('CK_AA_METODO', 'AUDITORIA_ACCESO',
+        q'~ALTER TABLE AUDITORIA_ACCESO ADD CONSTRAINT CK_AA_METODO CHECK (METODO_HTTP IN ('GET','POST','PUT','PATCH','DELETE','OPTIONS','HEAD'))~');
+    asegurar_restriccion('CK_AA_RESPUESTA', 'AUDITORIA_ACCESO',
+        'ALTER TABLE AUDITORIA_ACCESO ADD CONSTRAINT CK_AA_RESPUESTA CHECK (CODIGO_RESPUESTA BETWEEN 100 AND 599)');
+    asegurar_restriccion('CK_AA_DURACION', 'AUDITORIA_ACCESO',
+        'ALTER TABLE AUDITORIA_ACCESO ADD CONSTRAINT CK_AA_DURACION CHECK (DURACION_MS IS NULL OR DURACION_MS >= 0)');
+
+    asegurar_restriccion('PK_AUDITORIA_EVENTO', 'AUDITORIA_EVENTO',
+        'ALTER TABLE AUDITORIA_EVENTO ADD CONSTRAINT PK_AUDITORIA_EVENTO PRIMARY KEY (ID_EVENTO)');
+    asegurar_restriccion('FK_AE_USUARIO', 'AUDITORIA_EVENTO',
+        'ALTER TABLE AUDITORIA_EVENTO ADD CONSTRAINT FK_AE_USUARIO FOREIGN KEY (ID_USUARIO) REFERENCES USUARIO (ID_USUARIO)');
+    asegurar_restriccion('CK_AE_PROCESADO', 'AUDITORIA_EVENTO',
+        q'~ALTER TABLE AUDITORIA_EVENTO ADD CONSTRAINT CK_AE_PROCESADO CHECK (PROCESADO IN ('S','N'))~');
+    asegurar_restriccion('CK_AE_PAYLOAD_JSON', 'AUDITORIA_EVENTO',
+        'ALTER TABLE AUDITORIA_EVENTO ADD CONSTRAINT CK_AE_PAYLOAD_JSON CHECK (PAYLOAD_JSON IS JSON)');
+END;
+/
+PROMPT [005] Creando o validando indices...
+DECLARE
+    PROCEDURE asegurar_indice(
+        p_nombre IN VARCHAR2,
+        p_tabla  IN VARCHAR2,
+        p_ddl    IN VARCHAR2
+    ) IS
+        v_count  PLS_INTEGER;
+        v_status USER_INDEXES.STATUS%TYPE;
+        v_tabla  USER_INDEXES.TABLE_NAME%TYPE;
+        v_unicidad USER_INDEXES.UNIQUENESS%TYPE;
+        v_columnas VARCHAR2(4000);
+        v_columnas_esperadas VARCHAR2(4000);
+        v_unicidad_esperada USER_INDEXES.UNIQUENESS%TYPE;
+    BEGIN
+        SELECT COUNT(*)
+          INTO v_count
+          FROM USER_INDEXES
+         WHERE INDEX_NAME = UPPER(p_nombre);
+
+        IF v_count = 0 THEN
+            SELECT COUNT(*)
+              INTO v_count
+              FROM USER_OBJECTS
+             WHERE OBJECT_NAME = UPPER(p_nombre);
+
+            IF v_count > 0 THEN
+                RAISE_APPLICATION_ERROR(-20110,
+                    'Existe un objeto incompatible con el indice ' || p_nombre);
+            END IF;
+
+            EXECUTE IMMEDIATE p_ddl;
+        ELSE
+            SELECT STATUS, TABLE_NAME, UNIQUENESS
+              INTO v_status, v_tabla, v_unicidad
+              FROM USER_INDEXES
+             WHERE INDEX_NAME = UPPER(p_nombre);
+
+            IF v_tabla <> UPPER(p_tabla) OR v_status <> 'VALID' THEN
+                RAISE_APPLICATION_ERROR(-20111,
+                    'El indice ' || p_nombre || ' existe con una definicion incompatible');
+            END IF;
+
+            v_unicidad_esperada := CASE
+                WHEN REGEXP_LIKE(p_ddl, '^CREATE[[:space:]]+UNIQUE[[:space:]]+INDEX', 'i')
+                THEN 'UNIQUE'
+                ELSE 'NONUNIQUE'
+            END;
+
+            IF v_unicidad <> v_unicidad_esperada THEN
+                RAISE_APPLICATION_ERROR(-20112,
+                    'El indice ' || p_nombre || ' tiene una unicidad incompatible');
+            END IF;
+
+            IF UPPER(p_nombre) = 'UX_UE_RAIZ' THEN
+                SELECT COUNT(*)
+                  INTO v_count
+                  FROM USER_IND_EXPRESSIONS
+                 WHERE INDEX_NAME = UPPER(p_nombre)
+                   AND TABLE_NAME = UPPER(p_tabla);
+
+                IF v_count <> 1 THEN
+                    RAISE_APPLICATION_ERROR(-20113,
+                        'El indice funcional ' || p_nombre || ' es incompatible');
+                END IF;
+            ELSE
+                SELECT LISTAGG(COLUMN_NAME, ',') WITHIN GROUP (ORDER BY COLUMN_POSITION)
+                  INTO v_columnas
+                  FROM USER_IND_COLUMNS
+                 WHERE INDEX_NAME = UPPER(p_nombre)
+                   AND TABLE_NAME = UPPER(p_tabla);
+
+                v_columnas_esperadas := REGEXP_REPLACE(
+                    UPPER(REGEXP_SUBSTR(p_ddl, '\(([^()]*)\)[[:space:]]*$', 1, 1, 'i', 1)),
+                    '[[:space:]]',
+                    ''
+                );
+
+                IF v_columnas <> v_columnas_esperadas THEN
+                    RAISE_APPLICATION_ERROR(-20114,
+                        'El indice ' || p_nombre || ' tiene columnas incompatibles');
+                END IF;
+            END IF;
+        END IF;
+    END asegurar_indice;
+BEGIN
+    asegurar_indice('UX_UE_RAIZ', 'UNIDAD_EJECUTORA',
+        'CREATE UNIQUE INDEX UX_UE_RAIZ ON UNIDAD_EJECUTORA (CASE WHEN ID_UNIDAD_PADRE IS NULL THEN 1 END)');
+    asegurar_indice('IDX_UE_PADRE', 'UNIDAD_EJECUTORA',
+        'CREATE INDEX IDX_UE_PADRE ON UNIDAD_EJECUTORA (ID_UNIDAD_PADRE)');
+
+    asegurar_indice('IDX_URU_USUARIO_ACT', 'USUARIO_ROL_UNIDAD',
+        'CREATE INDEX IDX_URU_USUARIO_ACT ON USUARIO_ROL_UNIDAD (ID_USUARIO, ACTIVO)');
+    asegurar_indice('IDX_URU_UNIDAD_ACT', 'USUARIO_ROL_UNIDAD',
+        'CREATE INDEX IDX_URU_UNIDAD_ACT ON USUARIO_ROL_UNIDAD (ID_UNIDAD, ACTIVO)');
+    asegurar_indice('IDX_URU_ROL', 'USUARIO_ROL_UNIDAD',
+        'CREATE INDEX IDX_URU_ROL ON USUARIO_ROL_UNIDAD (ID_ROL)');
+
+    asegurar_indice('IDX_PROY_UNIDAD_EST', 'PROYECTO',
+        'CREATE INDEX IDX_PROY_UNIDAD_EST ON PROYECTO (ID_UNIDAD_EJECUTORA, ESTADO)');
+    asegurar_indice('IDX_PROY_ESTADO', 'PROYECTO',
+        'CREATE INDEX IDX_PROY_ESTADO ON PROYECTO (ESTADO)');
+    asegurar_indice('IDX_PROY_RESPONSABLE', 'PROYECTO',
+        'CREATE INDEX IDX_PROY_RESPONSABLE ON PROYECTO (ID_RESPONSABLE)');
+    asegurar_indice('IDX_PROY_FECHA_INICIO', 'PROYECTO',
+        'CREATE INDEX IDX_PROY_FECHA_INICIO ON PROYECTO (FECHA_INICIO)');
+    asegurar_indice('IDX_PROY_TIPO_REG', 'PROYECTO',
+        'CREATE INDEX IDX_PROY_TIPO_REG ON PROYECTO (TIPO_REGISTRO)');
+
+    asegurar_indice('IDX_TP_ROL', 'TRANSICION_PERMITIDA',
+        'CREATE INDEX IDX_TP_ROL ON TRANSICION_PERMITIDA (ID_ROL_REQUERIDO)');
+
+    asegurar_indice('IDX_DOC_PROY_EST_ACT', 'DOCUMENTO',
+        'CREATE INDEX IDX_DOC_PROY_EST_ACT ON DOCUMENTO (ID_PROYECTO, ESTADO_AL_CARGAR, ACTIVO)');
+    asegurar_indice('IDX_DOC_TIPO', 'DOCUMENTO',
+        'CREATE INDEX IDX_DOC_TIPO ON DOCUMENTO (ID_TIPO_DOC)');
+    asegurar_indice('IDX_DOC_USUARIO', 'DOCUMENTO',
+        'CREATE INDEX IDX_DOC_USUARIO ON DOCUMENTO (ID_USUARIO_CARGA)');
+    asegurar_indice('IDX_DOC_ANTERIOR', 'DOCUMENTO',
+        'CREATE INDEX IDX_DOC_ANTERIOR ON DOCUMENTO (ID_DOCUMENTO_ANTERIOR)');
+
+    asegurar_indice('IDX_TE_PROY_FECHA', 'TRANSICION_ESTADO',
+        'CREATE INDEX IDX_TE_PROY_FECHA ON TRANSICION_ESTADO (ID_PROYECTO, FECHA_TRANSICION)');
+    asegurar_indice('IDX_TE_USUARIO', 'TRANSICION_ESTADO',
+        'CREATE INDEX IDX_TE_USUARIO ON TRANSICION_ESTADO (ID_USUARIO)');
+    asegurar_indice('IDX_TE_ROL', 'TRANSICION_ESTADO',
+        'CREATE INDEX IDX_TE_ROL ON TRANSICION_ESTADO (ID_ROL_EFECTIVO)');
+    asegurar_indice('IDX_TE_UNIDAD', 'TRANSICION_ESTADO',
+        'CREATE INDEX IDX_TE_UNIDAD ON TRANSICION_ESTADO (ID_UNIDAD_EFECTIVA)');
+    asegurar_indice('IDX_TE_DOCUMENTO', 'TRANSICION_ESTADO',
+        'CREATE INDEX IDX_TE_DOCUMENTO ON TRANSICION_ESTADO (ID_DOCUMENTO_REF)');
+
+    asegurar_indice('IDX_SC_UNIDAD', 'SECUENCIA_CODIGO',
+        'CREATE INDEX IDX_SC_UNIDAD ON SECUENCIA_CODIGO (ID_UNIDAD)');
+
+    asegurar_indice('IDX_AA_USUARIO', 'AUDITORIA_ACCESO',
+        'CREATE INDEX IDX_AA_USUARIO ON AUDITORIA_ACCESO (ID_USUARIO)');
+    asegurar_indice('IDX_AA_FECHA', 'AUDITORIA_ACCESO',
+        'CREATE INDEX IDX_AA_FECHA ON AUDITORIA_ACCESO (FECHA_HORA)');
+
+    asegurar_indice('IDX_AE_USUARIO', 'AUDITORIA_EVENTO',
+        'CREATE INDEX IDX_AE_USUARIO ON AUDITORIA_EVENTO (ID_USUARIO)');
+    asegurar_indice('IDX_AE_PROC_FECHA', 'AUDITORIA_EVENTO',
+        'CREATE INDEX IDX_AE_PROC_FECHA ON AUDITORIA_EVENTO (PROCESADO, FECHA_EVENTO)');
+END;
+/
+
+PROMPT [006] Sincronizando secuencias con los datos existentes...
+DECLARE
+    PROCEDURE sincronizar_secuencia(
+        p_secuencia       IN VARCHAR2,
+        p_tabla           IN VARCHAR2,
+        p_columna         IN VARCHAR2,
+        p_id_reservado_max IN NUMBER DEFAULT 0
+    ) IS
+        v_max_id       NUMBER;
+        v_last_number  NUMBER;
+        v_cache_size   NUMBER;
+        v_valor_actual NUMBER;
+        v_incremento   NUMBER;
+        v_ajustada     BOOLEAN := FALSE;
+    BEGIN
+        EXECUTE IMMEDIATE
+            'SELECT NVL(MAX(' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_columna) || '), 0) FROM ' ||
+            DBMS_ASSERT.SIMPLE_SQL_NAME(p_tabla)
+            INTO v_max_id;
+        v_max_id := GREATEST(v_max_id, NVL(p_id_reservado_max, 0));
+
+        SELECT LAST_NUMBER, CACHE_SIZE
+          INTO v_last_number, v_cache_size
+          FROM USER_SEQUENCES
+         WHERE SEQUENCE_NAME = UPPER(p_secuencia);
+
+        IF v_max_id > 0 AND (v_cache_size > 0 OR v_last_number <= v_max_id) THEN
+            EXECUTE IMMEDIATE
+                'SELECT ' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_secuencia) || '.NEXTVAL FROM DUAL'
+                INTO v_valor_actual;
+
+            IF v_valor_actual < v_max_id THEN
+                v_incremento := v_max_id - v_valor_actual;
+                EXECUTE IMMEDIATE
+                    'ALTER SEQUENCE ' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_secuencia) ||
+                    ' INCREMENT BY ' || TO_CHAR(v_incremento, 'FM9999999999999999990',
+                                                'NLS_NUMERIC_CHARACTERS=''.,''');
+                v_ajustada := TRUE;
+
+                EXECUTE IMMEDIATE
+                    'SELECT ' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_secuencia) || '.NEXTVAL FROM DUAL'
+                    INTO v_valor_actual;
+
+                EXECUTE IMMEDIATE
+                    'ALTER SEQUENCE ' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_secuencia) ||
+                    ' INCREMENT BY 1';
+                v_ajustada := FALSE;
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF v_ajustada THEN
+                BEGIN
+                    EXECUTE IMMEDIATE
+                        'ALTER SEQUENCE ' || DBMS_ASSERT.SIMPLE_SQL_NAME(p_secuencia) ||
+                        ' INCREMENT BY 1';
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        NULL;
+                END;
+            END IF;
+            RAISE;
+    END sincronizar_secuencia;
+BEGIN
+    sincronizar_secuencia('SEQ_UNIDAD_EJECUTORA', 'UNIDAD_EJECUTORA', 'ID_UNIDAD', 1);
+    sincronizar_secuencia('SEQ_USUARIO', 'USUARIO', 'ID_USUARIO');
+    sincronizar_secuencia('SEQ_USUARIO_ROL_UNIDAD', 'USUARIO_ROL_UNIDAD', 'ID_USR_ROL_UNIDAD');
+    sincronizar_secuencia('SEQ_PROYECTO', 'PROYECTO', 'ID_PROYECTO');
+    sincronizar_secuencia('SEQ_PROYECTO_UO', 'PROYECTO_UNIDAD_ORGANICA', 'ID_PROY_UO');
+    sincronizar_secuencia('SEQ_DOCUMENTO', 'DOCUMENTO', 'ID_DOCUMENTO');
+    sincronizar_secuencia('SEQ_TRANSICION_ESTADO', 'TRANSICION_ESTADO', 'ID_TRANSICION');
+    sincronizar_secuencia('SEQ_AUDITORIA_ACCESO', 'AUDITORIA_ACCESO', 'ID_AUDIT');
+    sincronizar_secuencia('SEQ_AUDITORIA_EVENTO', 'AUDITORIA_EVENTO', 'ID_EVENTO');
+    sincronizar_secuencia('SEQ_SECUENCIA_CODIGO', 'SECUENCIA_CODIGO', 'ID_SECUENCIA');
+END;
+/
+
+PROMPT [007] Cargando datos semilla canonicos...
+MERGE INTO UNIDAD_EJECUTORA destino
+USING (
+    SELECT 1 AS ID_UNIDAD,
+           'MIDAGRI' AS CODIGO_UNIDAD,
+           'Ministerio de Desarrollo Agrario y Riego' AS NOMBRE,
+           'Unidad raiz institucional' AS DESCRIPCION,
+           1 AS NIVEL_JERARQUICO,
+           CAST(NULL AS NUMBER(10)) AS ID_UNIDAD_PADRE,
+           'S' AS ACTIVO,
+           'MIGRACION_001' AS CREADO_POR
+      FROM DUAL
+) fuente
+ON (destino.ID_UNIDAD = fuente.ID_UNIDAD)
+WHEN MATCHED THEN UPDATE SET
+    destino.CODIGO_UNIDAD = fuente.CODIGO_UNIDAD,
+    destino.NOMBRE = fuente.NOMBRE,
+    destino.DESCRIPCION = fuente.DESCRIPCION,
+    destino.NIVEL_JERARQUICO = fuente.NIVEL_JERARQUICO,
+    destino.ID_UNIDAD_PADRE = fuente.ID_UNIDAD_PADRE,
+    destino.ACTIVO = fuente.ACTIVO,
+    destino.MODIFICADO_POR = fuente.CREADO_POR,
+    destino.FECHA_MODIFICACION = SYSTIMESTAMP
+WHERE destino.CODIGO_UNIDAD <> fuente.CODIGO_UNIDAD
+   OR destino.NOMBRE <> fuente.NOMBRE
+   OR NVL(destino.DESCRIPCION, '#NULL#') <> fuente.DESCRIPCION
+   OR destino.NIVEL_JERARQUICO <> fuente.NIVEL_JERARQUICO
+   OR destino.ID_UNIDAD_PADRE IS NOT NULL
+   OR destino.ACTIVO <> fuente.ACTIVO
+WHEN NOT MATCHED THEN INSERT (
+    ID_UNIDAD, CODIGO_UNIDAD, NOMBRE, DESCRIPCION, NIVEL_JERARQUICO,
+    ID_UNIDAD_PADRE, ACTIVO, CREADO_POR
+) VALUES (
+    fuente.ID_UNIDAD, fuente.CODIGO_UNIDAD, fuente.NOMBRE, fuente.DESCRIPCION,
+    fuente.NIVEL_JERARQUICO, fuente.ID_UNIDAD_PADRE, fuente.ACTIVO, fuente.CREADO_POR
+);
+
+MERGE INTO ROL destino
+USING (
+    SELECT 1 ID_ROL, 'GlobalAdmin' NOMBRE_ROL,
+           'Acceso total a toda la plataforma' DESCRIPCION, 1 NIVEL_ACCESO FROM DUAL
+    UNION ALL SELECT 2, 'UnidadAdmin',
+           'Gestión de usuarios y proyectos de su unidad y descendientes', 2 FROM DUAL
+    UNION ALL SELECT 3, 'Responsable',
+           'Registro y seguimiento de proyectos de su unidad', 3 FROM DUAL
+    UNION ALL SELECT 4, 'Evaluador',
+           'Evaluación técnica de iniciativas', 4 FROM DUAL
+    UNION ALL SELECT 5, 'Autoridad',
+           'Aprobación final de productos', 2 FROM DUAL
+    UNION ALL SELECT 6, 'Consulta',
+           'Solo lectura del portafolio de su unidad', 6 FROM DUAL
+) fuente
+ON (destino.ID_ROL = fuente.ID_ROL)
+WHEN MATCHED THEN UPDATE SET
+    destino.NOMBRE_ROL = fuente.NOMBRE_ROL,
+    destino.DESCRIPCION = fuente.DESCRIPCION,
+    destino.NIVEL_ACCESO = fuente.NIVEL_ACCESO
+WHEN NOT MATCHED THEN INSERT (
+    ID_ROL, NOMBRE_ROL, DESCRIPCION, NIVEL_ACCESO
+) VALUES (
+    fuente.ID_ROL, fuente.NOMBRE_ROL, fuente.DESCRIPCION, fuente.NIVEL_ACCESO
+);
+
+MERGE INTO TRANSICION_PERMITIDA destino
+USING (
+    SELECT 1 ID_TRANS_PERM, 'PRESENTADO' ESTADO_ORIGEN,
+           'INICIATIVA_APROBADA' ESTADO_DESTINO, 4 ID_ROL_REQUERIDO,
+           'S' DOC_OBLIGATORIO, 'N' OBS_OBLIGATORIO, 'S' ACTIVO FROM DUAL
+    UNION ALL SELECT 2, 'PRESENTADO', 'INICIATIVA_ARCHIVADA', 4, 'N', 'S', 'S' FROM DUAL
+    UNION ALL SELECT 3, 'INICIATIVA_APROBADA', 'PROYECTO_EJECUCION', 2, 'S', 'N', 'S' FROM DUAL
+    UNION ALL SELECT 4, 'PROYECTO_EJECUCION', 'PRODUCTO_APROBADO', 5, 'S', 'N', 'S' FROM DUAL
+    UNION ALL SELECT 5, 'PROYECTO_EJECUCION', 'PRODUCTO_NO_APROBADO', 5, 'N', 'S', 'S' FROM DUAL
+    UNION ALL SELECT 6, 'PROYECTO_EJECUCION', 'SUSPENDIDO', 2, 'N', 'S', 'S' FROM DUAL
+    UNION ALL SELECT 7, 'PROYECTO_EJECUCION', 'CANCELADO', 5, 'S', 'S', 'S' FROM DUAL
+    UNION ALL SELECT 8, 'INICIATIVA_ARCHIVADA', 'PRESENTADO', 3, 'N', 'N', 'S' FROM DUAL
+) fuente
+ON (destino.ID_TRANS_PERM = fuente.ID_TRANS_PERM)
+WHEN MATCHED THEN UPDATE SET
+    destino.ESTADO_ORIGEN = fuente.ESTADO_ORIGEN,
+    destino.ESTADO_DESTINO = fuente.ESTADO_DESTINO,
+    destino.ID_ROL_REQUERIDO = fuente.ID_ROL_REQUERIDO,
+    destino.DOC_OBLIGATORIO = fuente.DOC_OBLIGATORIO,
+    destino.OBS_OBLIGATORIO = fuente.OBS_OBLIGATORIO,
+    destino.ACTIVO = fuente.ACTIVO
+WHEN NOT MATCHED THEN INSERT (
+    ID_TRANS_PERM, ESTADO_ORIGEN, ESTADO_DESTINO, ID_ROL_REQUERIDO,
+    DOC_OBLIGATORIO, OBS_OBLIGATORIO, ACTIVO
+) VALUES (
+    fuente.ID_TRANS_PERM, fuente.ESTADO_ORIGEN, fuente.ESTADO_DESTINO,
+    fuente.ID_ROL_REQUERIDO, fuente.DOC_OBLIGATORIO, fuente.OBS_OBLIGATORIO,
+    fuente.ACTIVO
+);
+
+MERGE INTO TIPO_DOCUMENTO destino
+USING (
+    SELECT 1 ID_TIPO_DOC, 'Ficha de Iniciativa de Innovación Pública' NOMBRE,
+           'PRESENTADO' ESTADO_ASOCIADO, 'S' OBLIGATORIO,
+           'Ficha formal de presentación de la iniciativa' DESCRIPCION,
+           'Anexo 1' ANEXO_NT, 'S' ACTIVO FROM DUAL
+    UNION ALL SELECT 2, 'Informe de Opinión Técnica de Evaluación',
+           'INICIATIVA_APROBADA', 'S', 'Emitido por la Unidad de Modernización',
+           'Anexo 4', 'S' FROM DUAL
+    UNION ALL SELECT 3, 'Documento Formal de Aprobación de Inicio',
+           'PROYECTO_EJECUCION', 'S', 'Emitido por la máxima autoridad administrativa',
+           CAST(NULL AS VARCHAR2(20)), 'S' FROM DUAL
+    UNION ALL SELECT 4, 'Nota Conceptual del Proyecto',
+           'PROYECTO_EJECUCION', 'N', 'Resumen ejecutivo del proyecto en ejecución',
+           'Anexo 9', 'S' FROM DUAL
+    UNION ALL SELECT 5, 'Matriz de Planificación de Ciclos',
+           'PROYECTO_EJECUCION', 'N', 'Planificación ágil por ciclos de trabajo',
+           'Anexo 6', 'S' FROM DUAL
+    UNION ALL SELECT 6, 'Seguimiento Ágil (Tablero Kanban)',
+           'PROYECTO_EJECUCION', 'N', 'Tablero de seguimiento de tareas',
+           'Anexo 7', 'S' FROM DUAL
+    UNION ALL SELECT 7, 'Autoevaluación de Ciclo de Trabajo',
+           'PROYECTO_EJECUCION', 'N', 'Retrospectiva del ciclo',
+           'Anexo 8', 'S' FROM DUAL
+    UNION ALL SELECT 8, 'Documento Formal de Aprobación de Producto Final',
+           'PRODUCTO_APROBADO', 'S', 'Emitido por la máxima autoridad administrativa',
+           CAST(NULL AS VARCHAR2(20)), 'S' FROM DUAL
+    UNION ALL SELECT 9, 'Informe Final de Cierre',
+           'PRODUCTO_APROBADO', 'S', 'Emitido por la Unidad de Modernización',
+           CAST(NULL AS VARCHAR2(20)), 'S' FROM DUAL
+    UNION ALL SELECT 10, 'Informe de la Unidad de Modernización (Cancelación)',
+           'CANCELADO', 'S', 'Informe con motivos específicos de cancelación',
+           CAST(NULL AS VARCHAR2(20)), 'S' FROM DUAL
+) fuente
+ON (destino.ID_TIPO_DOC = fuente.ID_TIPO_DOC)
+WHEN MATCHED THEN UPDATE SET
+    destino.NOMBRE = fuente.NOMBRE,
+    destino.ESTADO_ASOCIADO = fuente.ESTADO_ASOCIADO,
+    destino.OBLIGATORIO = fuente.OBLIGATORIO,
+    destino.DESCRIPCION = fuente.DESCRIPCION,
+    destino.ANEXO_NT = fuente.ANEXO_NT,
+    destino.ACTIVO = fuente.ACTIVO
+WHEN NOT MATCHED THEN INSERT (
+    ID_TIPO_DOC, NOMBRE, ESTADO_ASOCIADO, OBLIGATORIO, DESCRIPCION, ANEXO_NT, ACTIVO
+) VALUES (
+    fuente.ID_TIPO_DOC, fuente.NOMBRE, fuente.ESTADO_ASOCIADO,
+    fuente.OBLIGATORIO, fuente.DESCRIPCION, fuente.ANEXO_NT, fuente.ACTIVO
+);
+
+PROMPT [008] Ejecutando validaciones finales...
+DECLARE
+    v_count PLS_INTEGER;
+
+    PROCEDURE exigir(
+        p_condicion IN BOOLEAN,
+        p_codigo    IN PLS_INTEGER,
+        p_mensaje   IN VARCHAR2
+    ) IS
+    BEGIN
+        IF NOT p_condicion THEN
+            RAISE_APPLICATION_ERROR(p_codigo, p_mensaje);
+        END IF;
+    END exigir;
+BEGIN
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_TABLES
+     WHERE TABLE_NAME IN (
+        'UNIDAD_EJECUTORA', 'USUARIO', 'ROL', 'USUARIO_ROL_UNIDAD',
+        'PROYECTO', 'PROYECTO_UNIDAD_ORGANICA', 'TRANSICION_PERMITIDA',
+        'TIPO_DOCUMENTO', 'DOCUMENTO', 'TRANSICION_ESTADO',
+        'SECUENCIA_CODIGO', 'AUDITORIA_ACCESO', 'AUDITORIA_EVENTO'
+     );
+    exigir(v_count = 13, -20200, 'Validacion final: se esperaban 13 tablas base');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_SEQUENCES
+     WHERE SEQUENCE_NAME IN (
+        'SEQ_UNIDAD_EJECUTORA', 'SEQ_USUARIO', 'SEQ_USUARIO_ROL_UNIDAD',
+        'SEQ_PROYECTO', 'SEQ_PROYECTO_UO', 'SEQ_DOCUMENTO',
+        'SEQ_TRANSICION_ESTADO', 'SEQ_AUDITORIA_ACCESO',
+        'SEQ_AUDITORIA_EVENTO', 'SEQ_SECUENCIA_CODIGO'
+     );
+    exigir(v_count = 10, -20201, 'Validacion final: se esperaban 10 secuencias');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_INDEXES
+     WHERE INDEX_NAME IN (
+        'UX_UE_RAIZ', 'IDX_UE_PADRE', 'IDX_URU_USUARIO_ACT',
+        'IDX_URU_UNIDAD_ACT', 'IDX_URU_ROL', 'IDX_PROY_UNIDAD_EST', 'IDX_PROY_ESTADO',
+        'IDX_PROY_RESPONSABLE', 'IDX_PROY_FECHA_INICIO', 'IDX_PROY_TIPO_REG',
+        'IDX_TP_ROL', 'IDX_DOC_PROY_EST_ACT', 'IDX_DOC_TIPO',
+        'IDX_DOC_USUARIO', 'IDX_DOC_ANTERIOR', 'IDX_TE_PROY_FECHA',
+        'IDX_TE_USUARIO', 'IDX_TE_ROL', 'IDX_TE_UNIDAD', 'IDX_TE_DOCUMENTO',
+        'IDX_SC_UNIDAD', 'IDX_AA_USUARIO', 'IDX_AA_FECHA',
+        'IDX_AE_USUARIO', 'IDX_AE_PROC_FECHA'
+     )
+       AND STATUS = 'VALID';
+    exigir(v_count = 25, -20202, 'Validacion final: faltan indices funcionales o de FK');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM UNIDAD_EJECUTORA
+     WHERE ID_UNIDAD_PADRE IS NULL;
+    exigir(v_count = 1, -20203, 'Validacion final: debe existir exactamente una unidad raiz');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM UNIDAD_EJECUTORA
+     WHERE ID_UNIDAD = 1
+       AND CODIGO_UNIDAD = 'MIDAGRI'
+       AND NOMBRE = 'Ministerio de Desarrollo Agrario y Riego'
+       AND NIVEL_JERARQUICO = 1
+       AND ID_UNIDAD_PADRE IS NULL
+       AND ACTIVO = 'S';
+    exigir(v_count = 1, -20204, 'Validacion final: la unidad raiz MIDAGRI no es canonica');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM ROL
+     WHERE (ID_ROL = 1 AND NOMBRE_ROL = 'GlobalAdmin')
+        OR (ID_ROL = 2 AND NOMBRE_ROL = 'UnidadAdmin')
+        OR (ID_ROL = 3 AND NOMBRE_ROL = 'Responsable')
+        OR (ID_ROL = 4 AND NOMBRE_ROL = 'Evaluador')
+        OR (ID_ROL = 5 AND NOMBRE_ROL = 'Autoridad')
+        OR (ID_ROL = 6 AND NOMBRE_ROL = 'Consulta');
+    exigir(v_count = 6, -20205, 'Validacion final: se esperaban 6 roles canonicos');
+
+    SELECT COUNT(*) INTO v_count FROM ROL;
+    exigir(v_count = 6, -20211, 'Validacion final: el catalogo ROL debe contener 6 filas');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM TRANSICION_PERMITIDA
+     WHERE ID_TRANS_PERM BETWEEN 1 AND 8
+       AND ACTIVO = 'S';
+    exigir(v_count = 8, -20206, 'Validacion final: se esperaban 8 transiciones canonicas');
+
+    SELECT COUNT(*) INTO v_count FROM TRANSICION_PERMITIDA;
+    exigir(v_count = 8, -20212,
+        'Validacion final: TRANSICION_PERMITIDA debe contener 8 filas');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM TIPO_DOCUMENTO
+     WHERE ID_TIPO_DOC BETWEEN 1 AND 10
+       AND ACTIVO = 'S';
+    exigir(v_count = 10, -20207, 'Validacion final: se esperaban 10 tipos documentales canonicos');
+
+    SELECT COUNT(*) INTO v_count FROM TIPO_DOCUMENTO;
+    exigir(v_count = 10, -20213,
+        'Validacion final: TIPO_DOCUMENTO debe contener 10 filas');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_CONSTRAINTS
+     WHERE TABLE_NAME IN (
+        'UNIDAD_EJECUTORA', 'USUARIO', 'ROL', 'USUARIO_ROL_UNIDAD',
+        'PROYECTO', 'PROYECTO_UNIDAD_ORGANICA', 'TRANSICION_PERMITIDA',
+        'TIPO_DOCUMENTO', 'DOCUMENTO', 'TRANSICION_ESTADO',
+        'SECUENCIA_CODIGO', 'AUDITORIA_ACCESO', 'AUDITORIA_EVENTO'
+     )
+       AND STATUS <> 'ENABLED';
+    exigir(v_count = 0, -20208, 'Validacion final: existen constraints deshabilitados');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_CONSTRAINTS
+     WHERE TABLE_NAME IN (
+        'UNIDAD_EJECUTORA', 'USUARIO', 'ROL', 'USUARIO_ROL_UNIDAD',
+        'PROYECTO', 'PROYECTO_UNIDAD_ORGANICA', 'TRANSICION_PERMITIDA',
+        'TIPO_DOCUMENTO', 'DOCUMENTO', 'TRANSICION_ESTADO',
+        'SECUENCIA_CODIGO', 'AUDITORIA_ACCESO', 'AUDITORIA_EVENTO'
+     )
+       AND CONSTRAINT_TYPE = 'R';
+    exigir(v_count = 20, -20209, 'Validacion final: se esperaban 20 claves foraneas');
+
+    SELECT COUNT(*)
+      INTO v_count
+      FROM USER_OBJECTS objeto
+     WHERE objeto.STATUS = 'INVALID'
+       AND (
+            objeto.OBJECT_NAME IN (
+                'UNIDAD_EJECUTORA', 'USUARIO', 'ROL', 'USUARIO_ROL_UNIDAD',
+                'PROYECTO', 'PROYECTO_UNIDAD_ORGANICA', 'TRANSICION_PERMITIDA',
+                'TIPO_DOCUMENTO', 'DOCUMENTO', 'TRANSICION_ESTADO',
+                'SECUENCIA_CODIGO', 'AUDITORIA_ACCESO', 'AUDITORIA_EVENTO',
+                'SEQ_UNIDAD_EJECUTORA', 'SEQ_USUARIO', 'SEQ_USUARIO_ROL_UNIDAD',
+                'SEQ_PROYECTO', 'SEQ_PROYECTO_UO', 'SEQ_DOCUMENTO',
+                'SEQ_TRANSICION_ESTADO', 'SEQ_AUDITORIA_ACCESO',
+                'SEQ_AUDITORIA_EVENTO', 'SEQ_SECUENCIA_CODIGO'
+            )
+            OR objeto.OBJECT_NAME IN (
+                SELECT INDEX_NAME
+                  FROM USER_INDEXES
+                 WHERE TABLE_NAME IN (
+                    'UNIDAD_EJECUTORA', 'USUARIO', 'ROL', 'USUARIO_ROL_UNIDAD',
+                    'PROYECTO', 'PROYECTO_UNIDAD_ORGANICA', 'TRANSICION_PERMITIDA',
+                    'TIPO_DOCUMENTO', 'DOCUMENTO', 'TRANSICION_ESTADO',
+                    'SECUENCIA_CODIGO', 'AUDITORIA_ACCESO', 'AUDITORIA_EVENTO'
+                 )
+            )
+       );
+    exigir(v_count = 0, -20210, 'Validacion final: existen objetos PIIP invalidos');
+
+    DBMS_OUTPUT.PUT_LINE('Validacion final satisfactoria: baseline PIIP consistente.');
+END;
+/
+
+COMMIT;
+
+PROMPT Migracion 001_baseline_kallpa_piip completada correctamente.
