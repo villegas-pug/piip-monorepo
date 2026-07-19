@@ -2,6 +2,9 @@
 
 - Fecha generación: 2026-07-18 21:12:06
 - Esquema origen: KALLPA_PIIP
+- Fuente del catálogo vigente: `database/ddl/init/001_baseline_piip.sql`.
+- Estado de actualización: solo incorpora scripts `VIGENTE` confirmados en
+  `database/CHANGELOG.md`; no representa scripts pendientes.
 
 ## Resumen
 
@@ -204,3 +207,72 @@
 | ACTIVO | CHAR | 1 | | | N | 'S' |
 | FECHA_ASIGNACION | DATE | 7 | | | N | SYSDATE |
 | ASIGNADO_POR | VARCHAR2 | 100 | | | N | |
+
+## Objetos estructurales vigentes
+
+Las definiciones detalladas, dependencias y validaciones de estos objetos están en
+`database/ddl/init/001_baseline_piip.sql`. Los cambios posteriores deben quedar registrados en
+`database/CHANGELOG.md` antes de actualizar este catálogo.
+
+### Secuencias
+
+| Secuencia | Tabla asociada | Inicio | Cache |
+|---|---|---:|---|
+| SEQ_UNIDAD_EJECUTORA | UNIDAD_EJECUTORA | 2 | NOCACHE |
+| SEQ_USUARIO | USUARIO | 1 | NOCACHE |
+| SEQ_USUARIO_ROL_UNIDAD | USUARIO_ROL_UNIDAD | 1 | NOCACHE |
+| SEQ_PROYECTO | PROYECTO | 1 | NOCACHE |
+| SEQ_PROYECTO_UO | PROYECTO_UNIDAD_ORGANICA | 1 | NOCACHE |
+| SEQ_TRANSICION_ESTADO | TRANSICION_ESTADO | 1 | NOCACHE |
+| SEQ_DOCUMENTO | DOCUMENTO | 1 | NOCACHE |
+| SEQ_SECUENCIA_CODIGO | SECUENCIA_CODIGO | 1 | NOCACHE |
+| SEQ_AUDITORIA_ACCESO | AUDITORIA_ACCESO | 1 | CACHE 50 |
+| SEQ_AUDITORIA_EVENTO | AUDITORIA_EVENTO | 1 | CACHE 50 |
+
+### Restricciones
+
+| Tipo | Convención | Estado |
+|---|---|---|
+| Primary key | `PK_<OBJETO>` | Vigente en las 13 tablas |
+| Unique | `UK_<OBJETO>` | Vigente para identificadores de negocio y combinaciones definidas en el baseline |
+| Foreign key | `FK_<OBJETO>` | Vigente según las dependencias entre unidades, usuarios, roles, proyectos, documentos y auditoría |
+| Check | `CK_<OBJETO>` | Vigente para dominios canónicos, formatos, rangos, estados y flags `S`/`N` |
+
+### Índices
+
+| Índice | Tabla | Columnas o expresión |
+|---|---|---|
+| UX_UE_RAIZ | UNIDAD_EJECUTORA | `CASE WHEN ID_UNIDAD_PADRE IS NULL THEN 1 END` |
+| IDX_UE_PADRE | UNIDAD_EJECUTORA | ID_UNIDAD_PADRE |
+| IDX_URU_USUARIO_ACT | USUARIO_ROL_UNIDAD | ID_USUARIO, ACTIVO |
+| IDX_URU_UNIDAD_ACT | USUARIO_ROL_UNIDAD | ID_UNIDAD, ACTIVO |
+| IDX_URU_ROL | USUARIO_ROL_UNIDAD | ID_ROL |
+| IDX_PROY_UNIDAD_EST | PROYECTO | ID_UNIDAD_EJECUTORA, ESTADO |
+| IDX_PROY_ESTADO | PROYECTO | ESTADO |
+| IDX_PROY_RESPONSABLE | PROYECTO | ID_RESPONSABLE |
+| IDX_PROY_FECHA_INICIO | PROYECTO | FECHA_INICIO |
+| IDX_PROY_TIPO_REG | PROYECTO | TIPO_REGISTRO |
+| IDX_TP_ROL | TRANSICION_PERMITIDA | ID_ROL_REQUERIDO |
+| IDX_DOC_PROY_EST_ACT | DOCUMENTO | ID_PROYECTO, ESTADO_AL_CARGAR, ACTIVO |
+| IDX_DOC_TIPO | DOCUMENTO | ID_TIPO_DOC |
+| IDX_DOC_USUARIO | DOCUMENTO | ID_USUARIO_CARGA |
+| IDX_DOC_ANTERIOR | DOCUMENTO | ID_DOCUMENTO_ANTERIOR |
+| IDX_TE_PROY_FECHA | TRANSICION_ESTADO | ID_PROYECTO, FECHA_TRANSICION |
+| IDX_TE_USUARIO | TRANSICION_ESTADO | ID_USUARIO |
+| IDX_TE_ROL | TRANSICION_ESTADO | ID_ROL_EFECTIVO |
+| IDX_TE_UNIDAD | TRANSICION_ESTADO | ID_UNIDAD_EFECTIVA |
+| IDX_TE_DOCUMENTO | TRANSICION_ESTADO | ID_DOCUMENTO_REF |
+| IDX_SC_UNIDAD | SECUENCIA_CODIGO | ID_UNIDAD |
+| IDX_AA_USUARIO | AUDITORIA_ACCESO | ID_USUARIO |
+| IDX_AA_FECHA | AUDITORIA_ACCESO | FECHA_HORA |
+| IDX_AE_USUARIO | AUDITORIA_EVENTO | ID_USUARIO |
+| IDX_AE_PROC_FECHA | AUDITORIA_EVENTO | PROCESADO, FECHA_EVENTO |
+
+### Objetos almacenados, vistas y packages
+
+| Tipo | Objetos vigentes |
+|---|---|
+| Procedimientos | Ninguno registrado |
+| Funciones | Ninguna registrada |
+| Packages | Ninguno registrado |
+| Vistas | Ninguna registrada |
