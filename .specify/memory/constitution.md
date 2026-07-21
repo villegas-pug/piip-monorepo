@@ -1,21 +1,25 @@
 <!--
 Informe de impacto de sincronización
-- Cambio de versión: 3.0.0 -> 3.1.0.
-- Principios modificados: marcadores de plantilla -> I. Entrega guiada por especificaciones;
-  II. Simplicidad modular; III. Seguridad, privacidad y auditabilidad desde el diseño;
-  IV. Fuente autoritativa única para reglas de negocio.
-- Secciones agregadas: Restricciones técnicas y arquitectónicas; Flujo de entrega, calidad y
-  especificaciones; catálogos canónicos e invariantes funcionales; versiones de referencia del
-  template backend.
+- Cambio de versión: 3.1.0 -> 3.2.0.
+- Fuente del cambio: requerimiento funcional para adecuar PIIP a la Norma Técnica
+  N.º 003-2025-PCM-SGP, autorizado el 2026-07-21.
+- Principios modificados: ninguno.
+- Secciones modificadas: Identidad y autorización; Persistencia y documentos; Catálogos e
+  invariantes canónicos del portafolio; Alcance de integraciones; Flujo de entrega, calidad y
+  especificaciones.
+- Secciones agregadas: campos oficiales del portafolio; reportes institucionales y prototipos.
 - Secciones eliminadas: ninguna.
-- Plantillas que requieren actualización: actualizada .specify/templates/plan-template.md;
-  actualizada .specify/templates/spec-template.md;
-  actualizada .specify/templates/tasks-template.md.
-- Comandos que requieren actualización: actualizado .opencode/commands/speckit.specify.md;
-  actualizado .opencode/commands/speckit.plan.md;
-  actualizado .opencode/commands/speckit.tasks.md;
-  actualizado .opencode/commands/speckit.implement.md.
-- Elementos diferidos: ninguno. La fecha de ratificación se infiere del registro de cambios 2.0.0.
+- Plantillas que requieren actualización: actualizadas `.specify/templates/spec-template.md`,
+  `.specify/templates/plan-template.md` y `.specify/templates/tasks-template.md`.
+- Comandos que requieren actualización: ninguno.
+- Artefactos con actualización posterior requerida: especificaciones del portafolio, nuevos
+  scripts Oracle, catálogos de estados y documentos, máquina de transiciones, contratos, UI y
+  pruebas. El catálogo de esquema solo se actualizará tras la ejecución humana confirmada; esta
+  enmienda NO altera el baseline vigente ni modifica recursos de base de datos.
+- Elementos diferidos: las especificaciones funcionales DEBEN aprobar la matriz de obligatoriedad
+  de campos, la matriz cargo o función-perfil-unidad, la clasificación de privacidad, la máquina
+  completa de estados, las reglas de proyectos directos, el contenido del reporte semestral y los
+  criterios de aprobación de prototipos antes de planificar esas capacidades.
 -->
 
 # Constitución de PIIP MIDAGRI
@@ -119,6 +123,13 @@ canónicos son `GlobalAdmin`, `UnidadAdmin`, `Responsable`, `Evaluador`, `Autori
 La autorización efectiva combina el permiso funcional con el alcance organizacional mediante la
 relación usuario-rol-unidad.
 
+Las asignaciones funcionales DEBEN basarse en una matriz aprobada que relacione cargo o función,
+perfil canónico y unidad organizacional. Una persona PUEDE tener múltiples perfiles y alcances
+simultáneos según las funciones que desempeñe. Cada operación DEBE evaluar el perfil y la unidad
+efectivos; ninguna asignación concede acceso fuera de su ámbito. La especificación de seguridad
+DEBE definir el alcance sobre unidades descendientes, la combinación de perfiles y las reglas de
+vigencia, suplencia y revocación antes de implementar la administración funcional.
+
 Keycloak es la fuente autoritativa de identidad y credenciales. Oracle PIIP es la fuente
 autoritativa de roles, permisos y alcance organizacional. La implementación del servicio
 `seguridad` DEBE usar Keycloak Admin API para aprovisionar primero la identidad y después crear
@@ -130,11 +141,13 @@ conservando los registros y asignaciones locales para auditoría.
 
 ### Persistencia y documentos
 
-El agregado central es `PROYECTO`; representa tanto iniciativas como proyectos. El modelo DEBE
-cubrir unidades, usuarios, roles, asignaciones rol-unidad, proyectos, relaciones
-proyecto-unidad-orgánica, transiciones de estado, tipos documentales y documentos, secuencias de
-código, auditorías de acceso y eventos, y `MV_PORTAFOLIO_RESUMEN` solo cuando se demuestre una
-necesidad de rendimiento.
+El agregado central es `PROYECTO`; representa tanto iniciativas como proyectos mediante registros
+independientes. Cuando una iniciativa aprobada origina un proyecto, ambos registros DEBEN conservar
+su identidad, tipo, código e historial propios, y el proyecto DEBE mantener una relación inmutable
+con la iniciativa de origen. El modelo DEBE cubrir unidades, usuarios, roles, asignaciones
+rol-unidad, proyectos, relaciones entre iniciativa y proyecto, relaciones proyecto-unidad-orgánica,
+transiciones de estado, tipos documentales y documentos, secuencias de código, auditorías de acceso
+y eventos, y `MV_PORTAFOLIO_RESUMEN` solo cuando se demuestre una necesidad de rendimiento.
 
 Los scripts de base de datos usan `database/ddl`, `database/procedures`, `database/functions`,
 `database/packages`, `database/indexes`, `database/views` y `database/seeds`, con la secuencia
@@ -144,16 +157,23 @@ reversión o compensación. Las restricciones y claves únicas expresan invarian
 historial de transiciones y los documentos formalizados son inmutables; las correcciones crean
 nuevos eventos o versiones.
 
-Los documentos están limitados a 25 MB y aceptan inicialmente PDF, Office Open XML, JPEG y PNG.
-DEBEN conservar metadatos, versión, autor, fecha, clasificación, hash SHA-256 y estado de análisis
+Cada documento o evidencia está limitado a 100 MB y acepta inicialmente PDF, Office Open XML,
+JPEG y PNG. Los documentos y evidencias DEBEN conservar metadatos, versión, autor, fecha,
+clasificación, hash SHA-256 y estado de análisis
 antimalware `PENDIENTE`, `LIMPIO` o `INFECTADO`. Los archivos pendientes o infectados NO DEBEN
 publicarse ni utilizarse como evidencia formal. El módulo `documentos` DEBE exponer
 `DocumentStorage` en `service/` e implementarlo en `service/impl/`, sin filtrar un proveedor de
 almacenamiento hacia los DTO, entidades o controladores.
 
+La clasificación DEBE aplicarse a campos y documentos mediante una matriz aprobada. La ausencia de
+clasificación nunca equivale a autorización pública. Durante la Fase 1, la consulta pública DEBE
+permitir que ciudadanos y representantes de otras entidades busquen y consulten solo campos
+expresamente públicos y metadatos documentales descriptivos autorizados; NO DEBE mostrar el
+contenido de los documentos ni permitir su descarga.
+
 ### Catálogos e invariantes canónicos del portafolio
 
-Los siguientes valores son referencias obligatorias de diseño provenientes de MCVS-204:
+Los siguientes valores son referencias obligatorias de diseño del portafolio institucional:
 
 | Catálogo | Valores canónicos |
 |---|---|
@@ -162,57 +182,148 @@ Los siguientes valores son referencias obligatorias de diseño provenientes de M
 | Fuente | `FICHA_INICIATIVA`, `CONCURSO_INTERNO`, `INNOVACION_ABIERTA`, `PROPUESTA_JEFATURA`, `OTROS` |
 | Administración | `OM`, `OGTI`, `OM-OGTI` |
 | Tipo de producto final | `PROTOTIPO_CONCEPTUALIZADO`, `SOLUCION_FUNCIONAL` |
-| Estados | `PRESENTADO`, `INICIATIVA_APROBADA`, `INICIATIVA_ARCHIVADA`, `PROYECTO_EJECUCION`, `PRODUCTO_APROBADO`, `PRODUCTO_NO_APROBADO`, `SUSPENDIDO`, `CANCELADO` |
+| Estados | `PRESENTADO`, `NO_ADMISIBLE`, `NO_APLICABLE`, `INICIATIVA_APROBADA`, `INICIATIVA_ARCHIVADA`, `PROYECTO_EJECUCION`, `SUSPENDIDO`, `CANCELADO`, `PRODUCTO_APROBADO`, `PRODUCTO_NO_APROBADO`, `FINALIZADO` |
 
-`FINALIZADO`, `NO_APLICABLE` y `NO_ADMISIBLE` no son estados canónicos. Los datos legados que
-los usen requieren una regla de migración aprobada. Las transiciones controladas iniciales son:
+Las transiciones controladas iniciales distinguen la decisión de negocio de su registro operativo:
 
-| Origen | Destino | Rol autorizado | Documento | Observación |
-|---|---|---|---|---|
-| `PRESENTADO` | `INICIATIVA_APROBADA` | `Evaluador` | Obligatorio | Opcional |
-| `PRESENTADO` | `INICIATIVA_ARCHIVADA` | `Evaluador` | Opcional | Obligatoria |
-| `INICIATIVA_APROBADA` | `PROYECTO_EJECUCION` | `UnidadAdmin` | Obligatorio | Opcional |
-| `PROYECTO_EJECUCION` | `PRODUCTO_APROBADO` | `Autoridad` | Obligatorio | Opcional |
-| `PROYECTO_EJECUCION` | `PRODUCTO_NO_APROBADO` | `Autoridad` | Opcional | Obligatoria |
-| `PROYECTO_EJECUCION` | `SUSPENDIDO` | `UnidadAdmin` | Opcional | Obligatoria |
-| `PROYECTO_EJECUCION` | `CANCELADO` | `Autoridad` | Obligatorio | Obligatoria |
-| `INICIATIVA_ARCHIVADA` | `PRESENTADO` | `Responsable` | Opcional | Opcional |
+| Origen | Destino | Rol que decide | Rol que registra | Documento o evidencia | Observación |
+|---|---|---|---|---|---|
+| `PRESENTADO` | `NO_ADMISIBLE` | `Evaluador` | `Evaluador` | Según especificación aprobada | Obligatoria |
+| `PRESENTADO` | `NO_APLICABLE` | `Evaluador` | `Evaluador` | Según especificación aprobada | Obligatoria |
+| `PRESENTADO` | `INICIATIVA_APROBADA` | `Autoridad` | `Autoridad` o `Evaluador` con decisión formal | Obligatorio | Opcional |
+| `PRESENTADO` | `INICIATIVA_ARCHIVADA` | `Autoridad` | `Autoridad` o `Evaluador` con decisión formal | Obligatorio | Obligatoria |
+| `PROYECTO_EJECUCION` | `SUSPENDIDO` | `UnidadAdmin` | `UnidadAdmin` | Obligatorio | Obligatoria |
+| `PROYECTO_EJECUCION` | `CANCELADO` | `Autoridad` | `Autoridad` o `Evaluador` con decisión formal | Obligatorio | Obligatoria |
+| `PROYECTO_EJECUCION` | `PRODUCTO_APROBADO` | `Autoridad` | `Autoridad` o `Evaluador` con decisión formal | Obligatorio | Opcional |
+| `PROYECTO_EJECUCION` | `PRODUCTO_NO_APROBADO` | `Autoridad` | `Autoridad` o `Evaluador` con decisión formal | Obligatorio | Obligatoria |
+| `PRODUCTO_APROBADO` | `FINALIZADO` | `Evaluador` | `Evaluador` | Obligatorio | Obligatoria |
+| `PRODUCTO_NO_APROBADO` | `FINALIZADO` | `Evaluador` | `Evaluador` | Obligatorio | Obligatoria |
 
-Una iniciativa que evoluciona a proyecto conserva su registro `PROYECTO`. Un código usa el
-formato inmutable `AAAA-PREFIJO_UNIDAD-NNNNN`; su correlativo es único por año y unidad y nunca
-se reutiliza. Una nueva iniciativa inicia en `PRESENTADO`. La creación directa de un proyecto
-puede iniciar en `PROYECTO_EJECUCION` solo bajo una especificación aprobada con evidencia formal.
+`NO_ADMISIBLE`, `NO_APLICABLE` e `INICIATIVA_ARCHIVADA` son estados terminales. La creación del
+proyecto no modifica el estado de la iniciativa aprobada: crea un nuevo registro de tipo
+`PROYECTO`, vinculado con la iniciativa, que inicia en `PROYECTO_EJECUCION`. La reanudación o
+cualquier otra salida desde `SUSPENDIDO`, así como una salida desde `CANCELADO`, requiere una
+transición expresamente aprobada en una futura enmienda; mientras no exista, DEBE rechazarse.
+
+Cada iniciativa y proyecto usa un código propio con el formato inmutable
+`AAAA-PREFIJO_UNIDAD-NNNNN`; su correlativo es único por año y unidad y nunca se reutiliza. Una
+nueva iniciativa inicia en `PRESENTADO`. Un `Responsable` autorizado y dentro de su alcance PUEDE
+crear el proyecto derivado de una iniciativa aprobada cuando exista la decisión formal requerida.
+La creación directa de un proyecto en `PROYECTO_EJECUCION` solo procede para un proyecto heredado
+o una excepción formalmente autorizada y DEBE registrar como mínimo el documento de aprobación o
+autorización, origen, unidad responsable, responsable, fecha de inicio, estado actual y evidencias
+disponibles. La especificación funcional DEBE identificar quién autoriza la excepción y cómo se
+acredita; este mecanismo NO DEBE utilizarse para omitir la evaluación de una iniciativa nueva.
+
+Durante `PROYECTO_EJECUCION`, el `Responsable` del proyecto DEBE poder mantener la planificación,
+ciclos de trabajo, avances, dificultades, productos parciales y evidencias dentro de su alcance.
+También DEBE poder presentar el producto final con sus documentos de sustento. La `Autoridad`
+decide su aprobación o no aprobación mediante decisión formal. Después de cualquiera de esos
+resultados, el `Evaluador` de la Oficina de Modernización PUEDE completar el cierre administrativo
+solo cuando estén registrados el informe final, los resultados, los aprendizajes y la conclusión;
+el cierre cambia el proyecto a `FINALIZADO`.
+
+Los cambios del modelo de registro único al vínculo iniciativa-proyecto y la incorporación de
+nuevos estados DEBEN contar con scripts versionados y una regla de migración o compensación
+aprobada antes de aplicarse a datos existentes. Ninguna migración PUEDE destruir el historial,
+reutilizar códigos ni perder la relación de origen.
+
 Cada transición DEBE ser transaccional y registrar estado anterior y nuevo, actor, rol efectivo,
 unidad, fecha, observación y documento asociado cuando corresponda. La máquina de estados DEBE
 rechazar transiciones no listadas, roles no autorizados y evidencia incompleta.
 
 Los tipos documentales iniciales y sus condiciones son datos controlados:
 
-| Tipo documental | Estado relacionado | Condición |
+| Tipo documental | Etapa o estado relacionado | Condición |
 |---|---|---|
 | Ficha de Iniciativa de Innovación Pública | `PRESENTADO` | Obligatorio |
-| Informe de Opinión Técnica de Evaluación | `INICIATIVA_APROBADA` | Obligatorio |
-| Documento Formal de Aprobación de Inicio | `PROYECTO_EJECUCION` | Obligatorio |
+| Informe de Opinión Técnica de Evaluación | Decisión sobre iniciativa | Obligatorio antes de la decisión de la autoridad |
+| Documento Formal de Decisión sobre la Iniciativa | `INICIATIVA_APROBADA`, `INICIATIVA_ARCHIVADA` | Obligatorio |
+| Documento Formal de Aprobación o Autorización de Inicio | `PROYECTO_EJECUCION` | Obligatorio para proyecto derivado o directo |
 | Nota Conceptual del Proyecto | `PROYECTO_EJECUCION` | Opcional |
 | Matriz de Planificación de Ciclos | `PROYECTO_EJECUCION` | Opcional |
 | Seguimiento Ágil, Tablero Kanban | `PROYECTO_EJECUCION` | Opcional |
 | Autoevaluación de Ciclo de Trabajo | `PROYECTO_EJECUCION` | Opcional |
 | Documento Formal de Aprobación de Producto Final | `PRODUCTO_APROBADO` | Obligatorio |
-| Informe Final de Cierre | `PRODUCTO_APROBADO` | Obligatorio |
-| Informe de la Unidad de Modernización, Cancelación | `CANCELADO` | Obligatorio |
+| Evidencia de No Aprobación del Producto Final | `PRODUCTO_NO_APROBADO` | Obligatorio junto con la observación |
+| Informe Final de Cierre | `FINALIZADO` | Obligatorio |
+| Evidencia de Suspensión | `SUSPENDIDO` | Obligatorio |
+| Informe de la Oficina de Modernización, Cancelación | `CANCELADO` | Obligatorio |
 
 Los documentos formalizados y el historial de transiciones son inmutables. Una corrección o
 sustitución DEBE producir una nueva versión o evento trazable. El borrado lógico PUEDE usarse
 solo cuando un requisito funcional o de auditoría explícito lo justifique; no es el valor
 predeterminado para las entidades de PIIP.
 
+### Campos oficiales del portafolio
+
+El registro institucional contempla los siguientes 23 campos oficiales:
+
+| N.º | Campo |
+|---:|---|
+| 1 | Tipo de registro |
+| 2 | Código |
+| 3 | Código de origen |
+| 4 | Fecha de inicio |
+| 5 | Nombre de iniciativa o proyecto |
+| 6 | Tipo de solución |
+| 7 | Fuente u origen |
+| 8 | Responsable |
+| 9 | Descripción |
+| 10 | Objetivo PEI |
+| 11 | Actividad POI |
+| 12 | Unidades de organización responsables |
+| 13 | Estado |
+| 14 | Informe de opinión técnica de evaluación de iniciativa |
+| 15 | Documento formal de decisión de aprobación |
+| 16 | Documento formal de aprobación del producto final |
+| 17 | Documentación de la gestión del proyecto |
+| 18 | Tipo de producto final aprobado |
+| 19 | Resultados clave |
+| 20 | Fecha de cierre |
+| 21 | Informe final de cierre |
+| 22 | Componente digital |
+| 23 | Nota |
+
+Una matriz funcional aprobada DEBE definir para cada campo su obligatoriedad, editabilidad,
+clasificación de privacidad y actor responsable según el tipo de registro y la etapa del ciclo de
+vida. La ausencia de esa matriz bloquea la planificación de los formularios, validaciones,
+consultas y reportes; la nulabilidad técnica del esquema no sustituye esta decisión funcional.
+
+Los usuarios institucionales autorizados DEBEN poder buscar, filtrar y consultar iniciativas y
+proyectos, incluidos estados, responsables, resultados, documentos autorizados e historial,
+únicamente dentro de su alcance organizacional. Toda consulta o exportación DEBE aplicar la matriz
+de privacidad y generar la evidencia de auditoría exigida por la sensibilidad de la operación.
+
 ### Alcance de integraciones
 
-La Fase 1 proporciona únicamente el registro centralizado y la operación interna de PIIP. La
-sincronización con PIDE, servicios de otras entidades y motores de integración externa están
-fuera de alcance. Los contratos de API y puertos futuros pueden ser claros, pero NO DEBEN
-construirse conectores, adaptadores simulados ni procesos de sincronización sin una
-especificación aprobada para la Fase 2.
+La Fase 1 proporciona el registro centralizado y la operación interna y sectorial de PIIP. Los
+participantes autorizados de Programas, Proyectos Especiales y Organismos Públicos Adscritos
+PUEDEN registrar y mantener iniciativas y proyectos exclusivamente dentro de su ámbito. Esta
+facultad no elimina la evaluación ordinaria de iniciativas ni habilita proyectos directos fuera
+de las excepciones formalizadas.
+
+La incorporación inicial de información existente PUEDE realizarse mediante una carga manual
+controlada si una especificación aprobada define responsables, validaciones, tratamiento de
+errores, evidencias y auditoría. La sincronización con PIDE, servicios de otras entidades y
+motores de integración externa está fuera de alcance. Los contratos de API y puertos futuros
+pueden ser claros, pero NO DEBEN construirse conectores, adaptadores simulados ni procesos de
+sincronización sin una especificación aprobada para la Fase 2.
+
+### Reportes institucionales y prototipos
+
+La Oficina de Modernización DEBE poder generar el reporte institucional del portafolio con
+periodicidad semestral y también cuando sea requerido. No existen reportes mensuales ni
+trimestrales obligatorios durante la Fase 1. Una especificación aprobada DEBE definir el periodo y
+fecha de corte, contenido, indicadores, filtros, responsables, destinatarios, formato,
+clasificación, alcance organizacional, conservación y eventos de auditoría antes de implementar
+el reporte.
+
+Los flujos de registro, evaluación, decisión, seguimiento, aprobación del producto, cierre,
+consulta institucional y consulta pública DEBEN contar con prototipos específicos de PIIP
+validados por usuarios de negocio y formalmente aprobados antes de implementar sus interfaces.
+Los prototipos existentes o genéricos no se consideran aprobados por defecto. La especificación
+funcional DEBE identificar al aprobador, los criterios de aceptación y la evidencia de aprobación.
 
 ## Flujo de entrega, calidad y especificaciones
 
@@ -222,6 +333,11 @@ actores, reglas, estados afectados, excepciones, requisitos documentales, autori
 organizacional, eventos de auditoría, clasificación de privacidad, integraciones y exclusiones
 explícitas. Las decisiones materiales no resueltas permanecen como `NEEDS CLARIFICATION` y no
 como supuestos.
+
+Las especificaciones del portafolio DEBEN identificar además los campos oficiales afectados y su
+matriz de obligatoriedad, la separación o relación entre iniciativa y proyecto, el rol que decide
+y el rol que registra cada transición, los documentos habilitantes, el tratamiento de proyectos
+directos, el alcance de consulta y la evidencia de aprobación de prototipos cuando corresponda.
 
 Los planes DEBEN documentar propiedad de reglas autoritativas, límites de módulos, transacciones,
 scripts o procedimientos Oracle, contratos API, efectos en Keycloak e impacto en privacidad. Un
@@ -264,8 +380,9 @@ planificación y antes de completar la implementación.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 3.2.0 | 2026-07-21 | Alinea el ciclo de vida, registros vinculados, roles de decisión y registro, documentos de hasta 100 MB, campos oficiales, cierre, alcance sectorial, reportes y prototipos con la gestión institucional del portafolio. |
 | 3.1.0 | 2026-07-18 | Fija las versiones de referencia del template backend PIIP y sus dependencias de seguridad y OpenAPI. |
 | 3.0.0 | 2026-07-18 | Sustituye la plantilla sin completar de Spec Kit por la constitución de monolito modular PIIP, catálogos canónicos, modelo de seguridad, puertas de calidad y gobierno. |
 | 2.0.0 | 2026-07-18 | Registro histórico del proyecto: sustituyó una plantilla ajena por la constitución PIIP. |
 
-**Versión**: 3.1.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-18
+**Versión**: 3.2.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-21

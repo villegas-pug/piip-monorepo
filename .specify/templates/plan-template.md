@@ -47,6 +47,15 @@ no shared database execution without explicit human authorization.
 - [ ] Privacy classification, audit events, document evidence, and public exposure are defined.
 - [ ] Canonical catalogs, transitions, document requirements, and code invariants are preserved
   or the specification records an approved amendment.
+- [ ] Official-field obligation, editability, privacy, and ownership rules are approved for every
+  affected lifecycle stage.
+- [ ] Initiative and project remain separate linked records; direct-project exceptions identify
+  their authority, evidence, origin, and organizational scope.
+- [ ] Decision authority and operational registration roles are distinct and enforced where
+  formal decisions apply.
+- [ ] Public consultation exposes only approved public fields and document metadata, without
+  document content or download during Phase 1.
+- [ ] Affected interfaces have approved PIIP prototypes with approval evidence.
 - [ ] Database scripts have versioned paths, execution order, and compensation or rollback.
 - [ ] Tests cover constitutional risk: state, RBAC, transaction, audit, documents, architecture,
   procedures, API, accessibility, and frontend journey when applicable.

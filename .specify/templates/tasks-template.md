@@ -34,10 +34,13 @@ JUnit 5, Oracle Testcontainers, architecture tests, Vitest, and Playwright tasks
 
 **Purpose**: Establish only the approved module, contracts, and tooling.
 
-- [ ] T001 Create the approved module paths in `backend/src/main/java/pe/gob/midagri/piip/[modulo]/`
+- [ ] T001 Create the approved module paths in
+  `backend/src/main/java/pe/gob/midagri/piip/[modulo]/`
 - [ ] T002 Configure the required Java, Spring Boot, Angular, Oracle, and Keycloak dependencies
-- [ ] T003 Add architecture tests preventing controller-to-repository access, entity leakage from services, and prohibited directories
-- [ ] T004 Create versioned Oracle scripts and update `database/CHANGELOG.md` with execution order and compensation
+- [ ] T003 Add architecture tests preventing controller-to-repository access, entity leakage from
+  services, and prohibited directories
+- [ ] T004 Create new versioned Oracle scripts for affected states, relationships, catalogs, and
+  migration rules; update `database/CHANGELOG.md` without altering an applied baseline
 - [ ] T005 Configure OpenAPI `/api/v1`, security resource-server validation, and audit foundations as required
 
 ## Phase 2: Foundational Controls
@@ -45,10 +48,12 @@ JUnit 5, Oracle Testcontainers, architecture tests, Vitest, and Playwright tasks
 **Purpose**: Complete blockers before any user story.
 
 - [ ] T006 Implement module service contracts and DTO boundaries in the approved module paths
-- [ ] T007 Implement Oracle-derived authorization and organizational scope checks where affected
+- [ ] T007 Implement the approved cargo or function-profile-unit authorization matrix and
+  organizational scope checks where affected
 - [ ] T008 Implement immutable audit event recording for affected operations
 - [ ] T009 Implement transaction, stored-procedure, and compensation boundaries where affected
-- [ ] T010 Implement document validation, SHA-256, antimalware status, or `DocumentStorage` contract where affected
+- [ ] T010 Implement the 100 MB document limit, approved privacy classification, SHA-256,
+  antimalware status, and `DocumentStorage` contract where affected
 - [ ] T011 Add unit, integration, architecture, and Oracle Testcontainers coverage for foundational controls
 
 **Checkpoint**: Foundations enforce constitutional constraints before story work begins.
@@ -68,8 +73,9 @@ JUnit 5, Oracle Testcontainers, architecture tests, Vitest, and Playwright tasks
 ### Implementation for User Story 1
 
 - [ ] T016 [US1] Create DTOs, entities, mapper, repository, service, and controller in `backend/src/main/java/pe/gob/midagri/piip/[modulo]/`
-- [ ] T017 [US1] Implement the authoritative rule in the approved service or Oracle object without duplication
-- [ ] T018 [US1] Implement the Angular feature in `frontend/src/app/features/[modulo]/`
+- [ ] T017 [US1] Implement state, initiative-project traceability, direct-project exception, and
+  decision-versus-registration rules in the approved authority without duplication
+- [ ] T018 [US1] Implement the approved PIIP prototype in `frontend/src/app/features/[modulo]/`
 - [ ] T019 [US1] Document the API contract and privacy or audit behaviour in `specs/[###-feature-name]/contracts/`
 
 **Checkpoint**: User Story 1 is independently functional, authorized, audited, and tested.
@@ -82,8 +88,11 @@ backend, persistence, frontend, accessibility, authorization, audit, and end-to-
 ## Final Phase: Cross-Cutting Validation
 
 - [ ] TXXX Run backend, Oracle Testcontainers, frontend, and Playwright suites
-- [ ] TXXX Verify at least 80 percent business-code coverage and explicit coverage of critical invariants
+- [ ] TXXX Verify at least 80 percent business-code coverage and explicit coverage of critical
+  invariants
 - [ ] TXXX Verify WCAG 2.1 AA requirements for affected Angular screens
+- [ ] TXXX Verify official-field matrices and that public consultation exposes no document content
+  or download
 - [ ] TXXX Verify OpenAPI, SQL changelog, rollback or compensation, and consumer compatibility
 - [ ] TXXX Re-run the Constitution Check and document its result in `specs/[###-feature-name]/plan.md`
 
