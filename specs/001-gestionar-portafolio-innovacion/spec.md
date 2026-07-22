@@ -33,7 +33,9 @@ de información y el riesgo de reportes incompletos o desactualizados.
 **Out of Scope**:
 
 - Definir arquitectura, infraestructura, persistencia o diseño técnico.
-- Integraciones, sincronizaciones o intercambios automáticos con sistemas externos en la Fase 1.
+- Conectores, sincronizaciones o intercambios automáticos con sistemas funcionales externos no
+  aprobados en la Fase 1. Esta exclusión no alcanza el uso obligatorio de Keycloak Admin API para el
+  ciclo de identidad definido por la Constitución.
 - Reportes mensuales o trimestrales obligatorios durante la Fase 1.
 - Mostrar contenido documental o permitir descargas en la consulta pública durante la Fase 1.
 - Administrar análisis, detección, bloqueo, cuarentena o respuesta antimalware; corresponden
@@ -401,6 +403,12 @@ de información y el riesgo de reportes incompletos o desactualizados.
   aprobación de despliegue, DBA ejecutor, fecha, operación y resultado.
 - Q: ¿Qué ocurre si ya existió un `GlobalAdmin`? → A: La semilla aborta sin cambios; no existe
   comando, endpoint, cliente OIDC temporal ni mecanismo alternativo de bootstrap.
+
+### Session 2026-07-21 - Remediación de autenticación
+
+- Q: ¿Qué scope o claim del JWT debe exigir el backend además de `issuer`, `audience`, firma y
+  vigencia? → A: No se exige un scope adicional. El backend valida los claims estándar necesarios para
+  comprobar `issuer`, `audience` y vigencia, además de la firma del token.
 
 ## Actors and Authorization *(mandatory)*
 
@@ -1423,8 +1431,10 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
   debe aprobarlo aplicando FR-140 a FR-148.
 - **FR-039**: Los prototipos existentes no deben considerarse aprobados sin la validación específica
   de PIIP.
-- **FR-040**: El sistema no debe realizar intercambios o sincronizaciones automáticas con sistemas
-  externos durante la Fase 1.
+- **FR-040**: El sistema no debe realizar conectores, intercambios o sincronizaciones automáticas con
+  sistemas funcionales externos no aprobados durante la Fase 1. Esta restricción no prohíbe Keycloak
+  Admin API para el aprovisionamiento, activación, desactivación y reactivación de identidades exigidos
+  por la Constitución.
 - **FR-041**: Cada iniciativa o proyecto debe admitir una o varias unidades responsables y exigir
   que exactamente una de ellas sea la unidad principal.
 - **FR-042**: Cada asignación funcional debe registrar una fecha de inicio y puede registrar una
@@ -1708,7 +1718,8 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
   toda disposición posterior debe exigir autorización, auditoría y tratamiento del expediente
   completo sin eliminación selectiva.
 - **FR-160**: El sistema debe exigir una matriz de metas versionada y aprobada por la Oficina de
-  Modernización para cada recorrido antes de iniciar su implementación. Debe aplicar BR-149, bloquear
+  Modernización para cada recorrido antes de iniciar la implementación de su interfaz Angular. Debe
+  aplicar BR-149, bloquear
   la liberación ante errores críticos o hallazgos críticos o altos de accesibilidad y exigir
   justificación y aprobación documentadas para cualquier excepción permitida en las demás métricas.
 - **FR-161**: El sistema debe administrar la matriz cargo o función-perfil-unidad como un catálogo
@@ -1729,6 +1740,10 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
   sea un registro de portafolio o un expediente institucional. Debe mantener esa pertenencia
   inmutable para todas las versiones, rechazar propietarios simultáneos o ausentes e impedir que los
   expedientes institucionales aparezcan en la consulta pública del portafolio.
+- **FR-164**: La autenticación mediante OIDC debe redirigir al tema de inicio de sesión personalizado
+  configurado por OGTI en el ambiente OIDC. PIIP no debe versionar sus recursos ni administrar
+  credenciales, pero debe verificar el redireccionamiento al ambiente configurado antes de habilitar
+  interfaces institucionales.
 
 ### Privacy, Security, and Audit Requirements
 
@@ -1792,11 +1807,19 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
   todo intento de asignar propietario ausente, múltiple o distinto deben auditar expediente, registro
   de portafolio cuando corresponda, actor, perfil y unidad efectivos, momento, resultado y versión
   documental, sin exponer expedientes institucionales en proyecciones públicas.
+- **PSA-022**: El tema de inicio de sesión personalizado de Keycloak es configurado y administrado por
+  OGTI fuera del repositorio PIIP. El flujo OIDC debe redirigir al ambiente configurado sin recopilar,
+  procesar o almacenar contraseñas en PIIP.
+- **PSA-023**: El backend debe validar `issuer`, `audience`, firma y vigencia de cada JWT, y aplicar
+  los claims estándar necesarios para comprobarlos antes de autorizar endpoints institucionales. No se
+  exige un scope adicional para PIIP; los permisos funcionales y el ámbito se determinan exclusivamente
+  mediante la asignación efectiva en Oracle.
 
 ### Integration and Data Change Requirements
 
 - **IDC-001**: La Fase 1 no incluye conectores, sincronizaciones ni intercambios automáticos con
-  sistemas externos.
+  sistemas funcionales externos no aprobados. Keycloak Admin API queda permitido exclusivamente para
+  el ciclo de identidad constitucional; no habilita integraciones funcionales adicionales.
 - **IDC-002**: La remisión a PCM-SGP exige autorización, aprobación previa de la versión y el
   destinatario, y evidencia del resultado; no implica una integración automática.
 - **IDC-003**: La incorporación individual asistida de registros existentes debe preservar origen,
@@ -2080,7 +2103,8 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 - **Medición de experiencia**: Evaluación versionada de un recorrido mediante pruebas moderadas y
   datos sintéticos, con etapa de implementación, muestra por perfil, escenarios, éxito de tarea,
   tiempo mediano, errores críticos, satisfacción, accesibilidad, cálculos, hallazgos, metas aplicables,
-  aprobación y hash. Su matriz de metas se aprueba y versiona por recorrido antes de implementar y
+  aprobación y hash. Su matriz de metas se aprueba y versiona por recorrido antes de implementar la
+  interfaz Angular correspondiente y
   conserva umbrales, línea base comparable, excepciones justificadas y aprobación.
 
 ## Success Criteria *(mandatory)*
@@ -2114,8 +2138,8 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 - **SC-008**: Los ocho recorridos funcionales exigidos por la Constitución cuentan con un prototipo
   PIIP validado y evidencia de aprobación antes de implementar sus interfaces.
 - **SC-009**: Los objetivos operativos deben fijarse después de completar la medición inicial conforme
-  a BR-139 a BR-147.
-- **SC-010**: El 100 % de los recorridos tiene antes de su implementación una matriz de metas aprobada
+  a BR-149.
+- **SC-010**: El 100 % de los recorridos tiene antes de implementar su interfaz Angular una matriz de metas aprobada
   y versionada con éxito de tarea mayor o igual al 90 %, cero errores críticos, satisfacción mayor o
   igual a 4/5, ausencia de hallazgos críticos o altos de accesibilidad y la meta de tiempo definida
   según BR-149.
@@ -2394,12 +2418,18 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 - **SC-138**: El 100 % de las series documentales tiene exactamente un propietario inmutable,
   portafolio o expediente institucional; todo propietario ausente o simultáneo se rechaza y ningún
   documento de expediente institucional aparece en la consulta pública del portafolio.
+- **SC-139**: El 100 % de los inicios de sesión institucionales redirige al ambiente Keycloak configurado
+  con su tema personalizado, y ninguna interfaz PIIP recopila, procesa o almacena contraseñas.
+- **SC-140**: El 100 % de los JWT usados en endpoints institucionales valida `issuer`, `audience`,
+  firma, vigencia y los claims estándar necesarios; los tokens inválidos se rechazan antes de evaluar la
+  asignación efectiva.
 
 ## Assumptions and Clarifications
 
-- La Fase 1 centraliza la operación interna y sectorial sin sincronizaciones automáticas externas.
+- La Fase 1 centraliza la operación interna y sectorial sin sincronizaciones automáticas con sistemas
+  funcionales externos; Keycloak Admin API se limita al ciclo de identidad constitucional.
 - Se aplican los catálogos, estados, documentos y reglas constitucionales vigentes en la versión
-  3.2.0.
+  4.0.0.
 - Los detalles visuales que no afecten accesibilidad, autorización o comportamiento se resolverán
   durante la validación de prototipos.
 - La incorporación inicial será individual: el Responsable registra, `UnidadAdmin` asiste y el
@@ -2515,6 +2545,8 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 - `GlobalAdmin` crea, desactiva y reactiva usuarios institucionalmente; `UnidadAdmin` solo para
   personas de sus unidades autorizadas.
 - La activación inicial usa correo de Keycloak y PIIP no gestiona contraseñas.
+- OGTI configura y administra fuera del repositorio el tema de inicio de sesión personalizado de
+  Keycloak; PIIP solo verifica el redireccionamiento OIDC hacia el ambiente aprobado.
 - La desactivación es inmediata en Keycloak y PIIP y conserva usuario, asignaciones e historial; la
   reactivación no restaura asignaciones vencidas o revocadas.
 - Modificar o revocar `GlobalAdmin` requiere decisión formal de la Autoridad y registro por otro
@@ -2599,7 +2631,7 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
   MIDAGRI. Sin plazo confirmado no se eliminan automáticamente; una disposición posterior requiere
   autorización, auditoría y tratamiento completo, sin eliminar evidencias selectivamente.
 - Después de la medición inicial, la Oficina de Modernización aprueba y versiona por recorrido la
-  matriz de metas antes de implementar: éxito mínimo de 90 %, cero errores críticos, satisfacción
+  matriz de metas antes de implementar la interfaz Angular correspondiente: éxito mínimo de 90 %, cero errores críticos, satisfacción
   mínima de 4/5 y ausencia de hallazgos críticos o altos de accesibilidad.
 - Con línea base comparable, el tiempo mediano debe mejorar al menos 20 %; sin ella, su meta se fija
   desde la medición inicial. Los errores críticos y hallazgos críticos o altos de accesibilidad son
@@ -2610,7 +2642,7 @@ OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 ## Constitution Conformance *(mandatory)*
 
 - La especificación conserva los actores, estados, transiciones, documentos, códigos y límites de
-  Fase 1 de la Constitución PIIP 3.2.0; toda decisión faltante se marca como aclaración.
+  Fase 1 de la Constitución PIIP 4.0.0; toda decisión faltante se marca como aclaración.
 - La propiedad funcional queda separada: el Responsable mantiene información, el Evaluador evalúa
   y cierra, la Autoridad decide y el Administrador funcional gestiona asignaciones.
 - La autorización exige perfil y ámbito efectivos, y las operaciones sensibles generan auditoría

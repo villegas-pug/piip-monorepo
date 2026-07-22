@@ -64,16 +64,17 @@ Evita que dos consultas separadas produzcan resultados divergentes.
 
 ## Renderizado Angular
 
-**Decisión**: Mantener consulta pública compatible con SSR y ejecutar recorridos institucionales con
-OIDC en cliente después de hidratación. Las rutas se separan por feature lazy.
+**Decisión**: Entregar consultas públicas e institucionales como rutas Angular lazy del lado del
+cliente. OIDC opera únicamente en los recorridos institucionales.
 
-**Justificación**: La consulta pública es anónima y puede beneficiarse de SSR; el flujo Authorization
-Code con PKCE requiere contexto de navegador y no debe exponer tokens en el servidor de renderizado.
+**Justificación**: La especificación no demuestra una necesidad de SEO ni renderizado en servidor. El
+flujo Authorization Code con PKCE requiere contexto de navegador y la ruta pública anónima mantiene su
+allowlist sin incorporar un patrón adicional de renderizado.
 
 **Alternativas consideradas**:
 
 - Prerenderizar todas las rutas: rechazado para datos dinámicos y áreas protegidas.
-- Manejar tokens institucionales en SSR: rechazado por ampliar superficie de seguridad sin requisito.
+- Incorporar SSR para la consulta pública: rechazado por añadir complejidad sin una necesidad aprobada.
 
 ## Propiedad documental institucional
 
@@ -115,7 +116,7 @@ URI, post-logout URI y scopes se cargan mediante configuración runtime externa.
 `sub` para identidad y trata `email` y datos de `profile` como informativos.
 
 **Justificación**: Usa el adaptador oficial sin convertir claims Keycloak en permisos PIIP ni exponer
-tokens durante SSR.
+tokens fuera del contexto de navegador.
 
 ## Fallo parcial Keycloak y Oracle
 

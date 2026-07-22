@@ -37,11 +37,14 @@ vigente es `database/ddl/init/001_baseline_piip.sql`; la ruta literal
 `database/ddl/001_baseline_kallpa_piip.sql` no existe, aunque el encabezado del baseline vigente usa
 ese nombre histórico.
 
-**Identidad**: Keycloak 26 compatible mediante `keycloak-js`, OIDC Authorization Code Flow con PKCE.
-La configuración runtime define `issuer`, `clientId`, redirect URI, post-logout URI y scopes por
-ambiente; sus valores permanecen fuera del repositorio. El backend usa `sub` como identidad estable y
-trata `email` y datos de `profile` como informativos. Keycloak es autoridad de identidad y
-credenciales; Oracle PIIP lo es de perfiles, permisos y ámbitos.
+**Identidad**: Keycloak 26 compatible mediante `keycloak-js`, OIDC Authorization Code Flow con PKCE y
+tema de inicio de sesión personalizado configurado por OGTI. La configuración runtime define `issuer`,
+`clientId`, redirect URI, post-logout URI y scopes por ambiente; sus valores y los recursos del tema
+permanecen fuera del repositorio. El backend usa `sub` como identidad estable y trata `email` y datos
+de `profile` como informativos. Keycloak es autoridad de identidad y credenciales; Oracle PIIP lo es de
+perfiles, permisos y ámbitos. El backend valida `issuer`, `audience`, firma, vigencia y los claims
+estándar necesarios; no se exige un scope adicional porque los permisos funcionales y el ámbito se
+determinan mediante asignación efectiva Oracle.
 
 **API**: REST OpenAPI 3.0 bajo `/api/v1`, DTO específicos por caso de uso y clasificación,
 `application/problem+json`, paginación base cero, idempotencia y control de concurrencia.
@@ -69,8 +72,9 @@ tras la medición inicial según BR-149; no se inventa un objetivo de latencia o
 aprobado. `MV_PORTAFOLIO_RESUMEN` no se crea sin evidencia de necesidad.
 
 **Restricciones**: Sin Flyway/Liquibase; sin ejecución automática de SQL; sin conectores o
-sincronización externa; sin descarga pública documental; sin reglas de negocio en controladores,
-Angular o PL/SQL; sin `model/`, `client/` o `integration/` genéricos.
+sincronización funcional externa no aprobada, salvo Keycloak Admin API para el ciclo de identidad;
+sin descarga pública documental; sin reglas de negocio en controladores, Angular o PL/SQL; sin
+`model/`, `client/` o `integration/` genéricos.
 
 **Escala y alcance**: Desarrollo local de las nueve historias de usuario y los ocho recorridos
 críticos de la Fase 1 para MIDAGRI y entidades sectoriales dentro de unidades asignadas
@@ -83,7 +87,7 @@ explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alc
 | Control | Resultado | Evidencia o acción |
 |---|---|---|
 | Especificación aprobada y desconocidos materiales trazados | CUMPLE | `spec.md` está `Approved` y C1/C2 están resueltos por la Constitución 4.0.0. |
-| Propósito, actores, reglas, estados, excepciones y aceptación | CUMPLE | `spec.md` define US1-US9, BR-001 a BR-152, FR-001 a FR-163 y criterios medibles. |
+| Propósito, actores, reglas, estados, excepciones y aceptación | CUMPLE | `spec.md` define US1-US9, BR-001 a BR-152, FR-001 a FR-164 y criterios medibles. |
 | Límites modulares, DTO y transacciones | CUMPLE EN DISEÑO | Se asignan propietarios e interacciones en este plan y [contracts/README.md](./contracts/README.md). |
 | Fuente autoritativa única | CUMPLE EN DISEÑO | Servicios Java/JPA para operación ordinaria; semilla SQL 021 como única inicialización constitucional del primer `GlobalAdmin`. |
 | Autorización efectiva | CUMPLE EN DISEÑO | Una asignación Oracle seleccionada por operación, revalidada antes del cambio sensible. |
@@ -108,10 +112,11 @@ explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alc
 | Esquema Oracle | Scripts revisados, registrados `PENDIENTE`, ejecutados manualmente y confirmados antes de actualizar el catálogo. |
 | Interfaces | Prototipo, medición inicial y matriz de metas aprobados para cada recorrido. |
 | Configuración OIDC | Valores runtime aprobados por ambiente antes de verificar integración real. |
+| Tema de inicio Keycloak | OGTI configura el tema personalizado en el ambiente OIDC y entrega confirmación de configuración antes de verificar el redireccionamiento institucional. |
 | Dataset sintético | Versión y aprobación formal antes de registrar mediciones de experiencia. |
 | Diccionario físico | Revisión humana DB antes de crear cualquier script 002-024. |
 | Secretos y wallet | Retirada del repositorio y rotación por un administrador humano antes de ejecutar localmente. |
-| Semilla inicial `GlobalAdmin` | Scripts 002, 007 y 008 confirmados; `sub`, aprobación de despliegue, DBA ejecutor y valores canónicos incluidos en 021 antes de su ejecución manual. |
+| Semilla inicial `GlobalAdmin` | Scripts 002, 007 y 008 confirmados; `sub`, aprobación de despliegue, DBA ejecutor y valores canónicos incluidos en 021 antes de su ejecución manual. La dependencia confirmada prevalece, como excepción documentada, sobre el orden numérico de 021. |
 
 ## Estructura del proyecto
 
@@ -232,6 +237,7 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
 | Reporte institucional | `reportes` | Servicio de generación | Snapshot común para PDF/XLSX; reintento idempotente; expediente conserva fallos parciales. |
 | Consulta pública | `consulta` | Servicio de proyección pública | DTO allowlist; no consulta contenido documental ni genera URL de descarga. |
 | Auditoría | `auditoria` | `AuditService` | Éxitos en transacción de negocio; denegaciones en transacción independiente. |
+| Manejo de errores HTTP | Cada módulo propietario | Un `@RestControllerAdvice` acotado por módulo | Construye `application/problem+json` canónico sin filtrar datos; no existe un advice global que sustituya los límites modulares. |
 
 ### Concurrencia, idempotencia y fallos parciales
 
@@ -291,7 +297,7 @@ objetos y datos antes del primer DDL. Cada script se registra como `PENDIENTE` e
 | 010 | `database/ddl/portafolio/010_iniciativa_proyecto_relacion.sql` | 009 | Detener nuevas relaciones; conservar vínculos confirmados. |
 | 011 | `database/ddl/portafolio/011_proyecto_unidades_responsables.sql` | 009 | Mantener referencia legacy hasta corte confirmado. |
 | 012 | `database/ddl/portafolio/012_responsables_participantes.sql` | 008, 009, 011 | Deshabilitar altas; conservar titularidades y participaciones. |
-| 013 | `database/ddl/portafolio/013_clasificacion_campos.sql` | 002, 009 | Volver datos nuevos no publicables; nunca ampliar acceso. |
+| 013 | `database/ddl/portafolio/013_clasificacion_campos.sql` | 002, 009 | Volver datos nuevos no publicables; nunca ampliar acceso. Debe estar confirmado antes de formularios, validaciones, consultas o reportes que dependan de la matriz de clasificación. |
 | 014 | `database/ddl/portafolio/014_evaluacion_transiciones.sql` | 003, 008, 009 | Detener comandos; no revertir estados confirmados. |
 | 015 | `database/ddl/portafolio/015_ciclos_resultados_cierre.sql` | 003, 009, 014 | Detener cierres/ciclos; conservar versiones cerradas. |
 | 016 | `database/ddl/portafolio/016_incorporacion_individual.sql` | 003, 010, 012 | Mantener expedientes `PENDIENTE`; no borrar evidencia. |
@@ -299,14 +305,16 @@ objetos y datos antes del primer DDL. Cada script se registra como `PENDIENTE` e
 | 018 | `database/ddl/portafolio/018_prototipos_mediciones_metas.sql` | 002, 003, 008 | Detener aprobaciones; conservar versiones y hallazgos. |
 | 019 | `database/seeds/019_catalogos_canonicos_portafolio.sql` | 003-018 | Inactivar semillas no referenciadas; nunca borrar referencias. |
 | 020 | `database/seeds/020_planeamiento_inicial_aprobado.sql` | 005, 006 | Requiere datasets y documentos aprobados; no inventar valores. |
-| 021 | `database/seeds/021_matriz_funcional_inicial_aprobada.sql` | 007, 008 | Crea valores, combinación y primer `GlobalAdmin` con `sub` y aprobación de despliegue; aborta ante antecedentes y nunca revierte una asignación confirmada. |
+| 021 | `database/seeds/021_matriz_funcional_inicial_aprobada.sql` | 002, 007, 008 | Crea valores, combinación y primer `GlobalAdmin` con `sub` y aprobación de despliegue; aborta ante antecedentes y nunca revierte una asignación confirmada. Se deposita y ejecuta después de estas confirmaciones y antes de US1, como excepción documentada al orden numérico. |
 | 022 | `database/ddl/transversal/022_backfill_referencias_legacy.sql` | 019-021 | Backfill de documentos, organización, seguridad y portafolio; abortar ante mapeos no aprobados. |
 | 023 | `database/indexes/023_indices_operacion_piip.sql` | 003-022 | Retirar solo índices no esenciales tras revisión. |
 | 024 | `database/ddl/transversal/024_constraints_corte_piip.sql` | 022, 023 | Corte de documentos, organización, seguridad y portafolio; deshabilitar solo constraint incompatible. |
 
 Cada script debe prevalidar datos antes del primer DDL, documentar commits implícitos Oracle,
-dependencias y compensación, y registrarse `PENDIENTE` en `database/CHANGELOG.md`. Este plan no crea
-ni ejecuta esos scripts y no actualiza `database/database-schema.md`.
+dependencias y compensación, y registrarse `PENDIENTE` en `database/CHANGELOG.md`. La semilla 021 es
+la única excepción de orden: conserva su identificador, pero su ejecución sigue las dependencias 002,
+007 y 008 confirmadas para habilitar el primer `GlobalAdmin` antes de US1. Este plan no crea ni ejecuta
+esos scripts y no actualiza `database/database-schema.md`.
 
 ### Contratos API, Keycloak, privacidad y auditoría
 
@@ -327,7 +335,12 @@ ni ejecuta esos scripts y no actualiza `database/database-schema.md`.
 
 Cada feature Angular será lazy y standalone. `core` concentra OIDC, contexto de asignación,
 interceptores y shell; `shared` solo presentación reutilizable. Guards y acciones ocultas mejoran UX,
-pero no autorizan ni deciden transiciones.
+pero no autorizan ni deciden transiciones. OGTI configura fuera del repositorio el tema de inicio de
+sesión personalizado de Keycloak; Angular solo verifica el redireccionamiento OIDC hacia el ambiente
+aprobado y nunca administra credenciales.
+
+La consulta pública se entrega como ruta Angular lazy y anónima del lado del cliente. No se incorpora
+SSR porque la especificación no establece una necesidad aprobada de SEO o renderizado en servidor.
 
 Antes de implementar cada recorrido de registro, evaluación, decisión, seguimiento, producto final,
 cierre, consulta institucional o consulta pública se exige:
@@ -352,8 +365,9 @@ BUILD de interfaces está bloqueado.
 
 | Riesgo/capacidad | Pruebas obligatorias |
 |---|---|
-| Límites modulares | ArchUnit: controlador sin repositorio/entidad; servicio sin entidad en contrato; módulo sin repositorio ajeno; ausencia de paquetes prohibidos. |
+| Límites modulares | ArchUnit: controlador sin repositorio/entidad; servicio sin entidad en contrato; módulo sin repositorio ajeno; ausencia de paquetes prohibidos; exactamente un `@RestControllerAdvice` acotado por cada módulo constitucional. |
 | Autorización perfil-ámbito | JUnit/MockMvc y Oracle Testcontainers con asignación válida, futura, vencida, revocada, suplida, unidad distinta y no herencia a descendientes. |
+| Validación JWT | Pruebas de issuer, audience, firma, vigencia y claims estándar necesarios; los tokens inválidos no alcanzan la autorización efectiva. |
 | Iniciativa y proyecto | Código concurrente, registros independientes, vínculo inmutable, UK de un derivado, proyecto directo formal y trazabilidad. |
 | Máquina de estados | Todas las transiciones listadas, rechazo de inexistentes y terminales, rol decisor/registrador y primera confirmación concurrente. |
 | 23 campos | Matriz por tipo/etapa, límites, `TRIM`, condicionales `OTROS`/digital, cardinalidades y edición de subsanación/ejecución. |
@@ -376,7 +390,7 @@ BUILD de interfaces está bloqueado.
 
 1. Alinear contratos y modelo con la Constitución 4.0.0 y las aclaraciones C1/C2 aprobadas.
 2. Aprobar modelo físico y depositar scripts 002-024 como `PENDIENTE`; ejecución siempre manual.
-3. Construir fundaciones de auditoría, organización y seguridad, incluido Keycloak idempotente.
+3. Construir fundaciones de auditoría, organización y seguridad, incluido Keycloak idempotente, y ejecutar manualmente la semilla 021 tras confirmar 002, 007 y 008.
 4. Construir portafolio, documentos y máquina de estados mediante JPA.
 5. Construir seguimiento, incorporación, reportes y consulta.
 6. Registrar y aprobar prototipos, mediciones y metas por etapa.
@@ -399,9 +413,9 @@ BUILD de interfaces está bloqueado.
 | Alcance Fase 1 | CUMPLE |
 
 **Resultado**: El diseño preserva la Constitución 4.0.0 y no mantiene aclaraciones materiales C1/C2.
-DDL, OIDC integrado, mediciones, semillas y backfill avanzan únicamente después de sus gates
-explícitos. La semilla 021 se deposita y ejecuta manualmente; este plan no ejecuta SQL. Cada uno de los
-ocho recorridos exige su gate de prototipo y su medición vigente.
+DDL, OIDC integrado, mediciones, semillas y backfill avanzan únicamente después de sus gates explícitos.
+La semilla 021 se deposita y ejecuta manualmente; este plan no ejecuta SQL. Cada uno de los ocho
+recorridos exige su gate de prototipo y su medición vigente.
 
 ## Seguimiento de complejidad
 
