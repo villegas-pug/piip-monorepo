@@ -2,10 +2,13 @@
 
 **Rama**: `001-gestionar-portafolio-innovacion` | **Fecha**: 2026-07-21 | **Especificación**: [spec.md](./spec.md)
 
-**Entrada**: Especificación funcional activa de la Fase 1, con aclaraciones CL aprobadas.
+**Entrada**: Especificación funcional aprobada de la Fase 1, alineada con la Constitución 4.0.0 y las
+remediaciones C1/C2.
 
-**Estado del plan**: Diseño técnico generado con gates funcionales pendientes. No habilita BUILD de
-las capacidades afectadas por los bloqueos de la sección Constitution Check.
+**Estado del plan**: Diseño funcional y arquitectura objetivo conformes. El diccionario físico Oracle
+debe completarse y recibir revisión humana de base de datos antes de depositar los scripts 002-024.
+El BUILD de cada recorrido permanece sujeto a su gate; OIDC, datos sintéticos, semillas y backfill
+conservan los gates de insumos indicados en este plan.
 
 ## Resumen
 
@@ -17,8 +20,8 @@ autorización y máquina de estados. Oracle aportará persistencia, restriccione
 filas, sin procedimientos funcionales paralelos.
 
 El diseño cubre organización, seguridad, portafolio, documentos, reportes, consulta y auditoría. La
-implementación de cada interfaz Angular queda condicionada a su prototipo PIIP aprobado, medición
-inicial y matriz de metas. No se incluyen despliegue productivo, infraestructura institucional,
+implementación de cada uno de los ocho recorridos Angular queda condicionada a su prototipo PIIP
+aprobado, medición inicial y matriz de metas. No se incluyen despliegue productivo, infraestructura institucional,
 sincronizaciones externas, cargas masivas ni funcionalidades de Fase 2.
 
 ## Contexto técnico
@@ -34,16 +37,26 @@ vigente es `database/ddl/init/001_baseline_piip.sql`; la ruta literal
 `database/ddl/001_baseline_kallpa_piip.sql` no existe, aunque el encabezado del baseline vigente usa
 ese nombre histórico.
 
-**Identidad**: Keycloak 26 compatible, OIDC Authorization Code Flow con PKCE. Keycloak es autoridad
-de identidad y credenciales; Oracle PIIP lo es de perfiles, permisos y ámbitos.
+**Identidad**: Keycloak 26 compatible mediante `keycloak-js`, OIDC Authorization Code Flow con PKCE.
+La configuración runtime define `issuer`, `clientId`, redirect URI, post-logout URI y scopes por
+ambiente; sus valores permanecen fuera del repositorio. El backend usa `sub` como identidad estable y
+trata `email` y datos de `profile` como informativos. Keycloak es autoridad de identidad y
+credenciales; Oracle PIIP lo es de perfiles, permisos y ámbitos.
 
 **API**: REST OpenAPI 3.0 bajo `/api/v1`, DTO específicos por caso de uso y clasificación,
 `application/problem+json`, paginación base cero, idempotencia y control de concurrencia.
 
-**Documentos**: `DocumentStorage` en el módulo `documentos`; adaptador local de filesystem solo para
-desarrollo local. SHA-256, versiones, máximo inclusivo de 100 MB, formatos PDF, OOXML, JPEG y PNG, y
-estado antimalware `PENDIENTE`, `LIMPIO` o `INFECTADO`. El proveedor institucional y el motor de
-análisis no se infieren ni se integran en este plan.
+**Documentos**: `DocumentStorage` en el módulo `documentos`, implementado sobre BLOB Oracle sin filtrar
+la persistencia a sus consumidores. SHA-256, versiones, máximo inclusivo de 100 MB y formatos PDF,
+OOXML, JPEG y PNG. OGTI administra fuera de PIIP el análisis, bloqueo, cuarentena y respuesta ante
+malware; la aplicación no modela estados, contratos, informes ni gates antimalware.
+
+**Inicialización de seguridad**: el primer `GlobalAdmin` se crea exclusivamente dentro de la semilla
+SQL 021. Un DBA autorizado de OGTI la ejecuta manualmente con el `sub` proporcionado por el
+administrador Keycloak y la aprobación de despliegue de la Jefatura de Modernización. La semilla
+prevalida y reutiliza la unidad `MIDAGRI`, crea la función `ADMINISTRADOR_PIIP`, su combinación y la primera asignación, registra
+la auditoría mínima y aborta si existe cualquier antecedente. No existe comando, endpoint ni cliente
+OIDC temporal de bootstrap.
 
 **Pruebas**: JUnit 5, Mockito, Oracle Testcontainers, ArchUnit y JaCoCo en backend; Vitest y
 Playwright en frontend. Cobertura mínima de 80 % para código de negocio.
@@ -65,37 +78,40 @@ explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alc
 
 ## Constitution Check inicial
 
-*Gate realizado antes del diseño contra la Constitución 3.2.0.*
+*Gate realizado antes del diseño contra la Constitución 4.0.0.*
 
 | Control | Resultado | Evidencia o acción |
 |---|---|---|
-| Especificación aprobada y desconocidos materiales trazados | **BLOQUEO PARCIAL** | La invocación y el checklist confirman las CL, pero `spec.md` conserva un `Status` desactualizado. Además faltan tres decisiones funcionales listadas abajo. |
-| Propósito, actores, reglas, estados, excepciones y aceptación | CUMPLE | `spec.md` define US1-US9, BR-001 a BR-149, FR-001 a FR-160 y criterios medibles. |
+| Especificación aprobada y desconocidos materiales trazados | CUMPLE | `spec.md` está `Approved` y C1/C2 están resueltos por la Constitución 4.0.0. |
+| Propósito, actores, reglas, estados, excepciones y aceptación | CUMPLE | `spec.md` define US1-US9, BR-001 a BR-152, FR-001 a FR-163 y criterios medibles. |
 | Límites modulares, DTO y transacciones | CUMPLE EN DISEÑO | Se asignan propietarios e interacciones en este plan y [contracts/README.md](./contracts/README.md). |
-| Fuente autoritativa única | CUMPLE EN DISEÑO | Servicios Java/JPA; Oracle solo garantiza integridad y concurrencia. |
+| Fuente autoritativa única | CUMPLE EN DISEÑO | Servicios Java/JPA para operación ordinaria; semilla SQL 021 como única inicialización constitucional del primer `GlobalAdmin`. |
 | Autorización efectiva | CUMPLE EN DISEÑO | Una asignación Oracle seleccionada por operación, revalidada antes del cambio sensible. |
-| Privacidad, auditoría y documentos | CUMPLE CON GATE | Matriz consolidada en [data-model.md](./data-model.md); publicación documental permanece bloqueada. |
+| Privacidad, auditoría y documentos | CUMPLE EN DISEÑO | Publicación por Evaluador, propiedad documental excluyente y matriz consolidada en [data-model.md](./data-model.md). |
 | Catálogos, estados, transiciones, documentos y códigos | CUMPLE EN DISEÑO | Se preservan valores canónicos y se corrigen únicamente mediante SQL incremental. |
 | 23 campos oficiales | CUMPLE EN DISEÑO | Obligatoriedad, edición, privacidad y responsable se consolidan sin alterar BR aprobadas. |
 | Iniciativa y proyecto separados | CUMPLE | Relación derivada inmutable y única; proyectos directos exigen autoridad y evidencia. |
 | Decisor y registrador | CUMPLE | Se modelan ambos actores y el documento formal en cada transición aplicable. |
-| Consulta pública minimizada | CUMPLE CON GATE | Cuatro campos públicos; metadatos documentales solo después de resolver publicación. Nunca contenido o descarga. |
+| Consulta pública minimizada | CUMPLE EN DISEÑO | Cuatro campos y metadatos de publicaciones elegibles; nunca contenido o descarga. |
 | Prototipos aprobados | **GATE DE BUILD FRONTEND** | No hay evidencia local de prototipos aprobados; ninguna interfaz de recorrido puede implementarse todavía. |
-| SQL incremental, orden y compensación | CUMPLE EN DISEÑO | Scripts 002-018 propuestos; baseline intacto; compensación forward-only. |
+| SQL incremental, orden y compensación | CUMPLE EN DISEÑO | Scripts 002-024 propuestos; baseline intacto; compensación forward-only. |
 | Estrategia de pruebas | CUMPLE EN DISEÑO | Matriz de trazabilidad incluida al final de este plan. |
 | Exclusiones de Fase 1 | CUMPLE | No se diseñan integraciones externas, carga masiva ni transiciones futuras. |
 
-### Bloqueos funcionales
+### Dependencias de implementación
 
-| Bloqueo | Requisito afectado | Efecto |
-|---|---|---|
-| No están aprobados los valores iniciales, códigos estables ni autoridad de mantenimiento de Objetivo PEI y Actividad POI. | BR-036, BR-058, FR-048, FR-069 y Constitución 3.2.0, campos 10 y 11. | Se pueden diseñar tablas y contratos de lectura; no se habilita presentación o creación productiva ni mantenimiento del catálogo. |
-| No está incluida la matriz concreta cargo o función-perfil-unidad. | Constitución 3.2.0, líneas 126-131; FR-026 a FR-028 y FR-042 a FR-066. | Se puede diseñar la asignación y sus controles; no se habilita administración funcional completa hasta cargar una matriz aprobada. |
-| No se define quién confirma la publicación documental ni qué evento fija `fechaPublicacion`. | BR-084, FR-034, FR-095 y PSA-007. | Los documentos permanecen no publicables; la consulta pública expone solo los cuatro campos del portafolio hasta aclaración aprobada. |
-
-El `Status` desactualizado de `spec.md` es una inconsistencia documental adicional. No cambia las CL
-confirmadas, pero debe corregirse por el propietario de la especificación antes de declarar el gate
-completamente aprobado.
+| Dependencia | Condición de avance |
+|---|---|
+| Primera versión PEI y primera versión POI | Datasets y aprobaciones formales independientes, cargados en expedientes institucionales. |
+| Matriz inicial | Funciones y combinaciones función-perfil-unidad concreta formalmente aprobadas. |
+| Datos legacy | Mapeos explícitos para PEI/POI, documentos, unidades, titulares y asignaciones; ninguna inferencia automática. |
+| Esquema Oracle | Scripts revisados, registrados `PENDIENTE`, ejecutados manualmente y confirmados antes de actualizar el catálogo. |
+| Interfaces | Prototipo, medición inicial y matriz de metas aprobados para cada recorrido. |
+| Configuración OIDC | Valores runtime aprobados por ambiente antes de verificar integración real. |
+| Dataset sintético | Versión y aprobación formal antes de registrar mediciones de experiencia. |
+| Diccionario físico | Revisión humana DB antes de crear cualquier script 002-024. |
+| Secretos y wallet | Retirada del repositorio y rotación por un administrador humano antes de ejecutar localmente. |
+| Semilla inicial `GlobalAdmin` | Scripts 002, 007 y 008 confirmados; `sub`, aprobación de despliegue, DBA ejecutor y valores canónicos incluidos en 021 antes de su ejecución manual. |
 
 ## Estructura del proyecto
 
@@ -121,7 +137,8 @@ specs/001-gestionar-portafolio-innovacion/
 └── checklists/
 ```
 
-No se genera `tasks.md` en esta fase.
+La implementación se descompone en [tasks.md](./tasks.md), con ownership por especialista, gates
+Oracle y de prototipos, pruebas obligatorias y trazabilidad de requisitos.
 
 ### Código fuente objetivo
 
@@ -141,16 +158,17 @@ apps/frontend/src/app/
 ├── core/{auth,effective-assignment,config,http,layout}
 ├── shared/{accessibility,forms,ui}
 └── features/
+    ├── organizacion/catalogos-planeamiento/
+    ├── seguridad/matriz-funcion-perfil-unidad/
     ├── portafolio/{registro,evaluacion,decision,proyectos,seguimiento,producto-final,cierre}
     ├── documentos/
-    ├── seguridad/
     ├── consulta-institucional/
     ├── consulta-publica/
     ├── reportes/
-    └── prototipos/
+    └── portafolio/prototipos/
 
 database/
-├── ddl/{auditoria,seguridad,portafolio,documentos,reportes}/
+├── ddl/{auditoria,organizacion,seguridad,portafolio,documentos,reportes,transversal}/
 ├── indexes/
 ├── seeds/
 └── CHANGELOG.md
@@ -180,10 +198,10 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
 
 | Módulo | Agregados y responsabilidades | Contratos consumidores |
 |---|---|---|
-| `organizacion` | Unidad, Objetivo PEI, Actividad POI y vigencias. | Seguridad, portafolio, consulta y reportes. |
-| `seguridad` | Usuario, asignación perfil-unidad, revocación, suplencia, ciclo Keycloak y asignación efectiva. | Todos los casos institucionales. |
+| `organizacion` | Unidad y versiones independientes de Objetivo PEI y Actividad POI aprobadas por planeamiento. | Seguridad, portafolio, consulta y reportes. |
+| `seguridad` | Usuario, matriz versionada función-perfil-unidad concreta, asignación, revocación, suplencia, ciclo Keycloak y asignación efectiva. | Todos los casos institucionales. |
 | `portafolio` | Registro iniciativa/proyecto, relación de origen, titular, participantes, evaluación, incorporación, ciclos, producto, cierre y prototipos. | Documentos, consulta y reportes. |
-| `documentos` | Serie, versión, almacenamiento, hash, antimalware, clasificación, validación y reclasificación. | Portafolio, reportes y consulta. |
+| `documentos` | Expediente institucional, serie con propietario excluyente, versión, BLOB Oracle, hash, clasificación y publicación. | Organización, seguridad, portafolio, reportes y consulta. |
 | `reportes` | Solicitud, snapshot, generación PDF/XLSX, aprobación, destinatarios, remisión y expediente. | Evaluador y consulta institucional autorizada. |
 | `consulta` | Proyecciones institucional y pública ya minimizadas. | Angular institucional y acceso anónimo. |
 | `auditoria` | Eventos y accesos append-only, incluidos denegados. | Todos los módulos mediante servicio o evento interno. |
@@ -199,10 +217,16 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
 | Proyecto derivado único | `portafolio` | Servicio de creación derivada | Bloquea iniciativa; crea proyecto y vínculo; UK por iniciativa resuelve carrera. |
 | Proyecto directo | `portafolio` | Servicio de proyecto directo | Revalida Autoridad/Evaluador, documento formal y origen antes del commit. |
 | Máquina de estados | `portafolio` | `TransicionEstadoService` Java | Bloqueo del registro, revalidación de asignación, estado, historial y auditoría atómicos. |
-| Evidencia apta | `documentos` | `DocumentoService` | Solo `LIMPIO` y clasificación validada; versión formalizada append-only. |
+| Evidencia apta | `documentos` | `DocumentoService` | Valida formato, integridad SHA-256, clasificación y reglas de negocio; versión formalizada append-only. |
+| Propiedad documental | `documentos` | `ExpedienteInstitucionalService` y `DocumentoService` | Serie con propietario XOR portafolio/expediente; pertenencia inmutable. |
+| Publicación documental | `documentos` | `PublicacionDocumentoService` | Evaluador confirma versión `PUBLICO`; fecha del servidor y auditoría atómicas. |
 | Clasificación y reclasificación | `documentos` para documentos; `portafolio` para campos | Servicios propietarios | Decisión, registrador, historial y auditoría en una transacción; acceso posterior revalida. |
+| Versiones PEI/POI | `organizacion` | `ObjetivoPeiCatalogService` y `ActividadPoiCatalogService` | Ciclos independientes, aprobación formal, versiones inmutables y referencias históricas. |
+| Matriz funcional | `seguridad` | `MatrizAsignacionService` | Combinación única función-perfil-unidad concreta; versionado e inactivación append-only. |
 | Asignación efectiva | `seguridad` | `AutorizacionEfectivaService` | Una asignación por operación; revalidación bajo bloqueo antes de mutación sensible. |
-| Aprovisionamiento Keycloak | `seguridad` | `UsuarioProvisioningService` | Keycloak primero y Oracle después; idempotencia, compensación o fallo recuperable auditado. |
+| Aprovisionamiento Keycloak | `seguridad` | `UsuarioProvisioningService` | Keycloak primero; si Oracle falla, identidad deshabilitada y operación recuperable, idempotente y auditada. |
+| Primer `GlobalAdmin` | `seguridad` | Semilla SQL manual 021 | Crea valores canónicos, combinación, usuario por `sub`, asignación y auditoría; aborta ante cualquier antecedente y no tiene mecanismo alternativo. |
+| Sustitución de Responsable | `portafolio` | Servicio de titularidad de portafolio | `seguridad` autoriza y delega por DTO; `portafolio` bloquea el registro y cambia su agregado. |
 | Suplencia y último `GlobalAdmin` | `seguridad` | Servicios de asignación | Bloqueo pesimista, control de solape/reemplazo y auditoría atómica. |
 | Ciclos quincenales | `portafolio` | Servicio de seguimiento | Cierre inmutable; corrección por nueva versión con evidencias. |
 | Reporte institucional | `reportes` | Servicio de generación | Snapshot común para PDF/XLSX; reintento idempotente; expediente conserva fallos parciales. |
@@ -222,6 +246,13 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
   metadato. Un fallo elimina solo el temporal no referenciado; nunca una versión formalizada.
 - La generación de reportes usa estado de operación y puede responder `202`; un fallo conserva el
   snapshot, parámetros y error para reintento.
+- Las respuestas idempotentes se conservan inicialmente siete días mediante configuración. La
+  expiración técnica nunca elimina auditoría, expedientes ni evidencia funcional.
+- Si Keycloak crea la identidad y Oracle falla, la identidad queda deshabilitada y la operación queda
+  recuperable, idempotente y auditada para reintento; no se duplica ni se considera activa.
+- La semilla 021 prevalida la inexistencia histórica de `GlobalAdmin` y aborta sin cambios ante
+  cualquier antecedente o reejecución. La aprobación de despliegue y el `sub` son parámetros
+  obligatorios; ningún servicio Java reproduce esta inicialización.
 - No se usa borrado físico como recuperación. Las compensaciones inactivan capacidades o crean
   eventos/versiones posteriores sin perder historia.
 
@@ -231,31 +262,47 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
 `PROYECTO`, `PROYECTO_UNIDAD_ORGANICA`, `USUARIO_ROL_UNIDAD`, `SECUENCIA_CODIGO`,
 `TRANSICION_ESTADO`, `TIPO_DOCUMENTO`, `DOCUMENTO`, `AUDITORIA_ACCESO` y `AUDITORIA_EVENTO`.
 `TRANSICION_PERMITIDA` queda como legado inactivo y no es autoridad. La descripción semilla de
-`UnidadAdmin` se corrige porque no existe herencia a descendientes.
+`UnidadAdmin` se corrige porque no existe herencia a descendientes. `DOCUMENTO.SCAN_ANTIVIRUS` y
+`DOCUMENTO.NOMBRE_STORAGE` quedan como columnas legacy inactivas y nullable, sin default, constraint,
+mapeo JPA, contrato ni consumidor.
 
-**Objetos nuevos**: se detallan en [data-model.md](./data-model.md), incluidos catálogos PEI/POI,
-relación iniciativa-proyecto, titular y participantes, evaluación, ciclos, incorporación,
-clasificación, reportes, prototipos e idempotencia.
+**Objetos nuevos**: se detallan en [data-model.md](./data-model.md), incluidos expediente
+institucional, series y publicación documental, versiones independientes PEI/POI, matriz funcional,
+relación iniciativa-proyecto, titular y participantes, evaluación, ciclos, incorporación, reportes,
+prototipos e idempotencia. El diccionario físico debe incorporar BLOB documental Oracle y los datos
+necesarios para que la semilla 021 audite la inicialización sin fijar nombres físicos antes de la
+revisión humana DB.
+
+Antes de crear estos objetos, `database-specialist` completa el diccionario físico y lo somete a
+revisión humana DB. Los scripts son de ejecución única y fail-fast: prevalidan versión, esquema,
+objetos y datos antes del primer DDL. Cada script se registra como `PENDIENTE` en
+`database/CHANGELOG.md` en el mismo cambio que lo deposita.
 
 | Orden | Script incremental futuro | Dependencias | Compensación segura |
 |---:|---|---|---|
 | 002 | `database/ddl/auditoria/002_auditoria_idempotencia.sql` | 001 | Dejar de escribir campos nuevos; nunca eliminar auditoría o claves ya consumidas. |
-| 003 | `database/ddl/seguridad/003_usuario_rol_unidad_vigencia.sql` | 002 | Detener nuevas asignaciones/suplencias y conservar historial. |
-| 004 | `database/ddl/portafolio/004_catalogos_planeamiento.sql` | 001 | Inactivar valores no referenciados; no borrar históricos. |
-| 005 | `database/ddl/portafolio/005_proyecto_campos_oficiales.sql` | 004 | Mantener columnas legacy; no restaurar checks si hay estados nuevos. |
-| 006 | `database/ddl/portafolio/006_iniciativa_proyecto_relacion.sql` | 005 | Detener nuevas relaciones; conservar vínculos confirmados. |
-| 007 | `database/ddl/portafolio/007_proyecto_unidades_responsables.sql` | 005 | Mantener referencia legacy hasta corte confirmado. |
-| 008 | `database/ddl/portafolio/008_proyecto_participantes.sql` | 005, 007 | Deshabilitar altas; conservar periodos e historial. |
-| 009 | `database/ddl/portafolio/009_clasificacion_campos.sql` | 002, 005 | Volver datos nuevos no publicables; nunca ampliar acceso. |
-| 010 | `database/ddl/documentos/010_documento_version_clasificacion.sql` | 002, 005 | Detener carga/publicación; conservar series y versiones. |
-| 011 | `database/ddl/portafolio/011_evaluacion_transiciones.sql` | 003, 005, 010 | Detener nuevos comandos; no revertir estados confirmados. |
-| 012 | `database/ddl/portafolio/012_ciclos_resultados_cierre.sql` | 005, 010, 011 | Detener cierres/ciclos; conservar versiones cerradas. |
-| 013 | `database/ddl/portafolio/013_incorporacion_individual.sql` | 005, 006, 008, 010 | Mantener expedientes `PENDIENTE`; no borrar evidencia. |
-| 014 | `database/ddl/reportes/014_reporte_expediente_remision.sql` | 002, 005, 010, 012 | Detener generación/remisión; conservar expedientes. |
-| 015 | `database/ddl/portafolio/015_prototipos_mediciones_metas.sql` | 002, 003, 010 | Detener aprobaciones; conservar versiones y hallazgos. |
-| 016 | `database/seeds/016_catalogos_canonicos_portafolio.sql` | 003-015 | Inactivar semillas no referenciadas; nunca borrar referencias. |
-| 017 | `database/indexes/017_indices_operacion_portafolio.sql` | 003-015 | Retirar solo índices no esenciales tras revisión. |
-| 018 | `database/ddl/portafolio/018_constraints_corte_portafolio.sql` | 003-017 | Deshabilitar solo constraint incompatible; conservar datos. |
+| 003 | `database/ddl/documentos/003_expediente_serie_version.sql` | 002 | Adaptar tipo documental y BLOB Oracle por contexto e inactivar `SCAN_ANTIVIRUS` y `NOMBRE_STORAGE` sin borrar datos legacy; detener nuevas cargas y conservar expedientes, series y versiones. |
+| 004 | `database/ddl/documentos/004_documento_publicacion.sql` | 003 | Detener publicaciones; conservar confirmaciones y auditoría. |
+| 005 | `database/ddl/organizacion/005_objetivo_pei_versionado.sql` | 003 | Inactivar versiones no usadas; preservar referencias históricas. |
+| 006 | `database/ddl/organizacion/006_actividad_poi_versionada.sql` | 003 | Igual, con ciclo POI independiente. |
+| 007 | `database/ddl/seguridad/007_matriz_funcional_versionada.sql` | 003 | Detener nuevas versiones; conservar combinaciones históricas. |
+| 008 | `database/ddl/seguridad/008_usuario_rol_unidad_vigencia.sql` | 002, 003, 007 | Detener nuevas asignaciones/suplencias y conservar historial. |
+| 009 | `database/ddl/portafolio/009_proyecto_campos_oficiales.sql` | 005, 006 | Mantener columnas legacy; no restaurar checks si hay estados nuevos. |
+| 010 | `database/ddl/portafolio/010_iniciativa_proyecto_relacion.sql` | 009 | Detener nuevas relaciones; conservar vínculos confirmados. |
+| 011 | `database/ddl/portafolio/011_proyecto_unidades_responsables.sql` | 009 | Mantener referencia legacy hasta corte confirmado. |
+| 012 | `database/ddl/portafolio/012_responsables_participantes.sql` | 008, 009, 011 | Deshabilitar altas; conservar titularidades y participaciones. |
+| 013 | `database/ddl/portafolio/013_clasificacion_campos.sql` | 002, 009 | Volver datos nuevos no publicables; nunca ampliar acceso. |
+| 014 | `database/ddl/portafolio/014_evaluacion_transiciones.sql` | 003, 008, 009 | Detener comandos; no revertir estados confirmados. |
+| 015 | `database/ddl/portafolio/015_ciclos_resultados_cierre.sql` | 003, 009, 014 | Detener cierres/ciclos; conservar versiones cerradas. |
+| 016 | `database/ddl/portafolio/016_incorporacion_individual.sql` | 003, 010, 012 | Mantener expedientes `PENDIENTE`; no borrar evidencia. |
+| 017 | `database/ddl/reportes/017_reporte_expediente_remision.sql` | 002, 003, 009, 015 | Detener generación/remisión; conservar expedientes. |
+| 018 | `database/ddl/portafolio/018_prototipos_mediciones_metas.sql` | 002, 003, 008 | Detener aprobaciones; conservar versiones y hallazgos. |
+| 019 | `database/seeds/019_catalogos_canonicos_portafolio.sql` | 003-018 | Inactivar semillas no referenciadas; nunca borrar referencias. |
+| 020 | `database/seeds/020_planeamiento_inicial_aprobado.sql` | 005, 006 | Requiere datasets y documentos aprobados; no inventar valores. |
+| 021 | `database/seeds/021_matriz_funcional_inicial_aprobada.sql` | 007, 008 | Crea valores, combinación y primer `GlobalAdmin` con `sub` y aprobación de despliegue; aborta ante antecedentes y nunca revierte una asignación confirmada. |
+| 022 | `database/ddl/transversal/022_backfill_referencias_legacy.sql` | 019-021 | Backfill de documentos, organización, seguridad y portafolio; abortar ante mapeos no aprobados. |
+| 023 | `database/indexes/023_indices_operacion_piip.sql` | 003-022 | Retirar solo índices no esenciales tras revisión. |
+| 024 | `database/ddl/transversal/024_constraints_corte_piip.sql` | 022, 023 | Corte de documentos, organización, seguridad y portafolio; deshabilitar solo constraint incompatible. |
 
 Cada script debe prevalidar datos antes del primer DDL, documentar commits implícitos Oracle,
 dependencias y compensación, y registrarse `PENDIENTE` en `database/CHANGELOG.md`. Este plan no crea
@@ -269,6 +316,8 @@ ni ejecuta esos scripts y no actualiza `database/database-schema.md`.
   comprueba que pertenece al `sub` autenticado y nunca acepta perfil o unidad del body como autoridad.
 - Keycloak Admin API solo se usa para aprovisionar, activar, desactivar y reactivar identidades.
   Ningún DTO contiene contraseña.
+- No existe contrato API para la semilla inicial `GlobalAdmin`; sus parámetros y auditoría pertenecen
+  exclusivamente al script 021 y a su procedimiento manual de ejecución.
 - Los DTO públicos son distintos de los institucionales. Ausencia de clasificación nunca significa
   `PUBLICO`.
 - Toda operación sensible y denegación registra actor, asignación, perfil, unidad, instante,
@@ -290,6 +339,12 @@ cierre, consulta institucional o consulta pública se exige:
 5. Medición inicial y matriz de metas aprobadas.
 6. Cero errores críticos y cero hallazgos críticos o altos de accesibilidad.
 
+`REGISTRO` incluye iniciativa y proyectos derivados/directos; `SEGUIMIENTO` incluye suspensión y
+`DECISION` incluye cancelación. Seguridad, reportes y administración de prototipos no agregan gates.
+Las pruebas Vitest y Playwright que fijan componentes o journeys también esperan el mismo gate que su
+interfaz. Antes de liberar una versión y después de cada cambio funcional o de accesibilidad, el
+backend exige una medición aprobada correspondiente exactamente a la versión candidata.
+
 No existe esa evidencia en el proyecto; por tanto, el plan define estructura y contratos, pero el
 BUILD de interfaces está bloqueado.
 
@@ -303,10 +358,14 @@ BUILD de interfaces está bloqueado.
 | Máquina de estados | Todas las transiciones listadas, rechazo de inexistentes y terminales, rol decisor/registrador y primera confirmación concurrente. |
 | 23 campos | Matriz por tipo/etapa, límites, `TRIM`, condicionales `OTROS`/digital, cardinalidades y edición de subsanación/ejecución. |
 | Seguimiento | Ciclo quincenal completo, periodo aplicable, evidencia, cierre inmutable y corrección versionada. |
-| Documentos | 100 MB menos un byte, exactamente 100 MB y 100 MB más un byte; MIME, SHA-256, antimalware, clasificación, versión e inmutabilidad. |
+| Documentos | Contexto de tipo/propietario, XOR, BLOB Oracle, 100 MB menos un byte, exactamente 100 MB y 100 MB más un byte; MIME, SHA-256, clasificación, versión e inmutabilidad. |
 | Privacidad | DTO público allowlist, participante restringido, reclasificación inmediata y ausencia de endpoint/enlace de descarga pública. |
-| Usuarios | Aprovisionamiento idempotente, activación, desactivación bilateral, reactivación, duplicado, compensación y fallo parcial Keycloak/Oracle. |
+| Usuarios | Aprovisionamiento idempotente, activación, desactivación bilateral, reactivación, duplicado e identidad deshabilitada con operación recuperable ante fallo Oracle. |
+| Primer `GlobalAdmin` | Prueba SQL de inexistencia histórica, valores canónicos, `sub`, aprobación de despliegue, auditoría mínima, ejecución única y aborto sin cambios ante reejecución. |
 | Asignaciones | Administración por perfil, vigencia, revocación inmediata, suplencia no solapada, titular inactivo y protección del último `GlobalAdmin`. |
+| Matriz funcional | Versiones y combinaciones por unidad concreta, aprobación/registrador correctos, inactivación, históricos y rechazo de datos discordantes. |
+| PEI/POI | Aprobaciones independientes, registro GlobalAdmin, versiones inmutables, retiro, histórico y ausencia de efectos cruzados. |
+| Expedientes/publicación | Propiedad XOR e inmutable, documentos institucionales aislados, confirmación por Evaluador, fecha de servidor y reclasificación restrictiva. |
 | Incorporación | `PENDIENTE/VALIDADO/RECHAZADO`, correcciones ilimitadas, conflicto de código/relación, duplicado vinculado y auditoría original. |
 | Reportes | Cortes 30/06 y 31/12, BR-122 y denominador cero, filtros, snapshot PDF/XLSX, clasificación, aprobación, remisión y recuperación parcial. |
 | Prototipos | Estados, separación autor/validador/aprobador, medición, metas, versionado y bloqueo por hallazgo. |
@@ -315,13 +374,13 @@ BUILD de interfaces está bloqueado.
 
 ## Fases locales de implementación posteriores
 
-1. Resolver y aprobar los tres bloqueos funcionales y corregir el estado documental de la spec.
-2. Aprobar modelo físico y depositar scripts 002-018 como `PENDIENTE`; ejecución siempre manual.
+1. Alinear contratos y modelo con la Constitución 4.0.0 y las aclaraciones C1/C2 aprobadas.
+2. Aprobar modelo físico y depositar scripts 002-024 como `PENDIENTE`; ejecución siempre manual.
 3. Construir fundaciones de auditoría, organización y seguridad, incluido Keycloak idempotente.
 4. Construir portafolio, documentos y máquina de estados mediante JPA.
 5. Construir seguimiento, incorporación, reportes y consulta.
 6. Registrar y aprobar prototipos, mediciones y metas por etapa.
-7. Implementar cada interfaz únicamente después de superar su gate.
+7. Implementar cada uno de los ocho recorridos únicamente después de superar su gate.
 8. Ejecutar las pruebas autorizadas y realizar el Constitution Check de implementación.
 
 ## Constitution Check posterior al diseño
@@ -336,13 +395,13 @@ BUILD de interfaces está bloqueado.
 | SQL incremental y compensación | CUMPLE EN DISEÑO; no ejecutado |
 | Pruebas constitucionales | CUMPLE EN PLAN; no ejecutadas |
 | Prototipos antes de UI | CUMPLE COMO GATE; evidencia aún ausente |
-| Decisiones funcionales completas | **NO CUMPLE** por los tres bloqueos declarados |
+| Decisiones funcionales completas | CUMPLE |
 | Alcance Fase 1 | CUMPLE |
 
-**Resultado**: El diseño preserva la Constitución, pero el gate global no puede declararse aprobado.
-No debe comenzar BUILD de catálogos operativos PEI/POI, administración funcional completa,
-publicación documental ni interfaces sin resolver sus prerequisitos. Las demás decisiones del plan no
-redefinen reglas funcionales.
+**Resultado**: El diseño preserva la Constitución 4.0.0 y no mantiene aclaraciones materiales C1/C2.
+DDL, OIDC integrado, mediciones, semillas y backfill avanzan únicamente después de sus gates
+explícitos. La semilla 021 se deposita y ejecuta manualmente; este plan no ejecuta SQL. Cada uno de los
+ocho recorridos exige su gate de prototipo y su medición vigente.
 
 ## Seguimiento de complejidad
 

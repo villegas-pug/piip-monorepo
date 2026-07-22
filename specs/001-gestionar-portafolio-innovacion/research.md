@@ -21,36 +21,33 @@ derivado y suplencias sin duplicar reglas en PL/SQL.
 - Máquina de estados en `TRANSICION_PERMITIDA`: rechazada; el baseline contiene filas contrarias a
   la Constitución y la tabla quedará como legado inactivo.
 
-## Almacenamiento documental local
+## Almacenamiento documental Oracle
 
-**Decisión**: Definir `DocumentStorage` en `documentos/service/` y un adaptador de filesystem local en
-`documentos/service/impl/` para desarrollo. Las referencias de almacenamiento son opacas para DTO,
-entidades y controladores.
+**Decisión**: Definir `DocumentStorage` en `documentos/service/` y una implementación BLOB Oracle en
+`documentos/service/impl/`. La persistencia del binario es opaca para DTO, entidades y controladores.
 
-**Justificación**: Permite verificar archivos de hasta 100 MB, versiones, hash y recuperación local
-sin seleccionar un proveedor institucional no aprobado. Conserva el puerto constitucional para
-cambiar de adaptador en otra fase.
+**Justificación**: La Constitución 4.0.0 fija Oracle PIIP como almacenamiento de binarios y conserva el
+puerto para aislar persistencia, límites, versiones e integridad SHA-256.
 
 **Alternativas consideradas**:
 
-- Guardar BLOB en Oracle: rechazado por no estar establecido y acoplar contenido con metadatos.
+- Filesystem local: rechazado porque contradice la persistencia Oracle aprobada.
 - Elegir almacenamiento cloud/institucional: rechazado porque sería infraestructura o integración
   no aprobada.
 
-## Análisis antimalware
+## Responsabilidad antimalware
 
-**Decisión**: Modelar el estado y un puerto interno de recepción de resultados. En desarrollo y
-pruebas se usa un test double controlado; no se implementa un conector a un motor externo hasta que
-exista una decisión aprobada.
+**Decisión**: No modelar estados, resultados, informes, puertos ni gates antimalware en PIIP. OGTI
+administra análisis, bloqueo, cuarentena y respuesta sobre la infraestructura Oracle.
 
-**Justificación**: La regla funcional exige `PENDIENTE`, `LIMPIO` e `INFECTADO`, pero las fuentes no
-seleccionan producto, protocolo o infraestructura. Un test double solo valida el caso de uso local y
-no simula una integración de producción.
+**Justificación**: La Constitución 4.0.0 separa la seguridad técnica de plataforma de las reglas
+funcionales. PIIP conserva hash, clasificación, versión y auditoría documental, pero no consume datos
+antimalware ni condiciona con ellos la evidencia formal.
 
 **Alternativas consideradas**:
 
-- Seleccionar ClamAV u otro motor: rechazado por introducir una integración no aprobada.
-- Marcar archivos automáticamente `LIMPIO`: rechazado porque vulnera la regla de evidencia formal.
+- Integrar un motor o estado en PIIP: rechazado por duplicar una responsabilidad exclusiva de OGTI.
+- Conservar un test double antimalware: rechazado porque validaría comportamiento fuera del alcance.
 
 ## Reportes consistentes
 
@@ -78,10 +75,76 @@ Code con PKCE requiere contexto de navegador y no debe exponer tokens en el serv
 - Prerenderizar todas las rutas: rechazado para datos dinámicos y áreas protegidas.
 - Manejar tokens institucionales en SSR: rechazado por ampliar superficie de seguridad sin requisito.
 
-## Decisiones no resueltas por investigación
+## Propiedad documental institucional
 
-Las siguientes son funcionales y permanecen bloqueadas; no se resuelven técnicamente:
+**Decisión**: Usar `ExpedienteInstitucional` como propietario de documentos formales sin iniciativa o
+proyecto. Cada serie documental pertenece de forma excluyente a un registro de portafolio o a un
+expediente, y todas sus versiones heredan esa pertenencia.
 
-- valores y autoridad de mantenimiento de Objetivo PEI y Actividad POI;
-- matriz cargo o función-perfil-unidad;
-- actor y evento de publicación documental y generación de `fechaPublicacion`.
+**Justificación**: Mantiene FK reales y evita asociaciones polimórficas sin integridad o tablas
+documentales duplicadas por módulo. También impide que documentos administrativos aparezcan en la
+consulta pública del portafolio.
+
+**Alternativas consideradas**:
+
+- Referencia externa y hash sin archivo: rechazada porque reduce la evidencia gestionada por PIIP.
+- Tabla documental por módulo: rechazada por duplicar versionado, clasificación e integridad.
+
+## Versionado documental sobre el baseline
+
+**Decisión**: Conservar `DOCUMENTO` como tabla de cada versión documental y agregar
+`DOCUMENTO_SERIE` como raíz del documento lógico. Todas las filas `DOCUMENTO` de una serie heredan su
+propietario excluyente e inmutable.
+
+**Justificación**: Reduce la migración destructiva del baseline, conserva identificadores e historial
+y coincide con el modelo lógico que no propone una tabla adicional `DOCUMENTO_VERSION`.
+
+## Snapshot de reportes
+
+**Decisión**: Persistir el contenido inmutable del snapshot como JSON canónico en CLOB, acompañado de
+versión de esquema, hash SHA-256, corte, parámetros y clasificación. PDF y XLSX se renderizan desde el
+mismo payload.
+
+**Justificación**: El snapshot es evidencia de un corte, no una proyección mutable de consulta. La
+forma canónica permite verificar integridad y evita duplicar un modelo relacional de solo lectura.
+
+## OIDC en Angular
+
+**Decisión**: Usar `keycloak-js` detrás de servicios Angular propios. `issuer`, `clientId`, redirect
+URI, post-logout URI y scopes se cargan mediante configuración runtime externa. El frontend usa
+`sub` para identidad y trata `email` y datos de `profile` como informativos.
+
+**Justificación**: Usa el adaptador oficial sin convertir claims Keycloak en permisos PIIP ni exponer
+tokens durante SSR.
+
+## Fallo parcial Keycloak y Oracle
+
+**Decisión**: Si Keycloak crea la identidad y Oracle falla, conservar la identidad deshabilitada y
+una operación recuperable, idempotente y auditada. Un reintento completa Oracle sin crear otra
+identidad.
+
+**Justificación**: Evita una eliminación remota irreversible y permite recuperación controlada sin
+considerar activa una identidad incompleta.
+
+## Gobierno técnico Oracle
+
+**Decisión**: Los scripts 002-024 son incrementos de ejecución única y fail-fast. El diccionario
+físico debe recibir revisión humana DB antes del DDL, y cada script se registra `PENDIENTE` en
+`database/CHANGELOG.md` en el mismo cambio que lo crea. Las respuestas idempotentes tienen una
+ventana inicial configurable de siete días.
+
+**Justificación**: Oracle realiza commits implícitos de DDL; la prevalidación y el registro inmediato
+son más seguros que intentar reejecuciones parciales. La expiración idempotente no afecta auditoría o
+evidencia funcional.
+
+## Decisiones funcionales incorporadas
+
+- El Evaluador confirma la publicación de una versión `PUBLICO`; el servidor fija la fecha.
+- La primera asignación `GlobalAdmin` se crea solo mediante la semilla SQL 021 manual y auditada.
+- La matriz versionada combina función, perfil y unidad concreta; la asignación deriva esos valores.
+- PEI y POI tienen versiones independientes, aprobadas por planeamiento y registradas por
+  `GlobalAdmin`.
+
+Quedan pendientes insumos, no decisiones de diseño: valores OIDC por ambiente, dataset sintético
+aprobado, datasets PEI/POI, matriz funcional, mapeos legacy, revisión humana del diccionario físico y
+rotación externa de secretos.

@@ -3,6 +3,10 @@
 Estos contratos son el insumo de OpenAPI 3.0 para `/api/v1`. Definen límites funcionales y no
 exponen entidades JPA, tablas, claves de almacenamiento ni detalles de Keycloak.
 
+La implementación es código-first con Springdoc. Un snapshot versionado
+`contracts/openapi/piip-api.yaml` se genera desde DTO y controladores y se compara mediante contract
+tests antes de implementar o actualizar clientes Angular. La divergencia bloquea integración.
+
 ## Convenciones comunes
 
 ### Autenticación y asignación efectiva
@@ -15,6 +19,8 @@ exponen entidades JPA, tablas, claves de almacenamiento ni detalles de Keycloak.
   uso, nunca autoridad del solicitante.
 - El backend revalida la asignación inmediatamente antes de aplicar una operación sensible.
 - Rutas públicas bajo `/consulta/publica` son anónimas y no aceptan contexto institucional.
+- `email` y datos de `profile` son informativos; nunca sustituyen identidad `sub`, permisos o ámbito
+  Oracle.
 
 ### Idempotencia y concurrencia
 
@@ -71,10 +77,10 @@ documental, tokens, credenciales o rutas físicas.
 
 | Archivo | Capacidad |
 |---|---|
-| [organizacion.md](./organizacion.md) | Unidades y referencias PEI/POI vigentes. |
-| [seguridad.md](./seguridad.md) | Usuarios, asignaciones, revocaciones y suplencias. |
+| [organizacion.md](./organizacion.md) | Unidades y versiones independientes PEI/POI. |
+| [seguridad.md](./seguridad.md) | Usuarios, matriz funcional, asignaciones, revocaciones y suplencias. |
 | [portafolio.md](./portafolio.md) | Iniciativas, evaluación, proyectos, seguimiento y cierre. |
-| [documentos.md](./documentos.md) | Carga, versiones, seguridad y clasificación documental. |
+| [documentos.md](./documentos.md) | Expedientes, carga, versiones, seguridad, clasificación y publicación. |
 | [reportes.md](./reportes.md) | Generación, aprobación y remisión. |
 | [consulta.md](./consulta.md) | Consulta institucional y pública. |
 | [prototipos.md](./prototipos.md) | Prototipos, validaciones, mediciones y metas. |
@@ -84,13 +90,16 @@ documental, tokens, credenciales o rutas físicas.
 
 - `PublicPortfolioSummary`: solo tipo, código, nombre y estado.
 - `PublicDocumentMetadata`: tipo, título sin datos personales, versión, formato y fecha de
-  publicación, únicamente después de resolver el gate de publicación.
+  publicación, exclusivamente para una versión con publicación confirmada que continúa elegible.
 - `InstitutionalPortfolioDetail`: campos permitidos por ámbito y clasificación.
 - `RestrictedParticipant`: solo Responsable del registro, Evaluador o administrador autorizado.
 - Nunca se reutiliza un DTO institucional en la consulta pública mediante ocultamiento tardío.
+- Función, perfil y unidad mostrados por el cliente son informativos; la autorización deriva de la
+  combinación de matriz y asignación efectiva revalidadas por backend.
 
 ## Transacciones y auditoría
 
 Cada comando sensible confirma en una transacción el cambio, historial y evento de auditoría. Las
-denegaciones se auditan en una transacción independiente. Las operaciones con Keycloak o filesystem
-usan idempotencia y compensación porque no comparten la transacción Oracle.
+denegaciones se auditan en una transacción independiente. Filesystem usa temporales y compensación;
+Keycloak usa una operación idempotente recuperable con identidad deshabilitada cuando Oracle falla,
+porque ninguno comparte la transacción Oracle.

@@ -35,7 +35,7 @@ necesarios.
 - acceso sensible permitido o denegado;
 - creación, modificación y transición de iniciativa/proyecto;
 - decisión y registro operativo, con ambos actores;
-- carga, consulta de contenido, versión, antimalware, clasificación y reclasificación;
+- carga, consulta de contenido, versión, clasificación y reclasificación;
 - alta/baja de participante y sustitución de titular;
 - creación, modificación, revocación y suplencia de asignación;
 - aprovisionamiento, activación, desactivación, reactivación y fallo parcial Keycloak;
@@ -43,6 +43,12 @@ necesarios.
 - generación, descarga, aprobación y remisión de reporte;
 - validación, medición, aprobación o rechazo de prototipo;
 - consulta/exportación institucional sensible.
+- creación/versionado/inactivación de función y combinación de matriz por unidad concreta;
+- registro independiente de versiones PEI y POI, incluida denegación por aprobación discordante;
+- creación de expediente institucional, vinculación de serie y violación de propietario XOR;
+- confirmación o denegación de publicación y exclusión pública posterior por reclasificación.
+- ejecución o rechazo de la semilla inicial `GlobalAdmin`, con `sub`, función, unidad, Jefatura,
+  aprobación de despliegue, DBA, fecha y resultado.
 
 ## Privacidad e integridad
 

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `main`
 **Created**: 2026-07-21
-**Status**: Draft - Bloqueada por aclaraciones funcionales
+**Status**: Approved
 **Input**: Gestión integral de iniciativas y proyectos del PIIP conforme a la Norma Técnica
 N.º 003-2025-PCM-SGP, desde el registro hasta el reporte y la consulta pública.
 
@@ -36,6 +36,8 @@ de información y el riesgo de reportes incompletos o desactualizados.
 - Integraciones, sincronizaciones o intercambios automáticos con sistemas externos en la Fase 1.
 - Reportes mensuales o trimestrales obligatorios durante la Fase 1.
 - Mostrar contenido documental o permitir descargas en la consulta pública durante la Fase 1.
+- Administrar análisis, detección, bloqueo, cuarentena o respuesta antimalware; corresponden
+  exclusivamente a OGTI fuera de PIIP.
 - Considerar aprobados los prototipos existentes o genéricos.
 - Realizar cargas manuales conjuntas o masivas de información existente; la incorporación inicial
   se hará mediante registro individual del Responsable, asistencia de `UnidadAdmin` y validación
@@ -136,7 +138,7 @@ de información y el riesgo de reportes incompletos o desactualizados.
 - Q: ¿Cómo se autoriza una nueva asignación `GlobalAdmin`? → A: La `Autoridad` decide y un
   `GlobalAdmin` la registra con documento formal.
 - Q: ¿Cómo se crea el primer `GlobalAdmin` cuando aún no existe otro que registre la decisión? → A:
-  Designación formal de la Autoridad y aprovisionamiento inicial controlado y auditado.
+  Mediante la semilla SQL manual, fail-fast y auditada aprobada para la inicialización.
 - Q: ¿Cómo debe manejarse una suplencia funcional en PIIP? → A: Asignación temporal con inicio y fin
   obligatorios.
 - Q: ¿Quién autoriza una suplencia funcional? → A: La misma autoridad que autoriza la asignación
@@ -216,8 +218,8 @@ de información y el riesgo de reportes incompletos o desactualizados.
   administradores autorizados, bajo clasificación `RESTRINGIDO`.
 - Q: ¿Qué metadatos documentales son públicos? → A: Tipo, título sin datos personales, versión,
   formato y fecha de publicación.
-- Q: ¿Quién puede consultar contenido documental limpio? → A: Usuarios institucionales según ámbito
-  y clasificación; nunca la consulta pública en Fase 1.
+- Q: ¿Quién puede consultar contenido documental? → A: Usuarios institucionales según ámbito y
+  clasificación; nunca la consulta pública en Fase 1.
 - Q: ¿Qué se considera dato personal detectable? → A: Nombres, documento, correo, teléfono,
   dirección, firma e identificadores equivalentes.
 - Q: ¿Quién puede consultar un documento con clasificación pendiente o no validada? → A: Solo el
@@ -247,7 +249,7 @@ de información y el riesgo de reportes incompletos o desactualizados.
   Keycloak y el correo institucional.
 - Q: ¿Los campos y catálogos completos son requisito formal de admisibilidad? → A: Sí.
 - Q: ¿Qué condición debe cumplir la ficha de iniciativa para la admisibilidad? → A: Debe estar
-  adjunta, `LIMPIO` y con clasificación validada.
+  adjunta, conservar integridad SHA-256 y tener clasificación validada.
 - Q: ¿Qué condición debe cumplir el Responsable para la admisibilidad? → A: Tener asignación vigente
   y actuar dentro de su unidad.
 - Q: ¿Qué cardinalidad exige la admisibilidad? → A: Exactamente un Responsable titular y una unidad
@@ -340,6 +342,65 @@ de información y el riesgo de reportes incompletos o desactualizados.
   mayor al 90 %, cero errores críticos, satisfacción igual o mayor a 4/5, ausencia de hallazgos
   críticos o altos de accesibilidad y, con línea base comparable, mejora mínima del 20 % en tiempo
   mediano; sin línea base comparable, la meta de tiempo parte de la medición inicial.
+- Q: ¿Quién confirma la publicación documental y qué evento fija `fechaPublicacion`? → A: El
+  Evaluador confirma la publicación de una versión con clasificación `PUBLICO` validada, y la fecha
+  del servidor al confirmar fija `fechaPublicacion`.
+- Q: ¿Cómo se define y gobierna la matriz cargo o función-perfil-unidad? → A: Mediante un catálogo
+  configurable y versionado de funciones con relaciones múltiples a perfiles y unidades; cada
+  combinación es aprobada por la autoridad que autoriza el perfil correspondiente y registrada por
+  el administrador habilitado según las reglas vigentes de ese perfil.
+- Q: ¿Cómo se cargan y gobiernan los catálogos Objetivo PEI y Actividad POI? → A: La oficina
+  responsable de planeamiento aprueba el catálogo versionado y `GlobalAdmin` registra códigos,
+  descripciones y vigencias; la carga inicial usa una semilla formalmente aprobada, sin sincronización
+  externa.
+- Q: ¿La matriz función-perfil-unidad relaciona tipos de unidad o unidades concretas? → A: Cada
+  combinación relaciona exactamente una función, un perfil y una unidad concreta.
+- Q: ¿Objetivo PEI y Actividad POI comparten una versión? → A: Se versionan de forma independiente,
+  con aprobaciones, vigencias y semillas propias.
+- Q: ¿Cómo se conservan los documentos formales que no pertenecen a una iniciativa o proyecto? → A:
+  En un expediente institucional; cada serie documental pertenece de forma excluyente e inmutable a
+  un registro de portafolio o a un expediente institucional.
+
+### Session 2026-07-21 - Remediación previa a implementación
+
+- Q: ¿Qué recorrido habilita las interfaces para crear proyectos derivados y directos? → A: El gate
+  `REGISTRO` cubre el registro de iniciativas y la creación de ambos tipos de proyecto.
+- Q: ¿Qué recorridos cubren suspensión y cancelación? → A: La suspensión pertenece a `SEGUIMIENTO` y
+  la cancelación a `DECISION`.
+- Q: ¿Las interfaces administrativas de seguridad, reportes y gestión de prototipos agregan nuevos
+  gates? → A: No. Los ocho gates permanecen limitados a `REGISTRO`, `EVALUACION`, `DECISION`,
+  `SEGUIMIENTO`, `APROBACION_PRODUCTO`, `CIERRE`, `CONSULTA_INSTITUCIONAL` y `CONSULTA_PUBLICA`.
+- Q: ¿Qué ocurre si la unidad principal no tiene un prefijo de código formalmente aprobado? → A: La
+  presentación o creación se rechaza; PIIP no infiere ni fabrica un prefijo.
+- Q: ¿Cómo se controla el uso de datos sintéticos en mediciones? → A: Cada medición referencia una
+  versión de un dataset sintético formalmente aprobado. Mientras no exista ese dataset, la medición y
+  la aprobación del prototipo permanecen bloqueadas.
+- Q: ¿Se implementa disposición o eliminación de reportes mientras no exista una tabla de retención
+  aprobada? → A: No. La Fase 1 no expone endpoint, proceso ni acción de disposición; una capacidad
+  posterior requiere especificación y aprobación independientes.
+
+### Session 2026-07-21 - Remediación constitucional C1 y C2
+
+- Q: ¿Quién administra la seguridad antimalware de los binarios? → A: OGTI, de forma exclusiva y
+  fuera del alcance funcional de PIIP.
+- Q: ¿Qué conserva PIIP sobre los documentos? → A: El binario en Oracle PIIP, metadatos, autor,
+  fecha, versión, clasificación y hash SHA-256; no conserva estados, resultados, informes ni
+  auditorías antimalware.
+- Q: ¿El uso formal de un documento depende de un resultado antimalware en PIIP? → A: No. PIIP aplica
+  únicamente sus reglas de negocio, clasificación, integridad, versionado y autorización documental.
+- Q: ¿Cómo se crea el primer `GlobalAdmin`? → A: Exclusivamente mediante una semilla SQL manual,
+  revisable, de ejecución única y fail-fast, ejecutada por un DBA autorizado de OGTI.
+- Q: ¿Quién proporciona la identidad y autoriza la asignación inicial? → A: El administrador Keycloak
+  de OGTI proporciona el `sub`; la Jefatura de la Oficina de Modernización autoriza mediante una
+  aprobación de despliegue identificable.
+- Q: ¿Qué valores usa la asignación inicial? → A: `codigoUnidad=MIDAGRI`,
+  `nombreUnidad=Ministerio de Desarrollo Agrario y Riego`,
+  `codigoFuncion=ADMINISTRADOR_PIIP` y `nombreFuncion=Administrador PIIP`; la semilla prevalida y
+  reutiliza la unidad raíz existente.
+- Q: ¿Qué auditoría exige la semilla? → A: `sub`, perfil, función, unidad, Jefatura autorizante,
+  aprobación de despliegue, DBA ejecutor, fecha, operación y resultado.
+- Q: ¿Qué ocurre si ya existió un `GlobalAdmin`? → A: La semilla aborta sin cambios; no existe
+  comando, endpoint, cliente OIDC temporal ni mecanismo alternativo de bootstrap.
 
 ## Actors and Authorization *(mandatory)*
 
@@ -354,9 +415,12 @@ de información y el riesgo de reportes incompletos o desactualizados.
 | Participante sectorial autorizado | Mantener iniciativas y proyectos de su entidad | `Responsable` | Unidades de su entidad asignadas explícitamente | Registra información dentro de su asignación efectiva; no decide transiciones reservadas a otros perfiles |
 | Ciudadano o representante externo | Consultar información pública anónimamente | Acceso público sin perfil institucional | `Tipo de registro`, `Código`, `Nombre de iniciativa o proyecto`, `Estado`, tipo documental, título sin datos personales, versión, formato y fecha de publicación | No decide ni modifica información |
 | Responsable de reportes de la Oficina de Modernización | Generar reportes semestrales y requeridos | `Evaluador` | Ámbito institucional autorizado | Genera y deja evidencia; no altera decisiones del portafolio |
+| Oficina responsable de planeamiento | Aprobar los catálogos versionados de Objetivo PEI y Actividad POI | Autoridad funcional de planeamiento; no requiere un perfil PIIP adicional para emitir la aprobación formal | Ámbito institucional | Aprueba códigos, descripciones y vigencias; `GlobalAdmin` registra la versión aprobada en PIIP |
 | Usuario validador de negocio | Validar prototipos PIIP | Perfil funcional correspondiente al recorrido | Recorridos correspondientes a su función | Ejecuta escenarios y comunica resultados; un `Evaluador` registra la evidencia |
 | Aprobador de prototipos | Aprobar formalmente prototipos PIIP | `Evaluador` de la Oficina de Modernización | Todos los recorridos PIIP | Registra la aprobación; debe ser distinto del autor y no puede ser el único validador |
 | Equipo de experiencia de usuario | Ejecutar pruebas moderadas y calcular métricas | No requiere un perfil PIIP adicional; usa prototipos y datos sintéticos autorizados | Recorridos de la etapa de implementación evaluada | Aplica escenarios, calcula resultados y entrega evidencia al Evaluador coordinador; no aprueba la medición |
+| OGTI | Administrar Keycloak, Oracle y los controles técnicos de seguridad de binarios | Responsabilidad técnica externa a los perfiles PIIP | Infraestructura institucional | Administra identidad técnica, credenciales, plataforma y seguridad antimalware; no decide permisos funcionales ordinarios |
+| DBA autorizado de OGTI | Ejecutar una sola vez la semilla inicial `GlobalAdmin` | Procedimiento SQL fundacional aprobado | Unidad raíz `MIDAGRI` | Usa el `sub` proporcionado por el administrador Keycloak, registra la auditoría mínima y no administra asignaciones ordinarias |
 | PCM-SGP | Recibir la información institucional que corresponda | Receptor del reporte autorizado | Información aprobada para remisión | No opera el portafolio PIIP |
 
 La autorización efectiva combina el permiso funcional con el ámbito organizacional. Una persona
@@ -562,7 +626,7 @@ un producto final completo para decisión.
 9. **Given** una cancelación confirmada, **When** el proyecto pasa a `CANCELADO`, **Then** su fecha de
    cierre se genera automáticamente.
 10. **Given** un proyecto en `PROYECTO_EJECUCION`, **When** el Responsable modifica información,
-    **Then** solo puede editar los campos 17, 19 y 23 y cada cambio queda auditado.
+     **Then** solo puede editar los campos 17, 19 y 23 y cada cambio queda auditado.
 
 ---
 
@@ -630,9 +694,10 @@ acciones y consultas cambian según el perfil y ámbito efectivos.
 8. **Given** una decisión formal de la Autoridad para una nueva asignación `GlobalAdmin`, **When** un
    `GlobalAdmin` registra la asignación con el documento correspondiente, **Then** queda vigente y
    auditada; sin ese documento, la operación se rechaza.
-9. **Given** que todavía no existe un `GlobalAdmin`, **When** la Autoridad emite la designación formal
-   del primero y se realiza el aprovisionamiento inicial controlado, **Then** la asignación queda
-   activa con la decisión, los actores y el resultado auditados.
+9. **Given** que nunca existió un `GlobalAdmin`, **When** el DBA autorizado ejecuta la semilla con el
+   `sub` proporcionado por OGTI y la aprobación de despliegue de la Jefatura de Modernización,
+   **Then** reutiliza la unidad raíz, crea función, combinación y asignación iniciales y registra la
+   auditoría mínima.
 10. **Given** una suplencia funcional autorizada, **When** se registra, **Then** crea una asignación
     temporal distinta con fecha de inicio y fin obligatorias, sin transferir las credenciales del
     titular.
@@ -677,7 +742,10 @@ acciones y consultas cambian según el perfil y ámbito efectivos.
 25. **Given** un cambio de unidad de una persona, **When** se confirma, **Then** se cierran las
     asignaciones anteriores y se crean explícitamente las nuevas sin trasladar permisos.
 26. **Given** que el identificador de Keycloak o correo institucional ya pertenece a una identidad,
-    **When** se intenta crear otra, **Then** la creación se bloquea hasta resolver el conflicto.
+     **When** se intenta crear otra, **Then** la creación se bloquea hasta resolver el conflicto.
+27. **Given** que ya existe o existió una asignación `GlobalAdmin`, **When** se intenta ejecutar la
+    semilla inicial, **Then** aborta sin cambios y conserva el mecanismo administrativo ordinario como
+    única vía para asignaciones posteriores.
 
 ---
 
@@ -706,9 +774,9 @@ pública, y comprobar las diferencias de ámbito, campos y documentos visibles.
 5. **Given** una decisión formal de reclasificación emitida por la Autoridad, **When** el Evaluador
    registra el cambio, **Then** la nueva clasificación se aplica y queda auditada sin alterar el
    historial anterior.
-6. **Given** un documento `LIMPIO`, **When** un usuario institucional autorizado lo consulta, **Then**
-   el contenido se muestra solo si su ámbito y clasificación lo permiten; nunca se expone en la
-   consulta pública.
+6. **Given** un documento, **When** un usuario institucional autorizado lo consulta, **Then** el
+   contenido se muestra solo si su ámbito y clasificación lo permiten; nunca se expone en la consulta
+   pública.
 7. **Given** un documento con clasificación pendiente o no validada, **When** se intenta consultar,
    **Then** solo el Responsable cargador y el Evaluador pueden acceder y no puede usarse como
    evidencia formal.
@@ -819,7 +887,9 @@ validación, aprobación y versión identificable.
 - **BR-008**: El cierre desde cualquier resultado de producto requiere informe final, resultados,
   aprendizajes, conclusión y observación, y cambia el proyecto a `FINALIZADO`.
 - **BR-009**: Los documentos y evidencias no pueden superar 100 MB y solo sirven como evidencia
-  formal cuando cumplen formato, clasificación y condición de seguridad aprobados.
+  formal cuando cumplen formato, clasificación, integridad SHA-256 y las reglas de negocio
+  aplicables. Los binarios se almacenan en Oracle PIIP; OGTI administra fuera de la aplicación los
+  controles antimalware y PIIP no modela ni aplica estados o gates antimalware.
 - **BR-010**: En la Fase 1, solo `Tipo de registro`, `Código`, `Nombre de iniciativa o proyecto` y
   `Estado` son campos públicos. También son públicos tipo documental, título sin datos personales,
   versión, formato y fecha de publicación; los documentos no muestran contenido ni permiten
@@ -909,8 +979,11 @@ validación, aprobación y versión identificable.
 - **BR-045**: Toda nueva asignación `GlobalAdmin` requiere una decisión formal de la Autoridad y debe
   ser registrada por un `GlobalAdmin` con el documento correspondiente.
 - **BR-046**: Cuando no exista ningún `GlobalAdmin`, el primero debe crearse mediante designación
-  formal de la Autoridad y un aprovisionamiento inicial controlado y auditado; después se aplica el
-  flujo ordinario de registro por un `GlobalAdmin`.
+  exclusivamente mediante una semilla SQL manual, revisable, de ejecución única y fail-fast. Un DBA
+  autorizado de OGTI la ejecuta con el `sub` proporcionado por el administrador Keycloak y la
+  aprobación de despliegue de la Jefatura de Modernización. La semilla usa los valores iniciales
+  canónicos aprobados, registra la auditoría mínima y aborta sin cambios si existe cualquier
+  asignación histórica `GlobalAdmin`. Después se aplica exclusivamente el flujo ordinario de PIIP.
 - **BR-047**: Una suplencia funcional debe registrarse como una asignación temporal distinta, con
   fecha de inicio y fin obligatorias; no transfiere ni comparte las credenciales del titular.
 - **BR-048**: Cada suplencia debe ser autorizada por la misma autoridad que autoriza la asignación
@@ -994,9 +1067,12 @@ validación, aprobación y versión identificable.
   consultarlos el Responsable del registro, el Evaluador y los administradores autorizados dentro de
   su ámbito.
 - **BR-084**: Los únicos metadatos documentales públicos son tipo documental, título sin datos
-  personales, versión, formato y fecha de publicación.
-- **BR-085**: El contenido de un documento `LIMPIO` puede consultarse institucionalmente solo cuando
-  el ámbito y la clasificación del usuario lo permiten; nunca es público en la Fase 1.
+  personales, versión, formato y fecha de publicación. Solo se publican cuando el Evaluador confirma
+  una versión con clasificación `PUBLICO` validada; la fecha del servidor al confirmar fija
+  `fechaPublicacion`. Si la clasificación pública resulta de una reclasificación, se exige además la
+  decisión formal de la Autoridad conforme a BR-023.
+- **BR-085**: El contenido de un documento puede consultarse institucionalmente solo cuando el ámbito
+  y la clasificación del usuario lo permiten; nunca es público en la Fase 1.
 - **BR-086**: Se consideran datos personales detectables los nombres, documento de identidad, correo,
   teléfono, dirección, firma e identificadores equivalentes.
 - **BR-087**: Un documento con clasificación pendiente o no validada solo es visible para el
@@ -1027,8 +1103,8 @@ validación, aprobación y versión identificable.
   identidad duplicada debe quedar auditada con actor, momento, ámbito, persona, operación y resultado.
 - **BR-100**: La admisibilidad exige que todos los campos obligatorios estén completos y que los
   valores seleccionados pertenezcan a catálogos vigentes.
-- **BR-101**: La Ficha de Iniciativa de Innovación Pública debe estar adjunta, tener estado de
-  seguridad `LIMPIO` y clasificación validada para superar la admisibilidad.
+- **BR-101**: La Ficha de Iniciativa de Innovación Pública debe estar adjunta, conservar integridad
+  SHA-256 y tener clasificación validada para superar la admisibilidad.
 - **BR-102**: El Responsable debe tener una asignación vigente y actuar dentro de la unidad efectiva
   de la iniciativa para superar la admisibilidad.
 - **BR-103**: La admisibilidad exige exactamente un Responsable titular y exactamente una unidad
@@ -1138,6 +1214,26 @@ validación, aprobación y versión identificable.
   tiempo mediano mejora al menos 20 %; sin ella, su meta se fija desde la medición inicial. Los errores
   críticos y los hallazgos críticos o altos de accesibilidad bloquean la liberación; una excepción a
   las demás métricas requiere justificación y aprobación documentadas.
+- **BR-150**: La matriz cargo o función-perfil-unidad es un catálogo configurable y versionado. Una
+  función puede relacionarse con múltiples perfiles y unidades concretas, pero cada combinación
+  identifica exactamente una función, un perfil y una unidad concreta. Cada asignación funcional
+  selecciona una sola combinación vigente y deriva de ella su función, perfil y unidad, sin aceptar
+  valores discordantes ni combinar permisos. Crear,
+  modificar o inactivar una combinación exige la aprobación de la misma autoridad que autoriza la
+  asignación del perfil afectado y el registro por `GlobalAdmin` o `UnidadAdmin` únicamente cuando las
+  reglas de ese perfil le permitan administrarlo. Las combinaciones inactivas se conservan en las
+  asignaciones históricas y no se permiten en nuevas asignaciones.
+- **BR-151**: Objetivo PEI y Actividad POI son catálogos controlados y versionados. La oficina
+  responsable de planeamiento aprueba códigos, descripciones y vigencias, y `GlobalAdmin` registra en
+  PIIP la versión formalmente aprobada. La carga inicial se realiza mediante una semilla aprobada y no
+  mediante sincronización externa. Una referencia inactiva se conserva en históricos y no se permite
+  en nuevas selecciones. Ambos catálogos se versionan de forma independiente: una versión PEI no
+  crea, activa, modifica ni retira una versión POI, y viceversa.
+- **BR-152**: Todo documento pertenece mediante su serie documental a exactamente un propietario:
+  un registro de portafolio o un expediente institucional. Los documentos formales de catálogos,
+  matrices, designaciones u otras decisiones sin iniciativa o proyecto pertenecen a un expediente
+  institucional. La pertenencia es excluyente e inmutable y todas las versiones de una serie la
+  heredan; ningún expediente institucional se expone por la consulta pública del portafolio.
 
 Los 23 campos oficiales afectados por esta especificación son:
 
@@ -1207,9 +1303,8 @@ Los tipos documentales y condiciones mínimas aplicables son:
 | Informe de la Oficina de Modernización, Cancelación | `CANCELADO` | Obligatorio con observación |
 
 Cada archivo admite como máximo 100 MB y los formatos iniciales PDF, Office Open XML, JPEG y PNG.
-Debe conservar versión, autor, fecha, clasificación e integridad. Su condición de seguridad es
-`PENDIENTE`, `LIMPIO` o `INFECTADO`; solo un archivo `LIMPIO` puede utilizarse como evidencia formal
-o incluirse en una exposición autorizada.
+Debe conservar el binario en Oracle PIIP, versión, autor, fecha, clasificación e integridad SHA-256.
+OGTI administra los controles antimalware fuera del alcance funcional de PIIP.
 
 | Affected entity or state | Current condition | Change | Evidence or document | Exception |
 |---|---|---|---|---|
@@ -1232,8 +1327,7 @@ o incluirse en una exposición autorizada.
 ### Functional Requirements
 
 - **FR-001**: El sistema debe permitir al Responsable registrar una iniciativa dentro de su ámbito
-  organizacional; después de presentarla, solo debe permitirle editar los campos 5 al 12, 22 y 23
-  durante la única subsanación abierta por el Evaluador.
+  organizacional y aplicar después de la presentación las restricciones de edición de FR-070.
 - **FR-002**: El registro debe contemplar exactamente los 23 campos oficiales identificados en la
   Constitución PIIP.
 - **FR-003**: El sistema debe aplicar la matriz de obligatoriedad, editabilidad, privacidad y actor
@@ -1275,9 +1369,10 @@ o incluirse en una exposición autorizada.
   estructura mínima de objetivos, actividades, avance, dificultades, próximas acciones y
   evidencias. La corrección de un ciclo cerrado debe crear una nueva versión trazable sin modificar
   la versión cerrada.
-- **FR-018**: Cada documento o evidencia debe admitir como máximo 100 MB y aplicar los formatos y
-  controles documentales constitucionales. El Responsable debe proponer su clasificación inicial y
-  la de sus metadatos, y el Evaluador debe validarla.
+- **FR-018**: Cada documento o evidencia debe admitir como máximo 100 MB, aplicar los formatos
+  constitucionales, almacenar el binario en Oracle PIIP y cumplir íntegramente los controles
+  documentales de PSA-005 y PSA-006. PIIP no debe modelar estados, resultados, informes ni gates
+  antimalware; esos controles técnicos pertenecen exclusivamente a OGTI.
 - **FR-019**: El Responsable debe poder presentar el producto final con sus documentos de sustento.
 - **FR-020**: Solo la Autoridad debe decidir formalmente la aprobación o no aprobación del producto.
 - **FR-021**: `PRODUCTO_NO_APROBADO` debe exigir observación y evidencia antes de registrar el
@@ -1316,16 +1411,12 @@ o incluirse en una exposición autorizada.
   `Evaluador`, el reporte institucional semestral y reportes adicionales cuando sean requeridos.
 - **FR-033**: El reporte semestral debe cubrir enero-junio con corte al 30/06 y julio-diciembre con
   corte al 31/12; los reportes extraordinarios deben aplicar FR-131 a FR-139.
-- **FR-034**: La consulta pública debe permitir buscar y consultar únicamente `Tipo de registro`,
-  `Código`, `Nombre de iniciativa o proyecto`, `Estado`, tipo documental, título sin datos
-  personales, versión, formato y fecha de publicación.
-- **FR-035**: La consulta pública no debe mostrar contenido documental ni permitir descargas en la
-  Fase 1.
-- **FR-036**: La consulta pública debe tratar los demás campos como no públicos, excluir todo
-  metadato documental fuera de la lista pública o que contenga datos personales y restringir los
-  campos no públicos a usuarios autorizados dentro de su ámbito organizacional, salvo que la matriz
-  establezca una restricción mayor. Su identificación, tratamiento y reclasificación deben aplicar
-  los niveles `PUBLICO`, `INTERNO` y `RESTRINGIDO`.
+- **FR-034**: La consulta pública debe permitir la búsqueda y consulta minimizada definida en
+  PSA-007 y PSA-008.
+- **FR-035**: La consulta pública debe aplicar la prohibición de contenido y descarga documental de
+  PSA-007 durante la Fase 1.
+- **FR-036**: La consulta pública y la consulta institucional deben aplicar la clasificación,
+  exclusiones y restricciones de PSA-001, PSA-007, PSA-008 y PSA-009 sin ampliar el ámbito.
 - **FR-037**: Deben existir prototipos PIIP validados y aprobados para registro, evaluación,
   decisión, seguimiento, producto final, cierre, consulta institucional y consulta pública.
 - **FR-038**: Usuarios representativos deben validar cada prototipo y la Oficina de Modernización
@@ -1380,8 +1471,11 @@ o incluirse en una exposición autorizada.
   `GlobalAdmin` y solo cuando exista la decisión formal de la Autoridad y el documento
   correspondiente; cualquier intento incompleto debe rechazarse y auditarse.
 - **FR-057**: El sistema debe admitir el aprovisionamiento inicial del primer `GlobalAdmin` solo con
-  designación formal de la Autoridad y debe conservar de forma auditable el documento, los actores,
-  el momento y el resultado; este flujo no debe utilizarse cuando ya exista un `GlobalAdmin`.
+  la semilla SQL manual aprobada. La semilla debe aceptar el `sub` proporcionado por el administrador
+  Keycloak de OGTI, prevalidar y reutilizar `MIDAGRI`, crear `ADMINISTRADOR_PIIP`, su combinación y la asignación,
+  exigir la aprobación de despliegue de la Jefatura de Modernización, registrar la auditoría definida
+  en PSA-014 y abortar sin cambios si existe cualquier asignación histórica `GlobalAdmin` o si ya fue
+  ejecutada. No debe existir comando, endpoint, cliente OIDC temporal ni bootstrap alternativo.
 - **FR-058**: El sistema debe registrar cada suplencia como una asignación temporal distinta, exigir
   fechas de inicio y fin y aplicar sus permisos únicamente dentro de ese periodo, sin transferir ni
   compartir credenciales del titular.
@@ -1472,10 +1566,12 @@ o incluirse en una exposición autorizada.
   permitir su consulta únicamente al Responsable del registro, al Evaluador y a administradores
   autorizados dentro de su ámbito.
 - **FR-095**: La consulta pública documental debe limitarse a tipo documental, título sin datos
-  personales, versión, formato y fecha de publicación.
-- **FR-096**: El sistema debe permitir consultar institucionalmente contenido documental `LIMPIO`
-  solo cuando el ámbito y la clasificación lo permitan y debe impedir toda exposición pública del
-  contenido en la Fase 1.
+  personales, versión, formato y fecha de publicación. Debe incluir únicamente versiones cuya
+  clasificación `PUBLICO` haya sido validada y cuya publicación haya sido confirmada por el Evaluador;
+  debe generar `fechaPublicacion` con la fecha del servidor al confirmar.
+- **FR-096**: El sistema debe permitir consultar institucionalmente contenido documental solo cuando
+  el ámbito y la clasificación lo permitan y debe impedir toda exposición pública del contenido en
+  la Fase 1.
 - **FR-097**: El sistema debe identificar como datos personales nombres, documento de identidad,
   correo, teléfono, dirección, firma e identificadores equivalentes para aplicar las restricciones
   de clasificación.
@@ -1507,8 +1603,8 @@ o incluirse en una exposición autorizada.
   unidad y resolución de duplicados con actor, momento, ámbito, persona, operación y resultado.
 - **FR-111**: El sistema debe impedir confirmar la admisibilidad mientras falte un campo obligatorio o
   exista un valor que no pertenezca a un catálogo vigente.
-- **FR-112**: El sistema debe exigir para la admisibilidad una Ficha de Iniciativa adjunta, `LIMPIO` y
-  con clasificación validada.
+- **FR-112**: El sistema debe exigir para la admisibilidad una Ficha de Iniciativa adjunta, con hash
+  SHA-256 y clasificación validada.
 - **FR-113**: El sistema debe exigir que el Responsable tenga asignación vigente y corresponda a la
   unidad efectiva de la iniciativa.
 - **FR-114**: El sistema debe exigir exactamente un Responsable titular y una unidad principal para
@@ -1603,7 +1699,9 @@ o incluirse en una exposición autorizada.
 - **FR-157**: El sistema debe conservar versión, muestra, escenarios, resultados, cálculos, hallazgos,
   metas aplicables, aprobación y hash de cada medición.
 - **FR-158**: El sistema debe exigir otra medición antes de liberar cada recorrido y después de todo
-  cambio funcional o de accesibilidad que lo afecte.
+  cambio funcional o de accesibilidad que lo afecte. La preparación para liberación debe permanecer
+  bloqueada mientras la última medición aprobada no corresponda a la versión funcional y de
+  accesibilidad candidata.
 - **FR-159**: El sistema debe conservar cada reporte y su expediente completo de formatos, versiones,
   aprobaciones, hashes y evidencias de remisión durante el plazo de la tabla de retención documental
   vigente del MIDAGRI. Mientras el plazo no esté confirmado, debe impedir eliminaciones automáticas;
@@ -1613,6 +1711,24 @@ o incluirse en una exposición autorizada.
   Modernización para cada recorrido antes de iniciar su implementación. Debe aplicar BR-149, bloquear
   la liberación ante errores críticos o hallazgos críticos o altos de accesibilidad y exigir
   justificación y aprobación documentadas para cualquier excepción permitida en las demás métricas.
+- **FR-161**: El sistema debe administrar la matriz cargo o función-perfil-unidad como un catálogo
+  configurable y versionado, permitir relaciones múltiples entre funciones, perfiles y unidades
+  concretas, y exigir que cada combinación identifique exactamente una función, un perfil y una
+  unidad. Cada asignación debe seleccionar una sola combinación vigente y derivar de ella esos tres
+  valores, rechazando cualquier dato discordante proporcionado por el cliente.
+  Debe aplicar para cada cambio la autoridad de aprobación y el administrador registrador definidos
+  para el perfil, conservar las combinaciones históricas inactivas y excluirlas de nuevas asignaciones.
+- **FR-162**: El sistema debe administrar Objetivo PEI y Actividad POI como catálogos versionados,
+  permitir a `GlobalAdmin` registrar únicamente códigos, descripciones y vigencias contenidos en una
+  aprobación formal de la oficina responsable de planeamiento, cargar sus valores iniciales desde una
+  semilla aprobada y conservar referencias inactivas solo para históricos, sin sincronización externa.
+  Debe versionar PEI y POI de forma independiente y evitar que una operación sobre uno altere la
+  versión o vigencia del otro.
+- **FR-163**: El sistema debe permitir crear expedientes institucionales para documentos formales que
+  no pertenecen al portafolio y exigir que cada serie documental tenga exactamente un propietario,
+  sea un registro de portafolio o un expediente institucional. Debe mantener esa pertenencia
+  inmutable para todas las versiones, rechazar propietarios simultáneos o ausentes e impedir que los
+  expedientes institucionales aparezcan en la consulta pública del portafolio.
 
 ### Privacy, Security, and Audit Requirements
 
@@ -1628,15 +1744,17 @@ o incluirse en una exposición autorizada.
 - **PSA-004**: Cada auditoría debe identificar actor, momento, perfil efectivo, unidad, operación,
   resultado y datos modificados, y no debe poder alterarse.
 - **PSA-005**: Los documentos deben conservar autor, fecha, versión, clasificación, integridad y
-  condición de seguridad; el Responsable propone la clasificación inicial del documento y sus
-  metadatos, y el Evaluador la valida. Mientras esté pendiente o no validada, solo el Responsable
-  cargador y el Evaluador pueden consultarla y no puede utilizarse como evidencia formal ni
-  publicarse.
+  binario Oracle; el Responsable propone la clasificación inicial del documento y sus metadatos, y el
+  Evaluador la valida. Mientras la clasificación esté pendiente o no validada, solo el Responsable
+  cargador y el Evaluador pueden consultarla y no puede utilizarse como evidencia formal ni publicarse.
+  OGTI administra fuera de PIIP todos los controles antimalware.
 - **PSA-006**: Los documentos formalizados y el historial de transiciones deben ser inmutables; las
   correcciones deben crear una nueva versión o evento trazable.
 - **PSA-007**: La consulta pública debe aplicar minimización: solo `Tipo de registro`, `Código`,
   `Nombre de iniciativa o proyecto`, `Estado`, tipo documental, título sin datos personales, versión,
-  formato y fecha de publicación, sin contenido ni descarga documental.
+  formato y fecha de publicación, sin contenido ni descarga documental. Los metadatos documentales
+  solo pueden exponerse después de que el Evaluador confirme la publicación de una versión con
+  clasificación `PUBLICO` validada.
 - **PSA-008**: La consulta pública debe ser anónima; cualquier métrica o auditoría debe evitar la
   recopilación de datos personales no necesarios. Se consideran personales nombres, documento de
   identidad, correo, teléfono, dirección, firma e identificadores equivalentes.
@@ -1653,9 +1771,9 @@ o incluirse en una exposición autorizada.
   anterior, titular nuevo y resultado.
 - **PSA-013**: Cada intento de asignar `GlobalAdmin` debe auditar actor registrador, Autoridad
   decisora, documento formal, persona asignada, momento y resultado.
-- **PSA-014**: El aprovisionamiento del primer `GlobalAdmin` debe auditar la Autoridad decisora, el
-  documento formal, la persona asignada, los actores que ejecutan el aprovisionamiento, el momento y
-  el resultado.
+- **PSA-014**: La semilla del primer `GlobalAdmin` debe auditar el `sub` beneficiario, perfil, función,
+  unidad, Jefatura de Modernización autorizante, aprobación de despliegue, DBA ejecutor, fecha,
+  operación y resultado.
 - **PSA-015**: Cada suplencia debe auditar titular, suplente, perfil, unidad, fechas, actor que la
   registra, resultado y cualquier terminación anticipada, incluida la autoridad que la decidió.
 - **PSA-016**: Cada asignación, modificación o revocación de `Evaluador` debe auditar la Oficina de
@@ -1663,13 +1781,17 @@ o incluirse en una exposición autorizada.
   y resultado.
 - **PSA-017**: Cada asignación, modificación o revocación de `Autoridad` debe auditar la designación
   formal, su vigencia, `GlobalAdmin` registrador, persona, ámbito, momento y resultado.
-- **PSA-018**: El contenido de documentos `LIMPIO` solo puede mostrarse a usuarios institucionales
-  cuyo ámbito y clasificación lo permitan, y nunca puede exponerse públicamente en la Fase 1.
+- **PSA-018**: El contenido documental solo puede mostrarse a usuarios institucionales cuyo ámbito y
+  clasificación lo permitan, y nunca puede exponerse públicamente en la Fase 1.
 - **PSA-019**: PIIP no debe recopilar, procesar, almacenar, registrar ni auditar contraseñas; la
   activación y las credenciales pertenecen exclusivamente a Keycloak.
 - **PSA-020**: Las operaciones del ciclo de identidad deben auditar identificador de Keycloak, correo
   institucional, actor, perfil efectivo, unidad, momento, operación y resultado, sin incluir
   credenciales.
+- **PSA-021**: La creación de un expediente institucional, la vinculación de una serie documental y
+  todo intento de asignar propietario ausente, múltiple o distinto deben auditar expediente, registro
+  de portafolio cuando corresponda, actor, perfil y unidad efectivos, momento, resultado y versión
+  documental, sin exponer expedientes institucionales en proyecciones públicas.
 
 ### Integration and Data Change Requirements
 
@@ -1737,8 +1859,8 @@ o incluirse en una exposición autorizada.
   `UnidadAdmin`.
 - Se intenta asignar `GlobalAdmin` sin decisión formal de la Autoridad, sin documento o mediante un
   actor distinto de `GlobalAdmin`.
-- Se intenta utilizar el aprovisionamiento inicial cuando ya existe un `GlobalAdmin` o sin la
-  designación formal de la Autoridad.
+- Se intenta ejecutar la semilla inicial cuando existe cualquier asignación histórica `GlobalAdmin`,
+  sin `sub` proporcionado por OGTI o sin aprobación de despliegue de la Jefatura de Modernización.
 - Se intenta crear una suplencia sin fecha de inicio o fin, utilizarla fuera de su periodo o
   transferir las credenciales del titular al suplente.
 - Una suplencia es autorizada por un actor que no puede autorizar la asignación permanente del mismo
@@ -1756,6 +1878,10 @@ o incluirse en una exposición autorizada.
   Modernización, sin documento o mediante un actor distinto de `GlobalAdmin`.
 - Se intenta asignar, modificar o revocar `Autoridad` sin designación formal institucional vigente,
   sin documento o mediante un actor distinto de `GlobalAdmin`.
+- Se intenta crear o modificar una combinación función-perfil-unidad sin aprobación de la autoridad
+  que autoriza ese perfil, registrarla mediante un administrador no habilitado, usar una combinación
+  inactiva en una asignación nueva, asociarla a una unidad distinta de la combinación o combinar dos
+  combinaciones en una sola operación.
 - `UnidadAdmin` intenta crear, desactivar o reactivar un usuario de una unidad fuera de su ámbito.
 - Se intenta activar una cuenta mediante una contraseña gestionada por PIIP en lugar del correo de
   Keycloak.
@@ -1779,6 +1905,10 @@ o incluirse en una exposición autorizada.
 - Se intenta cambiar `Tipo de registro` después de presentar una iniciativa.
 - Se intenta seleccionar una referencia PEI o POI retirada del catálogo; los registros históricos
   que ya la utilizan deben conservarla.
+- `GlobalAdmin` intenta registrar o modificar una referencia PEI o POI sin aprobación formal de la
+  oficina responsable de planeamiento, alterar una versión aprobada en lugar de crear otra o cargar
+  valores mediante una sincronización externa.
+- Se intenta activar, modificar o retirar una versión PEI mediante una operación POI, o viceversa.
 - Se intenta adoptar una decisión sobre una iniciativa sin opinión técnica o sobrescribir una
   versión anterior de la opinión.
 - Se intenta aprobar o archivar una iniciativa, o aprobar un producto, sin el documento formal
@@ -1802,13 +1932,17 @@ o incluirse en una exposición autorizada.
 - La fecha de inicio del proyecto no coincide con la indicada en el documento formal.
 - Se intenta confirmar un proyecto sin completar los campos 1 al 13 y 22, se exige `Nota` o no queda
   exactamente una unidad principal y un Responsable titular.
-- Un documento supera 100 MB, tiene formato no permitido, está pendiente o no es apto para
-  evidencia formal.
+- Un documento supera 100 MB, tiene formato no permitido, carece de hash SHA-256 o no cumple las
+  reglas de clasificación para servir como evidencia formal.
 - Un documento o sus metadatos conservan una clasificación inicial propuesta por el Responsable,
   pero todavía no validada por el Evaluador.
+- Se intenta crear una serie documental sin propietario, con un registro de portafolio y un expediente
+  institucional simultáneamente, o moverla de propietario después de registrar una versión.
+- Se intenta publicar metadatos documentales sin confirmación del Evaluador o sin clasificación
+  `PUBLICO` validada; la publicación se bloquea y no se genera `fechaPublicacion`.
 - Un usuario distinto del Responsable cargador o del Evaluador intenta consultar un documento con
   clasificación pendiente o no validada.
-- Un usuario institucional intenta consultar contenido documental `LIMPIO` fuera de su ámbito o sin
+- Un usuario institucional intenta consultar contenido documental fuera de su ámbito o sin
   autorización para su clasificación.
 - Un producto no aprobado carece de observación o evidencia.
 - Se intenta modificar directamente un ciclo quincenal cerrado en lugar de registrar una nueva
@@ -1882,7 +2016,9 @@ o incluirse en una exposición autorizada.
   `UnidadAdmin` solo dentro de su ámbito autorizado. Una suplencia es una asignación temporal
   distinta con fechas de inicio y fin obligatorias y nunca transfiere credenciales del titular;
   mientras está vigente, inactiva la asignación del mismo perfil y unidad del titular y no admite
-  otra suplencia superpuesta para esa asignación.
+  otra suplencia superpuesta para esa asignación. Cada asignación referencia una única combinación
+  vigente de la matriz configurable y versionada de función-perfil-unidad; las combinaciones
+  inactivas se conservan solo para trazabilidad histórica.
 - **Unidad organizacional**: Ámbito institucional o sectorial sobre el que se registran y consultan
   iniciativas, proyectos y asignaciones. Cada iniciativa o proyecto se relaciona con una o varias
   unidades responsables y distingue exactamente una unidad principal.
@@ -1903,10 +2039,16 @@ o incluirse en una exposición autorizada.
 - **Cierre administrativo**: Informe final, resultados, aprendizajes, conclusión y observación que
   permiten alcanzar `FINALIZADO`; el Responsable registra resultados clave, el Evaluador los valida
   y registra el informe final inmutable, y la fecha de cierre se genera automáticamente.
-- **Documento o evidencia**: Archivo con tipo, autor, fecha, versión, clasificación, integridad,
-  condición de seguridad y relación con el registro o decisión. El Responsable propone su
+- **Documento o evidencia**: Binario Oracle con tipo, autor, fecha, versión, clasificación, integridad
+  SHA-256 y una serie con propietario único. La serie pertenece de forma excluyente e inmutable a un
+  registro de portafolio o a un expediente institucional. El Responsable propone su
   clasificación inicial y la de sus metadatos, y el Evaluador la valida. La corrección de un
-  documento formal crea una nueva versión y conserva sin cambios las anteriores.
+  documento formal crea una nueva versión y conserva sin cambios las anteriores. El Evaluador solo
+  puede confirmar la publicación de una versión con clasificación `PUBLICO` validada; la
+  fecha del servidor de esa confirmación fija `fechaPublicacion`.
+- **Expediente institucional**: Propietario documental para aprobaciones de catálogos, matrices,
+  designaciones y otras decisiones formales sin iniciativa o proyecto. Conserva código, asunto,
+  módulo de origen, documentos y auditoría, y nunca se incluye en la consulta pública del portafolio.
 - **Transición de estado**: Evento inmutable con estado anterior y nuevo, actor, perfil, unidad,
   fecha, observación y evidencia aplicable.
 - **Evento de auditoría**: Evidencia inmutable de acceso, denegación, cambio, transición, documento,
@@ -1925,7 +2067,10 @@ o incluirse en una exposición autorizada.
   Autoridad, registro por el Evaluador y aplicación inmediata.
 - **Referencia de planeamiento**: Valor controlado de los catálogos `Objetivo PEI` o `Actividad POI`;
   al retirarse deja de estar disponible para nuevas selecciones, pero se conserva en los registros
-  históricos que ya lo utilizan.
+  históricos que ya lo utilizan. La oficina responsable de planeamiento aprueba códigos,
+  descripciones y vigencias, y `GlobalAdmin` registra cada versión aprobada. La carga inicial procede
+  de una semilla formalmente aprobada y no de sincronización externa. PEI y POI conservan ciclos de
+  versión independientes.
 - **Prototipo PIIP**: Versión identificable de un recorrido funcional sometida a validación y
   aprobación de negocio. Registra código, fecha, recorrido, cambios, estado, versión anterior,
   hallazgos y evidencias de validación. Usa `BORRADOR`, `EN_VALIDACION`, `OBSERVADO`, `VALIDADO`,
@@ -2026,8 +2171,10 @@ o incluirse en una exposición autorizada.
 - **SC-033**: El 100 % de las nuevas asignaciones `GlobalAdmin` cuenta con decisión formal de la
   Autoridad, documento correspondiente y registro por un `GlobalAdmin`; todo intento incompleto se
   rechaza y queda auditado.
-- **SC-034**: El primer `GlobalAdmin` solo puede aprovisionarse cuando no existe otro, cuenta con
-  designación formal de la Autoridad y deja evidencia completa de actores, momento y resultado.
+- **SC-034**: El primer `GlobalAdmin` solo puede aprovisionarse cuando nunca existió otro, cuenta con
+  el `sub` proporcionado por el administrador Keycloak de OGTI y la aprobación de despliegue de la
+  Jefatura de Modernización. La semilla manual reutiliza `MIDAGRI`, crea `ADMINISTRADOR_PIIP`, su combinación y
+  la asignación con auditoría mínima, y toda reejecución o existencia histórica aborta sin cambios.
 - **SC-035**: El 100 % de las suplencias tiene fecha de inicio y fin, solo autoriza dentro de ese
   periodo y utiliza las credenciales propias del suplente.
 - **SC-036**: El 100 % de las suplencias es autorizado por la misma autoridad que la asignación
@@ -2105,7 +2252,7 @@ o incluirse en una exposición autorizada.
   rechaza y audita.
 - **SC-069**: El 100 % de las consultas públicas documentales se limita a tipo, título sin datos
   personales, versión, formato y fecha de publicación.
-- **SC-070**: El 100 % de las consultas de contenido documental `LIMPIO` exige ámbito y clasificación
+- **SC-070**: El 100 % de las consultas de contenido documental exige ámbito y clasificación
   autorizados; ninguna consulta pública expone contenido en la Fase 1.
 - **SC-071**: El 100 % de los controles de datos personales reconoce nombres, documento de identidad,
   correo, teléfono, dirección, firma e identificadores equivalentes.
@@ -2135,8 +2282,8 @@ o incluirse en una exposición autorizada.
   ámbito, persona, operación y resultado sin registrar credenciales.
 - **SC-084**: El 100 % de las iniciativas admitidas tiene campos obligatorios completos y valores de
   catálogos vigentes.
-- **SC-085**: El 100 % de las iniciativas admitidas cuenta con Ficha de Iniciativa adjunta, `LIMPIO` y
-  con clasificación validada.
+- **SC-085**: El 100 % de las iniciativas admitidas cuenta con Ficha de Iniciativa adjunta, integridad
+  SHA-256 y clasificación validada.
 - **SC-086**: El 100 % de las iniciativas admitidas tiene Responsable con asignación vigente dentro
   de la unidad efectiva.
 - **SC-087**: El 100 % de las iniciativas admitidas tiene exactamente un Responsable titular y una
@@ -2237,6 +2384,16 @@ o incluirse en una exposición autorizada.
   mediano; cuando no existe comparación válida, la meta queda fijada desde la medición inicial.
 - **SC-135**: El 100 % de los errores críticos y hallazgos críticos o altos de accesibilidad bloquea la
   liberación; toda excepción sobre las demás métricas contiene justificación y aprobación documentadas.
+- **SC-136**: El 100 % de las asignaciones nuevas referencia una sola combinación vigente de la matriz
+  función-perfil-unidad y una unidad explícita; todo cambio de la matriz conserva versión, autoridad
+  aprobadora, administrador registrador e historial, y rechaza combinaciones inactivas o no aprobadas.
+- **SC-137**: El 100 % de las altas, cambios e inactivaciones de Objetivo PEI y Actividad POI cuenta
+  con aprobación formal de la oficina responsable de planeamiento y registro por `GlobalAdmin`; las
+  nuevas selecciones rechazan referencias inactivas, los históricos las conservan sin alteración y
+  ninguna versión PEI modifica una versión POI ni viceversa.
+- **SC-138**: El 100 % de las series documentales tiene exactamente un propietario inmutable,
+  portafolio o expediente institucional; todo propietario ausente o simultáneo se rechaza y ningún
+  documento de expediente institucional aparece en la consulta pública del portafolio.
 
 ## Assumptions and Clarifications
 
@@ -2261,6 +2418,11 @@ o incluirse en una exposición autorizada.
 - Cada operación usa una sola asignación efectiva y no combina permisos entre perfiles o unidades.
 - La revocación de una asignación funcional surte efecto inmediatamente después de confirmarse.
 - Cada asignación funcional tiene fecha de inicio obligatoria y fecha de fin opcional.
+- La matriz cargo o función-perfil-unidad es un catálogo configurable y versionado con relaciones
+  múltiples. Cada combinación relaciona exactamente una función, un perfil y una unidad concreta, y
+  cada asignación selecciona una sola combinación vigente y deriva de ella esos valores; cada
+  cambio de combinación es aprobado por la autoridad que autoriza el perfil y registrado por el
+  administrador habilitado para ese perfil, conservando las versiones inactivas en históricos.
 - `GlobalAdmin` confirma revocaciones institucionales y `UnidadAdmin` únicamente dentro de su
   ámbito autorizado.
 - Los participantes sectoriales mantienen registros con `Responsable` y solo en unidades de su
@@ -2277,10 +2439,14 @@ o incluirse en una exposición autorizada.
   futuros sin eliminar auditorías anteriores.
 - El Responsable propone la clasificación inicial de cada documento y sus metadatos, y el Evaluador
   la valida.
+- El Evaluador confirma la publicación documental únicamente para una versión con clasificación
+  `PUBLICO` validada; `fechaPublicacion` corresponde a la fecha del servidor al
+  confirmar. Una reclasificación a `PUBLICO` conserva el requisito de decisión formal de la
+  Autoridad.
 - Un documento con clasificación pendiente o no validada solo es visible para el Responsable
   cargador y el Evaluador y no sirve como evidencia formal.
-- El contenido documental `LIMPIO` solo es visible institucionalmente según ámbito y clasificación y
-  nunca se expone públicamente en la Fase 1.
+- El contenido documental solo es visible institucionalmente según ámbito y clasificación y nunca se
+  expone públicamente en la Fase 1.
 - Son datos personales detectables nombres, documento de identidad, correo, teléfono, dirección,
   firma e identificadores equivalentes.
 - `NO_ADMISIBLE` y `NO_APLICABLE` requieren observación; un documento adicional es opcional.
@@ -2290,9 +2456,9 @@ o incluirse en una exposición autorizada.
   de origen, fecha de inicio y estado permanecen inmutables.
 - `NO_ADMISIBLE` identifica incumplimientos de requisitos formales y `NO_APLICABLE` identifica casos
   que no corresponden al proceso de innovación pública.
-- La admisibilidad exige campos y catálogos válidos, ficha adjunta `LIMPIO` con clasificación
-  validada, Responsable vigente dentro de su unidad, exactamente un titular y una unidad principal,
-  y ausencia de duplicados sin resolver.
+- La admisibilidad exige campos y catálogos válidos, ficha adjunta con integridad SHA-256 y
+  clasificación validada, Responsable vigente dentro de su unidad, exactamente un titular y una
+  unidad principal, y ausencia de duplicados sin resolver.
 - La aplicabilidad exige competencia MIDAGRI o sectorial, beneficiarios y resultado público
   esperado, y una solución nueva o sustancialmente mejorada que requiera validación.
 - Son `NO_APLICABLE` los casos que consisten únicamente en compra, mantenimiento, digitalización sin
@@ -2327,8 +2493,9 @@ o incluirse en una exposición autorizada.
 - Únicamente `GlobalAdmin` puede asignar, modificar o revocar el perfil `UnidadAdmin`.
 - Toda nueva asignación `GlobalAdmin` requiere decisión formal de la Autoridad y registro por un
   `GlobalAdmin` con el documento correspondiente.
-- El primer `GlobalAdmin`, cuando todavía no existe otro, requiere designación formal de la Autoridad
-  y aprovisionamiento inicial controlado y auditado.
+- El primer `GlobalAdmin`, cuando nunca existió una asignación de ese perfil, se crea mediante semilla
+  SQL manual con `sub` proporcionado por OGTI, aprobación de despliegue de la Jefatura de
+  Modernización, valores iniciales canónicos y auditoría mínima.
 - Una suplencia es una asignación temporal distinta con fecha de inicio y fin obligatorias y no
   transfiere ni comparte credenciales del titular.
 - La suplencia es autorizada por la misma autoridad que autoriza la asignación permanente del perfil.
@@ -2369,6 +2536,13 @@ o incluirse en una exposición autorizada.
   espacios.
 - `Objetivo PEI` y `Actividad POI` proceden de catálogos controlados vigentes; las referencias
   retiradas se conservan históricamente y se excluyen de nuevas selecciones.
+- La oficina responsable de planeamiento aprueba los códigos, descripciones y vigencias de Objetivo
+  PEI y Actividad POI; `GlobalAdmin` registra cada versión. La carga inicial utiliza una semilla
+  formalmente aprobada, PEI y POI se versionan de forma independiente y no existe sincronización
+  externa en la Fase 1.
+- Los documentos formales sin iniciativa o proyecto pertenecen a un expediente institucional. Cada
+  serie documental conserva exactamente un propietario inmutable, portafolio o expediente, y los
+  expedientes institucionales no se exponen en la consulta pública.
 - El Evaluador registra y versiona la opinión técnica; la Autoridad o el Evaluador con decisión
   formal registra los documentos inmutables de decisión de iniciativa y aprobación de producto.
 - La documentación de gestión del proyecto es opcional y no sustituye ciclos ni evidencias

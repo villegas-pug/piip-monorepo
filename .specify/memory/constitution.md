@@ -1,25 +1,25 @@
 <!--
 Informe de impacto de sincronización
-- Cambio de versión: 3.1.0 -> 3.2.0.
-- Fuente del cambio: requerimiento funcional para adecuar PIIP a la Norma Técnica
-  N.º 003-2025-PCM-SGP, autorizado el 2026-07-21.
-- Principios modificados: ninguno.
-- Secciones modificadas: Identidad y autorización; Persistencia y documentos; Catálogos e
-  invariantes canónicos del portafolio; Alcance de integraciones; Flujo de entrega, calidad y
-  especificaciones.
-- Secciones agregadas: campos oficiales del portafolio; reportes institucionales y prototipos.
-- Secciones eliminadas: ninguna.
-- Plantillas que requieren actualización: actualizadas `.specify/templates/spec-template.md`,
-  `.specify/templates/plan-template.md` y `.specify/templates/tasks-template.md`.
+- Cambio de versión: 3.2.0 -> 4.0.0.
+- Fuente del cambio: aclaración aprobada de responsabilidades entre PIIP y OGTI para seguridad de
+  binarios y aprovisionamiento fundacional del primer `GlobalAdmin`, autorizada el 2026-07-21.
+- Principios modificados: III. Seguridad, privacidad y auditabilidad desde el diseño; IV. Fuente
+  autoritativa única para reglas de negocio.
+- Secciones modificadas: Identidad y autorización; Persistencia y documentos; Alcance de
+  integraciones; Flujo de entrega, calidad y especificaciones; Gobierno.
+- Secciones agregadas: inicialización funcional mediante semilla controlada.
+- Secciones eliminadas: estados y gate antimalware funcionales de PIIP.
+- Plantillas que requieren actualización: ninguna; las plantillas no fijan estados antimalware ni un
+  mecanismo de bootstrap.
 - Comandos que requieren actualización: ninguno.
-- Artefactos con actualización posterior requerida: especificaciones del portafolio, nuevos
-  scripts Oracle, catálogos de estados y documentos, máquina de transiciones, contratos, UI y
-  pruebas. El catálogo de esquema solo se actualizará tras la ejecución humana confirmada; esta
-  enmienda NO altera el baseline vigente ni modifica recursos de base de datos.
-- Elementos diferidos: las especificaciones funcionales DEBEN aprobar la matriz de obligatoriedad
-  de campos, la matriz cargo o función-perfil-unidad, la clasificación de privacidad, la máquina
-  completa de estados, las reglas de proyectos directos, el contenido del reporte semestral y los
-  criterios de aprobación de prototipos antes de planificar esas capacidades.
+- Artefactos con actualización posterior requerida: especificación, plan, tareas, investigación,
+  modelo de datos, contratos y quickstart de gestión del portafolio. Los scripts Oracle solo se
+  depositarán tras diseño y revisión; esta enmienda NO ejecuta SQL ni modifica el baseline vigente.
+- Impacto en código, datos y pruebas: PIIP almacenará binarios en Oracle con hash, versión y
+  clasificación sin modelar resultados antimalware; OGTI administrará los controles técnicos. La
+  primera asignación `GlobalAdmin` será una semilla SQL manual, fail-fast y auditada.
+- Elementos diferidos: proveedor y controles antimalware de OGTI permanecen fuera del alcance
+  funcional de PIIP; no se infieren ni se integran en la aplicación.
 -->
 
 # Constitución de PIIP MIDAGRI
@@ -55,6 +55,10 @@ autoridad efectiva. Los accesos sensibles, accesos denegados, cambios de negocio
 operaciones documentales, asignaciones de roles y cambios de catálogos controlados DEBEN generar
 evidencia de auditoría inmutable que identifique al actor, momento, alcance y datos modificados.
 La consulta pública DEBE exponer únicamente información clasificada expresamente como pública.
+La seguridad técnica antimalware de los binarios almacenados por PIIP es responsabilidad exclusiva
+de OGTI y NO forma parte de las reglas funcionales, estados, contratos ni auditorías de PIIP. Esta
+separación no reduce las obligaciones de PIIP sobre autenticación, autorización, privacidad,
+integridad SHA-256, clasificación, versionado, inmutabilidad y auditoría de operaciones documentales.
 
 ### IV. Fuente autoritativa única para reglas de negocio
 
@@ -65,6 +69,9 @@ poseer reglas de negocio. Cada regla tiene exactamente una implementación autor
 duplicarse entre Java y PL/SQL. Los servicios poseen la orquestación del caso de uso y los límites
 transaccionales; los procedimientos almacenados que implementan comportamiento funcional son
 código de aplicación y requieren versionado, auditoría y pruebas automatizadas.
+La única excepción de inicialización es la semilla SQL manual del primer `GlobalAdmin`, definida en
+esta Constitución; no constituye una segunda implementación del flujo administrativo ordinario y
+DEBE quedar inutilizable después de su ejecución exitosa.
 
 ## Restricciones técnicas y arquitectónicas
 
@@ -139,6 +146,23 @@ auditado. No se crea un perfil local en el primer inicio de sesión. La activaci
 usar acciones de correo de Keycloak; la desactivación DEBE bloquear el acceso en Keycloak y PIIP,
 conservando los registros y asignaciones locales para auditoría.
 
+El flujo anterior rige la administración ordinaria. La semilla fundacional descrita a continuación
+usa exclusivamente un `sub` existente proporcionado por el administrador Keycloak de OGTI y NO crea,
+activa ni modifica identidades en Keycloak.
+
+La primera asignación `GlobalAdmin` DEBE crearse exclusivamente mediante una semilla SQL manual,
+revisable, de ejecución única y fail-fast, ejecutada por un DBA autorizado de OGTI. El administrador
+de Keycloak de OGTI proporciona el `sub` beneficiario, que se considera la identidad activa aprobada
+para esta inicialización. La semilla DEBE abortar sin cambios si existe cualquier asignación histórica
+`GlobalAdmin` o si ya fue ejecutada. La Jefatura de la Oficina de Modernización autoriza la asignación
+mediante una aprobación de despliegue identificable. Los valores iniciales son
+`codigoUnidad=MIDAGRI`, `nombreUnidad=Ministerio de Desarrollo Agrario y Riego`,
+`codigoFuncion=ADMINISTRADOR_PIIP` y `nombreFuncion=Administrador PIIP`; la unidad raíz existente
+DEBE prevalidarse y reutilizarse, nunca duplicarse. La auditoría DEBE conservar
+como mínimo `sub`, perfil, función, unidad, Jefatura autorizante, aprobación de despliegue, DBA
+ejecutor, fecha, operación y resultado. Después se usa exclusivamente el flujo administrativo
+ordinario de PIIP; NO DEBE existir un comando, endpoint o segundo bootstrap alternativo.
+
 ### Persistencia y documentos
 
 El agregado central es `PROYECTO`; representa tanto iniciativas como proyectos mediante registros
@@ -159,11 +183,12 @@ nuevos eventos o versiones.
 
 Cada documento o evidencia está limitado a 100 MB y acepta inicialmente PDF, Office Open XML,
 JPEG y PNG. Los documentos y evidencias DEBEN conservar metadatos, versión, autor, fecha,
-clasificación, hash SHA-256 y estado de análisis
-antimalware `PENDIENTE`, `LIMPIO` o `INFECTADO`. Los archivos pendientes o infectados NO DEBEN
-publicarse ni utilizarse como evidencia formal. El módulo `documentos` DEBE exponer
-`DocumentStorage` en `service/` e implementarlo en `service/impl/`, sin filtrar un proveedor de
-almacenamiento hacia los DTO, entidades o controladores.
+clasificación y hash SHA-256. Los binarios DEBEN almacenarse en Oracle PIIP; OGTI administra fuera de
+la aplicación su análisis, detección, bloqueo, cuarentena y respuesta ante malware. PIIP NO DEBE
+modelar estados, resultados, informes, integraciones ni gates antimalware, ni condicionar el uso
+formal de un documento a datos antimalware. El módulo `documentos` DEBE exponer `DocumentStorage` en
+`service/` e implementarlo en `service/impl/`, sin filtrar la persistencia Oracle hacia los DTO,
+entidades o controladores.
 
 La clasificación DEBE aplicarse a campos y documentos mediante una matriz aprobada. La ausencia de
 clasificación nunca equivale a autorización pública. Durante la Fase 1, la consulta pública DEBE
@@ -309,6 +334,8 @@ errores, evidencias y auditoría. La sincronización con PIDE, servicios de otra
 motores de integración externa está fuera de alcance. Los contratos de API y puertos futuros
 pueden ser claros, pero NO DEBEN construirse conectores, adaptadores simulados ni procesos de
 sincronización sin una especificación aprobada para la Fase 2.
+Los controles antimalware administrados por OGTI son controles de plataforma sobre Oracle y NO una
+integración funcional de PIIP; la aplicación no consume ni expone contratos para ellos.
 
 ### Reportes institucionales y prototipos
 
@@ -380,9 +407,10 @@ planificación y antes de completar la implementación.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 4.0.0 | 2026-07-21 | Traslada a OGTI la responsabilidad exclusiva sobre seguridad antimalware de binarios, elimina sus estados y gates funcionales de PIIP y establece la semilla SQL auditada del primer `GlobalAdmin`. |
 | 3.2.0 | 2026-07-21 | Alinea el ciclo de vida, registros vinculados, roles de decisión y registro, documentos de hasta 100 MB, campos oficiales, cierre, alcance sectorial, reportes y prototipos con la gestión institucional del portafolio. |
 | 3.1.0 | 2026-07-18 | Fija las versiones de referencia del template backend PIIP y sus dependencias de seguridad y OpenAPI. |
 | 3.0.0 | 2026-07-18 | Sustituye la plantilla sin completar de Spec Kit por la constitución de monolito modular PIIP, catálogos canónicos, modelo de seguridad, puertas de calidad y gobierno. |
 | 2.0.0 | 2026-07-18 | Registro histórico del proyecto: sustituyó una plantilla ajena por la constitución PIIP. |
 
-**Versión**: 3.2.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-21
+**Versión**: 4.0.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-21

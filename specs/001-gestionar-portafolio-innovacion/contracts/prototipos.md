@@ -8,12 +8,20 @@ Esta subcapacidad registra evidencia del gate; no implementa por sí misma las i
 
 | Operación | Entrada/salida |
 |---|---|
-| `POST /` | Recorrido, código, fecha, cambios y artefacto documental; crea versión `BORRADOR`. |
+| `POST /` | Recorrido canónico, código, fecha, cambios, `expedienteInstitucionalId` y `artefactoDocumentoVersionId`; crea versión `BORRADOR`. |
 | `POST /{id}/versiones` | Cambio funcional/accesibilidad y versión anterior; crea nueva versión. |
 | `GET /` | Filtros por recorrido, estado, versión y paginación. |
 | `GET /{id}` | Detalle, validaciones, hallazgos, medición y meta autorizados. |
 
 Estados únicos: `BORRADOR`, `EN_VALIDACION`, `OBSERVADO`, `VALIDADO`, `APROBADO`, `RECHAZADO`.
+Recorridos únicos: `REGISTRO`, `EVALUACION`, `DECISION`, `SEGUIMIENTO`, `APROBACION_PRODUCTO`,
+`CIERRE`, `CONSULTA_INSTITUCIONAL`, `CONSULTA_PUBLICA`.
+
+`REGISTRO` cubre iniciativa y creación de proyectos derivados/directos; `SEGUIMIENTO` cubre
+suspensión y `DECISION` cubre cancelación. Seguridad, reportes y administración de esta subcapacidad
+no agregan recorridos.
+El artefacto debe pertenecer al expediente institucional del prototipo y referenciar una versión
+documental exacta; cualquier discordancia se rechaza.
 
 ## Validaciones y hallazgos
 
@@ -36,6 +44,9 @@ Evaluador coordinador y otro Evaluador aprobador.
 
 Muestra objetivo: cinco por perfil; una menor exige justificación y nunca omite un perfil. No se
 aceptan datos personales reales.
+
+La entrada incluye `datasetSinteticoVersionId`, que debe identificar un dataset formalmente aprobado.
+Mientras ese insumo no exista, la medición no puede confirmarse.
 
 ## Matriz de metas
 
@@ -61,3 +72,11 @@ Errores: `PROTOTYPE_VALIDATION_INCOMPLETE`, `PROTOTYPE_SEGREGATION_VIOLATION`,
 `MEASUREMENT_REQUIRED`, `TARGET_MATRIX_REQUIRED`, `CRITICAL_FINDING_OPEN`.
 
 Toda versión, validación, medición, meta, aprobación, rechazo y denegación es inmutable y auditada.
+
+## Preparación para liberación
+
+`POST /{id}/preparaciones-liberacion`
+
+Exige una medición aprobada correspondiente a la versión funcional y de accesibilidad candidata. Un
+cambio posterior invalida la preparación y obliga a registrar otra medición. Responde
+`RELEASE_MEASUREMENT_REQUIRED` cuando la medición falta, no está aprobada o pertenece a otra versión.

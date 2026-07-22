@@ -28,11 +28,34 @@ mostrarse como contexto, pero no implica autorización descendiente.
 
 Mismo contrato de filtros y salida que Objetivos PEI.
 
+## Versionar Objetivos PEI
+
+`POST /objetivos-pei/versiones`
+
+Entrada `ObjetivoPeiVersionRequest { codigoVersion, documentoAprobacionVersionId, vigenteDesde,
+vigenteHasta?, objetivos[{ codigo, descripcion, vigenteDesde, vigenteHasta? }] }`.
+
+Solo `GlobalAdmin`; `Idempotency-Key` obligatorio. El documento pertenece a un expediente
+institucional y acredita la aprobación de planeamiento. No existen `PATCH` o `DELETE`: una corrección
+o retiro crea otra versión. `GET /objetivos-pei/versiones` y
+`GET /objetivos-pei/versiones/{id}` exponen historial autorizado.
+
+## Versionar Actividades POI
+
+`POST /actividades-poi/versiones`
+
+Entrada `ActividadPoiVersionRequest { codigoVersion, documentoAprobacionVersionId, vigenteDesde,
+vigenteHasta?, actividades[{ codigo, descripcion, vigenteDesde, vigenteHasta? }] }`. Aplica las
+mismas reglas, pero su ciclo es independiente: una versión POI no altera PEI y viceversa.
+
+Errores: `PEI_APPROVAL_REQUIRED`, `POI_APPROVAL_REQUIRED`, `PEI_APPROVAL_MISMATCH`,
+`POI_APPROVAL_MISMATCH`, `PEI_VERSION_DUPLICATE`, `POI_VERSION_DUPLICATE`.
+
 ## Reglas y errores
 
 - Nuevas selecciones solo admiten referencias vigentes; históricos siguen devolviendo su etiqueta
   aunque estén retirados.
 - `422 PLANNING_REFERENCE_NOT_ACTIVE` cuando una confirmación usa una referencia retirada.
-- Los valores iniciales y operaciones de mantenimiento no se contratan todavía: dependen de una
-  decisión funcional aprobada. No se expone CRUD de catálogos por inferencia.
+- Las semillas iniciales deben coincidir con versiones formalmente aprobadas; no se infieren valores
+  ni se realiza sincronización externa.
 - Toda consulta sensible por unidad se audita con asignación y ámbito efectivos.

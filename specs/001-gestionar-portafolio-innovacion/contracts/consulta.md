@@ -26,7 +26,7 @@ el actor es Responsable del registro, Evaluador o administrador autorizado.
 ### Contenido documental
 
 Se consulta exclusivamente por `GET /api/v1/documentos/{id}/contenido`, que revalida ámbito,
-clasificación y estado `LIMPIO`. La respuesta de detalle no contiene `storageKey` o URL directa.
+clasificación validada. La respuesta de detalle no contiene BLOB, clave física o URL directa.
 
 ## Consulta pública
 
@@ -41,17 +41,16 @@ Anónimo. Filtros allowlist: `tipo`, `codigo`, `nombre`, `estado`, `page`, `size
 
 `GET /publica/portafolio/{codigo}`
 
-Devuelve los mismos cuatro campos. No devuelve Responsable, unidad, descripción, resultados,
-participantes, historial interno o documentos.
-
-Cuando se apruebe el actor/evento de publicación, podrá añadirse
-`documentos: PublicDocumentMetadata[] { tipo, titulo, version, formato, fechaPublicacion }` solo para
-versiones publicadas cuyo título no contenga datos personales. Hasta entonces `documentos` se omite o
-permanece vacío. Esta ampliación requiere actualizar formalmente el contrato.
+Devuelve los mismos cuatro campos y
+`documentos: PublicDocumentMetadata[] { tipo, titulo, version, formato, fechaPublicacion }`. La
+colección solo incluye versiones con publicación confirmada, clasificación `PUBLICO` validada y título
+sin datos personales. Puede estar vacía. No devuelve Responsable, unidad,
+descripción, resultados, participantes, historial interno o expedientes institucionales.
 
 ## Prohibiciones y auditoría
 
 - No existe `/publica/documentos/{id}/contenido`, descarga, URL firmada ni redirección a storage.
+- Los expedientes institucionales y sus documentos nunca forman parte de una proyección pública.
 - Una reclasificación más restrictiva afecta la siguiente petición o descarga institucional.
 - Recurso fuera de ámbito se responde como no visible sin confirmar su existencia.
 - Consultas/exportaciones institucionales sensibles se auditan. La consulta pública registra solo

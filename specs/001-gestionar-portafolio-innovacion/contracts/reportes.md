@@ -56,4 +56,6 @@ contrato registra la remisión; no implementa correo, PIDE ni sincronización ex
 - No se remite una versión distinta de la aprobada: `409 REPORT_VERSION_NOT_APPROVED`.
 - `403 REPORT_SCOPE_DENIED` y `REPORT_CLASSIFICATION_DENIED` protegen ámbito y clasificación.
 - Sin plazo de retención confirmado no existe endpoint de eliminación ni purga automática.
+- La Fase 1 tampoco expone disposición manual; cualquier eliminación futura requiere otra
+  especificación aprobada y la tabla de retención vigente.
 - Generación, descarga institucional, aprobación, remisión, fallo y denegación se auditan.

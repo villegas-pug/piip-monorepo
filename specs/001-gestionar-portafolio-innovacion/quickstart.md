@@ -6,15 +6,15 @@ artefacto.
 
 ## Gates previos
 
-No iniciar BUILD de la capacidad afectada hasta resolver:
+No iniciar BUILD o corte de la capacidad afectada sin:
 
-1. valores y autoridad de mantenimiento de Objetivo PEI y Actividad POI;
-2. matriz cargo o función-perfil-unidad;
-3. actor/evento de publicación documental y `fechaPublicacion`;
-4. prototipo, medición inicial y matriz de metas aprobados para cada interfaz.
+1. primera versión PEI y primera versión POI con semillas y aprobaciones formales independientes;
+2. matriz inicial con combinaciones función-perfil-unidad concreta aprobadas;
+3. documentos aprobatorios en expedientes institucionales;
+4. prototipo, medición inicial y matriz de metas aprobados para cada uno de los ocho recorridos.
 
 Antes de usar Oracle, una persona debe revisar y ejecutar manualmente los scripts incrementales en el
-orden 002-018 del [plan](./plan.md). `database/database-schema.md` solo se actualiza después de una
+orden 002-024 del [plan](./plan.md). `database/database-schema.md` solo se actualiza después de una
 confirmación humana de éxito.
 
 ## Prerrequisitos locales
@@ -74,8 +74,7 @@ Usar solo datos sintéticos:
 - archivos PDF/OOXML/JPEG/PNG de menos de 100 MB, exactamente 104857600 bytes y 104857601 bytes;
 - decisiones y evidencias sintéticas sin firmas, correos o documentos personales reales.
 
-El test double antimalware controla resultados `PENDIENTE`, `LIMPIO` e `INFECTADO`; no marca
-automáticamente un archivo real como limpio.
+No se configura test double ni estado antimalware: OGTI administra ese control fuera de PIIP.
 
 ## Escenarios verificables
 
@@ -124,38 +123,71 @@ concurrentes; deben rechazarse sin sobrescribir historial.
 
 | Tamaño | Esperado |
 |---:|---|
-| 104857599 bytes | Aceptado si MIME válido; inicia `PENDIENTE`. |
+| 104857599 bytes | Aceptado si MIME válido; conserva BLOB y SHA-256. |
 | 104857600 bytes | Aceptado; el límite es inclusivo. |
 | 104857601 bytes | `413 DOCUMENT_TOO_LARGE`; sin metadato formalizado. |
 
-Probar además MIME no permitido, hash calculado, `INFECTADO`, clasificación pendiente, validación,
-reclasificación restrictiva y nueva versión. Solo `LIMPIO` y validado sirve como evidencia.
+Probar además MIME no permitido, hash calculado, clasificación pendiente, validación, reclasificación
+restrictiva y nueva versión. Solo una clasificación validada permite usarlo como evidencia.
 
 ### 7. Consulta pública
 
 1. Consultar anónimamente un registro con información interna/restringida.
 2. Comprobar que solo se reciben tipo, código, nombre y estado.
-3. Comprobar que no existe URL, endpoint o acción de descarga pública.
-4. Mientras el gate de publicación esté abierto, comprobar ausencia de metadatos documentales.
-5. Verificar que la consulta institucional sí revalida ámbito y clasificación.
+3. Como Evaluador, confirmar una versión `PUBLICO` y validada; comprobar fecha del servidor.
+4. Verificar que se muestran solo tipo, título público, versión, formato y fecha de publicación.
+5. Comprobar exclusión de versiones no públicas, no confirmadas o con título personal.
+6. Comprobar que no existe URL, endpoint o acción de descarga pública.
+7. Reclasificar de forma restrictiva y verificar que desaparece de consultas futuras sin perder la
+   publicación ni su auditoría.
+8. Verificar que la consulta institucional sí revalida ámbito y clasificación.
 
 ### 8. Usuarios, suplencia y recuperación
 
 1. Aprovisionar identidad y usuario con la misma clave dos veces; debe existir uno.
-2. Simular Keycloak exitoso y Oracle fallido; comprobar compensación o estado recuperable auditado.
+2. Simular Keycloak exitoso y Oracle fallido; comprobar identidad deshabilitada y operación
+   recuperable auditada sin duplicados.
 3. Desactivar en ambos sistemas y comprobar bloqueo inmediato.
 4. Reactivar y comprobar que asignaciones vencidas/revocadas no vuelven.
 5. Crear una suplencia y rechazar otra superpuesta; durante su vigencia el titular equivalente no
    opera.
 6. Intentar revocar el último GlobalAdmin sin reemplazo; comprobar `409 LAST_GLOBAL_ADMIN`.
+7. Verificar por prueba SQL que 021 crea una sola vez `MIDAGRI`, `ADMINISTRADOR_PIIP`, combinación,
+   usuario por `sub`, asignación y auditoría, y aborta ante reejecución o antecedente `GlobalAdmin`.
 
-### 9. Incorporación individual
+### 9. Matriz función-perfil-unidad
+
+1. Registrar una versión con funciones y combinaciones de unidad concreta respaldadas por aprobación.
+2. Rechazar autoridad o administrador registrador incorrectos.
+3. Crear una asignación enviando únicamente `matrizCombinacionId` y fechas.
+4. Comprobar que función, perfil y unidad derivan de la combinación y que una combinación de unidad A
+   no autoriza en unidad B.
+5. Inactivar mediante una nueva versión; rechazar nuevas asignaciones y conservar históricos.
+
+### 10. Catálogos PEI y POI
+
+1. Registrar por `GlobalAdmin` una versión PEI con aprobación formal de planeamiento.
+2. Registrar de forma independiente una versión POI y comprobar que no altera la versión PEI.
+3. Publicar otra versión PEI y comprobar que no cambia POI.
+4. Retirar referencias mediante nuevas versiones; excluirlas de selectores y conservarlas en
+   detalles históricos.
+5. Rechazar ítems que no coinciden con el documento y semilla aprobados.
+
+### 11. Expedientes institucionales
+
+1. Crear un expediente para la aprobación de una versión PEI o matriz.
+2. Cargar una serie con ese expediente como único propietario.
+3. Rechazar un tipo documental de portafolio usado en expediente y viceversa.
+4. Rechazar propietario ausente, simultáneo o cambio posterior de propietario.
+5. Verificar que el documento valida el caso de uso y nunca aparece en consulta pública.
+
+### 12. Incorporación individual
 
 Registrar un expediente `PENDIENTE`, corregirlo varias veces, bloquear duplicado/código/relación,
 resolver como Evaluador y validar o rechazar. Un duplicado confirmado debe vincular evidencia al
 registro existente y no crear otro.
 
-### 10. Reportes
+### 13. Reportes
 
 1. Generar semestre 1 y 2 con cortes 30/06 y 31/12.
 2. Verificar BR-122, incluido denominador cero.
@@ -164,7 +196,7 @@ registro existente y no crear otro.
 5. Aprobar versión/destinatarios y registrar remisión manual.
 6. Comprobar clasificación `RESTRINGIDO` si el snapshot contiene ese nivel.
 
-### 11. Prototipos
+### 14. Prototipos
 
 Para cada uno de los ocho recorridos, registrar validadores, escritorio/móvil, accesibilidad,
 medición y metas. Intentar aprobar con autor igual a aprobador, único validador o hallazgo alto; debe
@@ -201,6 +233,7 @@ como evidencia de aprobación.
 - Constitution Check final sin bloqueos de la capacidad implementada.
 - Scripts ejecutados manualmente y catálogo confirmado.
 - Contratos OpenAPI concordantes con estos documentos.
+- Versiones iniciales PEI/POI, matriz y expedientes respaldados por aprobaciones formales.
 - Auditoría presente para éxito, denegación y fallo parcial.
 - Ocho gates de prototipo superados antes de sus interfaces.
 - Todas las pruebas autorizadas aprobadas, sin exposición o descarga documental pública.

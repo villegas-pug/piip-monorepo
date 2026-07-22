@@ -21,7 +21,7 @@ No acepta código, código de origen, fecha de inicio ni estado. Salida `201 Ini
 código generado, fecha de presentación, `PRESENTADO`, versión, ETag y enlaces de trazabilidad.
 
 Validaciones: campos 1, 5-13 y 22; nota opcional; límites y trim; exactamente un titular, PEI, POI y
-unidad principal; ficha `LIMPIO` con clasificación validada; `OTROS` y componente digital; ámbito.
+unidad principal; ficha con SHA-256 y clasificación validada; `OTROS` y componente digital; ámbito.
 
 ### Subsanación y evaluación
 
@@ -67,6 +67,15 @@ documento formal. Responsable no puede usar esta ruta.
 | `POST /proyectos/{id}/participantes/unidades` | Igual para unidad. |
 | `POST /proyectos/{id}/participaciones/{participacionId}/bajas` | Cierra vigencia; no elimina. |
 | `PATCH /proyectos/{id}` | En ejecución solo permite campos 17, 19 y 23; exige `If-Match`. |
+
+### Sustituir Responsable titular
+
+`POST /registros/{registroId}/sustituciones-responsable`
+
+Entrada `ResponsibleReplacementRequest { nuevoResponsableId, motivo }`; salida con titular anterior,
+nuevo y vigencia. `portafolio` bloquea el registro y revalida mediante el servicio de `seguridad` que
+el actor sea `UnidadAdmin` del ámbito antes de aplicar el cambio. La transacción conserva exactamente
+un titular vigente y auditoría atómica.
 
 ## Ciclos y producto
 

@@ -20,9 +20,9 @@
 | Módulo | Agregado raíz | Entidades internas principales |
 |---|---|---|
 | `organizacion` | `UnidadOrganizacional` | `ObjetivoPei`, `ActividadPoi` |
-| `seguridad` | `UsuarioPiip` | `AsignacionFuncional`, `EventoAsignacion`, `SuplenciaFuncional`, `OperacionAprovisionamiento` |
+| `seguridad` | `UsuarioPiip`, `MatrizFuncionalVersion` | `MatrizFuncion`, `MatrizFuncionPerfilUnidad`, `AsignacionFuncional`, `EventoAsignacion`, `SuplenciaFuncional`, `OperacionAprovisionamiento` |
 | `portafolio` | `RegistroPortafolio` (`PROYECTO`) | `RelacionIniciativaProyecto`, `UnidadResponsable`, `TitularidadResponsable`, `ParticipantePersona`, `ParticipacionPersona`, `ParticipacionUnidad`, `EvaluacionIniciativa`, `Subsanacion`, `Aplicabilidad`, `TransicionEstado`, `PlanificacionProyecto`, `CicloProyecto`, `ProductoParcial`, `PresentacionProductoFinal`, `CierreProyecto`, `IncorporacionRegistro`, `ClasificacionCampo`, `PrototipoPiip` |
-| `documentos` | `SerieDocumental` | `DocumentoVersion`, `HistorialClasificacionDocumento`, `PublicacionDocumento` |
+| `documentos` | `ExpedienteInstitucional`, `SerieDocumental` | `DocumentoVersion`, `HistorialClasificacionDocumento`, `PublicacionDocumento` |
 | `reportes` | `ReporteInstitucional` | `SnapshotReporte`, `ArchivoReporte`, `AprobacionReporte`, `DestinatarioReporte`, `RemisionReporte` |
 | `auditoria` | `EventoAuditoria` | `AuditoriaAcceso`, `SolicitudIdempotente` |
 | `consulta` | Sin persistencia propia | Proyecciones institucionales y públicas construidas desde servicios propietarios |
@@ -47,15 +47,16 @@ explícito. La jerarquía es informativa y no extiende autorización.
 
 ### ObjetivoPei y ActividadPoi
 
-| Atributo | Regla |
-|---|---|
-| `id` | PK sustituta. |
-| `codigo` | UK estable; valor pendiente de aprobación funcional. |
-| `descripcion` | Obligatoria. |
-| `vigenteDesde`, `vigenteHasta`, `activo` | Una referencia retirada se conserva en registros históricos y no aparece en nuevas selecciones. |
+`ObjetivoPeiVersion` y `ActividadPoiVersion` son cabeceras independientes. Cada una conserva código
+de versión UK, versión anterior, documento de aprobación en expediente institucional, oficina de
+planeamiento aprobadora, vigencias, `GlobalAdmin` registrador y fecha. Una versión confirmada es
+inmutable y no activa, modifica o retira versiones del otro catálogo.
 
-Cada registro de portafolio referencia exactamente un Objetivo PEI y una Actividad POI. Los valores
-iniciales y la autoridad de mantenimiento permanecen bloqueados; no se inventan semillas.
+Cada ítem `ObjetivoPei` o `ActividadPoi` pertenece a su cabecera, tiene código, descripción, vigencias
+y estado. La UK es versión/código. Cada registro de portafolio referencia exactamente un ítem de cada
+catálogo y conserva su versión de origen. Una referencia retirada permanece en históricos y no aparece
+en nuevas selecciones. Las semillas iniciales deben coincidir con aprobaciones formales independientes;
+no se inventan valores.
 
 ## Seguridad
 
@@ -67,8 +68,8 @@ Amplía conceptualmente `USUARIO` sin credenciales locales.
 |---|---|
 | `id` | PK. |
 | `keycloakId` | UK UUID, autoridad de identidad. |
-| `login`, `correoInstitucional` | UK; coincidencias bloquean duplicados. |
-| `nombreCompleto` | Dato institucional, no público. |
+| `login`, `correoInstitucional` | Datos informativos y UK cuando existen; pueden ser nulos para la identidad fundacional creada solo por `sub`. |
+| `nombreCompleto` | Dato institucional no público; puede ser nulo para la identidad fundacional. |
 | `activo` | Debe coincidir operativamente con el bloqueo local y Keycloak. |
 
 ### AsignacionFuncional
@@ -78,17 +79,27 @@ Evolución de `USUARIO_ROL_UNIDAD`.
 | Atributo | Regla |
 |---|---|
 | `id` | PK; una persona puede tener múltiples filas históricas para el mismo perfil/unidad. |
-| `usuarioId`, `rolId`, `unidadId` | FK obligatorias; exactamente una combinación efectiva por operación. |
-| `cargoFuncion` | Obligatorio según matriz aprobada; su catálogo/contenido está bloqueado. |
+| `usuarioId`, `combinacionMatrizId` | FK obligatorias; la combinación deriva función, perfil y unidad concreta. |
 | `fechaInicio`, `fechaFin` | Inicio obligatorio; fin opcional y no anterior al inicio. |
 | `revocadaEn`, `revocadaPor`, `motivoRevocacion` | La revocación confirmada invalida inmediatamente la asignación. |
 | `inactivaTemporalmente` | Solo por suplencia vigente equivalente. |
-| `documentoFormalId` | Obligatorio para perfiles que requieren designación o autorización formal. |
+| `documentoFormalVersionId` | Versión exacta obligatoria para perfiles que requieren designación o autorización formal. |
 | `version` | `@Version`; bloqueo pesimista en revocación, suplencia y último `GlobalAdmin`. |
 
 Una asignación es efectiva cuando el usuario y la asignación están activos, la fecha actual pertenece
 a su vigencia, no está revocada ni temporalmente inactiva, y la unidad coincide exactamente con el
 recurso. No se combinan dos asignaciones.
+
+### Matriz funcional
+
+- `MatrizFuncionalVersion`: código UK, versión anterior, vigencias, documento de aprobación en
+  expediente institucional, registrador y fecha; confirmada es inmutable.
+- `MatrizFuncion`: función incluida en una versión, código y descripción; UK versión/código.
+- `MatrizFuncionPerfilUnidad`: exactamente una función, un rol canónico y una unidad concreta,
+  aprobación formal, vigencia y actividad; UK versión/función/perfil/unidad.
+- Una modificación o inactivación crea una nueva versión. Las asignaciones históricas mantienen la
+  combinación original; las nuevas rechazan combinaciones futuras, vencidas o inactivas.
+- El cliente no envía perfil, función o unidad separados al crear la asignación.
 
 ### EventoAsignacion y SuplenciaFuncional
 
@@ -103,8 +114,8 @@ recurso. No se combinan dos asignaciones.
 ### OperacionAprovisionamiento
 
 Registra clave idempotente, hash de petición, usuario objetivo, `keycloakId`, estado técnico, intento,
-error recuperable y resultado Oracle. Permite compensar una identidad creada sin usuario local o
-reanudar sin duplicar. No almacena contraseña, token ni secreto.
+error recuperable y resultado Oracle. Si Oracle falla después de crear la identidad, esta permanece
+deshabilitada y la operación se reanuda sin duplicar. No almacena contraseña, token ni secreto.
 
 ## Portafolio
 
@@ -130,6 +141,12 @@ Cardinalidades:
 - Tiene cero o más participantes persona y unidad.
 - Tiene cero o más series documentales y transiciones.
 - Una iniciativa tiene cero o una relación derivada; un proyecto derivado tiene exactamente una.
+
+El prefijo procede de un valor formalmente aprobado para la unidad principal. Si no existe, el
+servicio rechaza la presentación o creación; no usa nombre, abreviatura o jerarquía como fallback.
+`ADMINISTRACION` permanece como columna legacy nullable, sin autoridad ni obligatoriedad para nuevos
+casos de uso. La separación de `DESCRIPCION` legacy en problema y solución requiere un mapeo aprobado;
+sin él, el backfill y el corte final se detienen.
 
 ### RelacionIniciativaProyecto
 
@@ -267,30 +284,51 @@ rechaza y audita.
 | Estado de negocio | Los once estados de la máquina definida arriba | `TransicionEstadoService`; CHECK Oracle solo restringe dominio. |
 | Roles | `GlobalAdmin`, `UnidadAdmin`, `Responsable`, `Evaluador`, `Autoridad`, `Consulta` | `seguridad`; semilla controlada. |
 | Clasificación | `PUBLICO`, `INTERNO`, `RESTRINGIDO` | Servicios propietarios y CHECK Oracle. |
-| Antimalware | `PENDIENTE`, `LIMPIO`, `INFECTADO` | `documentos`. |
 | Tipo documental | Los trece tipos y condiciones de la Constitución/especificación | `documentos`; datos controlados, no regla duplicada. |
 | Estado de incorporación | `PENDIENTE`, `VALIDADO`, `RECHAZADO` | `portafolio`, separado del estado de negocio. |
 | Estado de prototipo | `BORRADOR`, `EN_VALIDACION`, `OBSERVADO`, `VALIDADO`, `APROBADO`, `RECHAZADO` | `portafolio`. |
-| Objetivo PEI/Actividad POI | Valores pendientes de aprobación | `organizacion`; gate funcional. |
+| Objetivo PEI/Actividad POI | Versiones independientes con semillas aprobadas | `organizacion`; planeamiento aprueba y `GlobalAdmin` registra. |
 
 Los catálogos retirados se inactivan y se conservan para históricos. Cambiar un catálogo controlado
 genera auditoría. La obligatoriedad por transición o etapa no se lee de una semilla Oracle como
 segunda máquina de negocio.
 
+La semilla 021 prevalida y reutiliza una sola vez la unidad `MIDAGRI`, crea la función
+`ADMINISTRADOR_PIIP`, la combinación con `GlobalAdmin`, el usuario por `sub` y la primera asignación. Registra Jefatura autorizante,
+aprobación de despliegue, DBA, fecha, operación y resultado, y aborta ante cualquier antecedente.
+
 ## Documentos
+
+### TipoDocumento
+
+Evoluciona `TIPO_DOCUMENTO` con `contexto` igual a `PORTAFOLIO` o `INSTITUCIONAL`.
+`estadoAsociado` permanece obligatorio para tipos de portafolio y es nulo para tipos institucionales,
+mediante CHECK coherente con el contexto. Así no se asigna un estado de negocio ficticio a
+aprobaciones de PEI, POI, matriz o designaciones. Los valores institucionales son datos controlados
+formalmente aprobados; el DDL no inventa tipos documentales.
+
+### ExpedienteInstitucional
+
+Propietario de documentos formales sin iniciativa o proyecto. Conserva `id`, código UK e inmutable,
+asunto, módulo de origen, referencia del caso de uso, clasificación, creador, fecha y `@Version`. No
+se agregan estados o transiciones no aprobados y nunca participa en la consulta pública.
 
 ### SerieDocumental y DocumentoVersion
 
+`DOCUMENTO_SERIE` es la raíz lógica nueva y cada fila de la tabla baseline `DOCUMENTO` representa una
+versión. No se crea `DOCUMENTO_VERSION`. La migración conserva los identificadores existentes y
+asigna una serie solo cuando su propietario y cadena de versiones se validan sin ambigüedad.
+
 | Atributo | Regla |
 |---|---|
-| `serieId`, `tipoDocumentoId`, `registroId` | Una serie agrupa correcciones del mismo documento lógico. |
+| `serieId`, `tipoDocumentoId` | Una serie agrupa correcciones del mismo documento lógico. |
+| `registroId`, `expedienteInstitucionalId` | Exactamente uno es no nulo; CHECK XOR. La pertenencia es inmutable. |
 | `numeroVersion`, `versionAnteriorId` | UK serie/número; cadena inmutable. |
 | `titulo`, `nombreOriginal`, `mimeType`, `formato` | Título público solo si no contiene datos personales y existe publicación aprobada. |
 | `tamanoBytes` | `1..104857600` inclusive. |
 | `hashSha256` | 64 caracteres hexadecimales calculados por servidor. |
-| `storageKey` | Opaco y UK; nunca se expone en DTO público. |
+| `contenido` | BLOB Oracle; nunca se expone en DTO público ni consulta pública. |
 | `autorId`, `fechaCarga` | Obligatorios. |
-| `estadoAntimalware` | `PENDIENTE`, `LIMPIO`, `INFECTADO`. |
 | `clasificacionPropuesta`, `clasificacionValidada` | Solo `PUBLICO`, `INTERNO`, `RESTRINGIDO`; propuesta no autoriza uso. |
 | `formalizado` | Impide actualización o eliminación. |
 | `version` | Optimista mientras aún sea mutable. |
@@ -299,9 +337,11 @@ segunda máquina de negocio.
 Evaluador registrador, documento formal, motivo, fecha y resultado. Una clasificación más restrictiva
 se aplica en la siguiente autorización y no altera auditorías previas.
 
-`PublicacionDocumento` se diseña con versión, título público y fecha, pero no puede crearse ni
-exponerse hasta aprobar quién confirma la publicación y qué evento fija la fecha. No existe relación
-o endpoint público hacia contenido.
+`PublicacionDocumento` es append-only y tiene FK/UK a una versión, título público validado,
+Evaluador y asignación efectiva confirmadores y `fechaPublicacion` del servidor. Solo se crea para una
+versión con clasificación `PUBLICO` validada y título sin datos personales. La confirmación
+es idempotente. Una reclasificación restrictiva excluye la versión de futuras proyecciones públicas
+sin borrar la publicación o auditoría. No existe relación o endpoint público hacia contenido.
 
 ## Reportes
 
@@ -325,9 +365,16 @@ o endpoint público hacia contenido.
   integración automática.
 - Sin plazo de retención confirmado no existe eliminación automática ni selectiva.
 
+`SnapshotReporte` conserva un CLOB JSON canónico, versión de esquema, hash SHA-256, corte, parámetros
+y clasificación. El proceso serializa de forma determinista claves, números, fechas y colecciones
+antes de calcular el hash. PDF y XLSX referencian el mismo snapshot y nunca reconstruyen el corte
+desde datos operativos posteriores.
+
 ## Prototipos y medición
 
-- `PrototipoPiip`: recorrido, código, versión, versión anterior, fecha, cambios y uno de
+- `PrototipoPiip`: recorrido limitado a `REGISTRO`, `EVALUACION`, `DECISION`, `SEGUIMIENTO`,
+  `APROBACION_PRODUCTO`, `CIERRE`, `CONSULTA_INSTITUCIONAL` o `CONSULTA_PUBLICA`; además código,
+  versión, versión anterior, fecha, cambios y uno de
   `BORRADOR`, `EN_VALIDACION`, `OBSERVADO`, `VALIDADO`, `APROBADO`, `RECHAZADO`.
 - `PrototipoValidacion`: usuario, perfil, escenario, dispositivo, tecnología de asistencia,
   resultado, observaciones y aceptación.
@@ -338,6 +385,10 @@ o endpoint público hacia contenido.
 - `MatrizMetaRecorrido`: versión y umbrales de BR-149; debe aprobarse antes de implementar.
 - El aprobador no es autor ni único validador; el Evaluador que aprueba medición es distinto del
   coordinador.
+- Cada medición referencia una versión de dataset sintético formalmente aprobado. Sin esa referencia
+  no puede confirmarse ni habilitar una aprobación.
+- La preparación para liberación referencia la versión funcional y de accesibilidad candidata y una
+  medición aprobada de esa misma versión. Todo cambio invalida el gate anterior y exige otra medición.
 
 ## Auditoría e idempotencia
 
@@ -353,20 +404,35 @@ UK por consumidor/operación/clave; conserva hash de payload, recurso creado, re
 estado técnico y expiración operativa. La misma clave con payload distinto se rechaza. La política de
 retención técnica no puede eliminar evidencia de auditoría ni expedientes funcionales.
 
+La ventana inicial de reutilización es de siete días y se configura externamente. Una operación
+funcional aún recuperable no expira por el solo vencimiento de esa ventana.
+
 ## Objetos Oracle propuestos
 
 Los nombres se fijan para planificar scripts incrementales y pueden ajustarse solo mediante revisión
 del modelo físico, sin cambiar semántica o cardinalidades.
 
+Antes de escribir DDL, `database-specialist` completa por objeto columnas, tipos Oracle, longitudes,
+nulabilidad, defaults, secuencias, PK/FK/UK/CHECK e índices auxiliares. Una revisión humana DB aprueba
+ese diccionario. Los scripts son de ejecución única, prevalidan esquema y versión y fallan antes del
+primer DDL ante cualquier incompatibilidad.
+
+El diccionario físico revisable reside en `database/database-physical-design.md` y su evidencia en
+`database/physical-design-approval.md`. La versión precedente se valida mediante una huella explícita
+de objetos esperados en el catálogo `USER_*`, no mediante una tabla de versión ni leyendo el
+`CHANGELOG` desde Oracle. La huella incluye tablas, columnas, constraints y sus columnas, índices,
+columnas o expresiones indexadas y secuencias.
+
 | Módulo | Tablas nuevas |
 |---|---|
 | `auditoria` | `SOLICITUD_IDEMPOTENTE` |
-| `seguridad` | `USUARIO_ROL_UNIDAD_EVENTO`, `SUPLENCIA_FUNCIONAL`, `OPERACION_APROVISIONAMIENTO` |
-| `portafolio` - estructura | `CAT_OBJETIVO_PEI`, `CAT_ACTIVIDAD_POI`, `INICIATIVA_PROYECTO`, `PROYECTO_RESPONSABLE`, `PARTICIPANTE_PERSONA`, `PROYECTO_PARTICIPANTE_PERSONA`, `PROYECTO_PARTICIPANTE_UNIDAD` |
+| `organizacion` | `CAT_OBJETIVO_PEI_VERSION`, `CAT_OBJETIVO_PEI`, `CAT_ACTIVIDAD_POI_VERSION`, `CAT_ACTIVIDAD_POI` |
+| `seguridad` | `MATRIZ_FUNCIONAL_VERSION`, `MATRIZ_FUNCION`, `MATRIZ_FUNCION_PERFIL_UNIDAD`, `USUARIO_ROL_UNIDAD_EVENTO`, `SUPLENCIA_FUNCIONAL`, `OPERACION_APROVISIONAMIENTO` |
+| `portafolio` - estructura | `INICIATIVA_PROYECTO`, `PROYECTO_RESPONSABLE`, `PARTICIPANTE_PERSONA`, `PROYECTO_PARTICIPANTE_PERSONA`, `PROYECTO_PARTICIPANTE_UNIDAD` |
 | `portafolio` - evaluación y privacidad | `PROYECTO_CAMPO_CLASIFICACION`, `PROYECTO_CAMPO_CLASIF_HIST`, `EVALUACION_INICIATIVA`, `SUBSANACION_INICIATIVA`, `APLICABILIDAD_INICIATIVA`, `APLICABILIDAD_CRITERIO` |
 | `portafolio` - ejecución | `PLANIFICACION_PROYECTO`, `CICLO_PROYECTO`, `CICLO_EVIDENCIA`, `PRODUCTO_PARCIAL`, `PRESENTACION_PRODUCTO_FINAL`, `VALIDACION_RESULTADO`, `CIERRE_PROYECTO` |
 | `portafolio` - incorporación | `INCORPORACION_REGISTRO`, `INCORPORACION_CAMBIO`, `INCORPORACION_CONFLICTO` |
-| `documentos` | `DOCUMENTO_SERIE`, `DOCUMENTO_CLASIFICACION_HIST`, `DOCUMENTO_PUBLICACION` |
+| `documentos` | `EXPEDIENTE_INSTITUCIONAL`, `DOCUMENTO_SERIE`, `DOCUMENTO_CLASIFICACION_HIST`, `DOCUMENTO_PUBLICACION` |
 | `reportes` | `REPORTE_INSTITUCIONAL`, `REPORTE_SNAPSHOT`, `REPORTE_ARCHIVO`, `REPORTE_APROBACION`, `REPORTE_DESTINATARIO`, `REPORTE_REMISION` |
 | `portafolio` - prototipos | `PROTOTIPO_PIIP`, `PROTOTIPO_VALIDACION`, `PROTOTIPO_HALLAZGO`, `MEDICION_EXPERIENCIA`, `MEDICION_MUESTRA`, `MATRIZ_META_RECORRIDO` |
 
@@ -389,10 +455,13 @@ usan triggers para reglas funcionales ni procedimientos almacenados.
 - El baseline transiciona la iniciativa aprobada al proyecto, en lugar de crear otro registro.
 - No separa decisor y registrador ni exige correctamente documentos/evidencias.
 - `DOCUMENTO` limita a 25 MB, no 100 MB.
-- No existen relación derivada, unidad principal, titular histórico, participantes, catálogos PEI/POI,
-  evaluación, ciclos, incorporación, reportes o prototipos.
+- No existen relación derivada, unidad principal, titular histórico, participantes, versiones
+  independientes PEI/POI, matriz funcional, expediente institucional, evaluación, ciclos,
+  incorporación, reportes o prototipos.
 - PEI/POI y unidades orgánicas son texto legacy; deben preservarse hasta un backfill aprobado.
 - Asignaciones no soportan vigencia completa, revocación, suplencia ni historial repetido.
+- `TIPO_DOCUMENTO.ESTADO_ASOCIADO` es obligatorio y solo admite estados del portafolio; debe
+  distinguir contexto institucional antes de cargar documentos aprobatorios sin proyecto.
 - Auditoría de acceso carece de perfil/unidad efectivos.
 - La semilla de `UnidadAdmin` afirma alcance descendiente, contrario a la especificación.
 
@@ -400,12 +469,20 @@ usan triggers para reglas funcionales ni procedimientos almacenados.
 
 - El baseline no se renombra, reemplaza ni reejecuta.
 - Cada incremento prevalida datos y conserva columnas legacy hasta confirmar el corte.
-- Textos PEI/POI no mapeables bloquean el backfill; no se asigna un valor por inferencia.
-- Documentos legacy quedan no publicables y no aptos como evidencia hasta clasificación y seguridad
-  validadas; nunca se convierten automáticamente en `PUBLICO` o `LIMPIO`.
+- Textos PEI/POI no mapeables bloquean el backfill; no se asigna un valor por inferencia. Los mapeos
+  apuntan a ítems de las versiones independientes aprobadas.
+- Las cadenas documentales legacy deben migrarse a series de un único propietario. Cadenas rotas,
+  ciclos o versiones con proyectos incompatibles bloquean el corte.
+- Las asignaciones legacy requieren una combinación aprobada de función, perfil y unidad concreta;
+  `ID_ROL` e `ID_UNIDAD` deben coincidir con ella antes del constraint final.
+- Documentos legacy quedan no publicables y no aptos como evidencia hasta validar clasificación e
+  integridad; nunca se convierten automáticamente en `PUBLICO`.
+- `DOCUMENTO.SCAN_ANTIVIRUS` y `DOCUMENTO.NOMBRE_STORAGE` se conservan nullable como legado sin
+  default, constraint, mapeo ni consumidor; sus valores históricos no autorizan ni bloquean
+  operaciones PIIP.
 - Una relación histórica ambigua bloquea el corte; no se fusionan ni eliminan registros.
 - Debido al commit implícito de DDL Oracle, la compensación es forward-only: detener la capacidad,
   inactivar valores o consumidores y conservar filas, documentos e historia.
 
-El orden concreto de scripts 002-018 y sus compensaciones está en [plan.md](./plan.md). Solo tras la
+El orden concreto de scripts 002-024 y sus compensaciones está en [plan.md](./plan.md). Solo tras la
 ejecución humana confirmada podrá actualizarse `database/database-schema.md`.

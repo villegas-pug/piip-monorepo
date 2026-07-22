@@ -1,6 +1,6 @@
 # Contrato: Documentos y evidencias
 
-Base: `/api/v1/documentos`.
+Base común: `/api/v1`.
 
 ## Cargar documento
 
@@ -9,28 +9,30 @@ Base: `/api/v1/documentos`.
 Multipart:
 
 - `file`: PDF, Office Open XML, JPEG o PNG; tamaño `1..104857600` bytes.
-- `metadata`: `UploadDocumentRequest { registroId, tipoDocumentoId, titulo,
-  clasificacionPropuesta, uso }`.
+- `metadata`: `UploadDocumentRequest { owner, tipoDocumentoId, titulo, clasificacionPropuesta, uso }`.
 
-Autorización: actor habilitado en el registro. `Idempotency-Key` obligatorio. El servidor valida
-tamaño/MIME real, calcula SHA-256 y crea versión en `PENDIENTE`; no confía en hash del cliente.
+`owner` es `DocumentOwner { tipo: PORTAFOLIO | EXPEDIENTE_INSTITUCIONAL,
+registroPortafolioId?, expedienteInstitucionalId? }`. Exactamente un identificador corresponde al
+tipo. `tipoDocumentoId` debe tener el mismo contexto que el propietario. Una serie y todas sus
+versiones conservan ese propietario de forma inmutable.
+
+Autorización: actor habilitado por el caso de uso propietario, sea registro de portafolio o expediente
+institucional. `Idempotency-Key` obligatorio. El servidor valida permiso sobre el propietario,
+tamaño/MIME real, calcula SHA-256 y almacena el BLOB Oracle; no confía en hash del cliente.
 
 Salida `201 DocumentVersionDetail { documentoId, serieId, version, titulo, formato, tamanoBytes,
-hashSha256, estadoAntimalware, clasificacionPropuesta, clasificacionValidada, aptaComoEvidencia,
-etag }`.
+hashSha256, clasificacionPropuesta, clasificacionValidada, aptaComoEvidencia, etag }`.
+
+Persistencia: `DOCUMENTO_SERIE` representa el documento lógico y cada fila de la tabla `DOCUMENTO`
+representa una versión con BLOB Oracle. No se crea una tabla paralela `DOCUMENTO_VERSION`.
 
 ## Crear una versión
 
-`POST /documentos/{id}/versiones`
+`POST /documentos/{serieId}/versiones`
 
-Mismo multipart; exige motivo y referencia la versión anterior. Nunca sobrescribe o elimina. Un
-documento formalizado solo admite otra versión trazable.
-
-## Estado antimalware
-
-El resultado ingresa por un contrato interno autenticado del módulo, no por una ruta pública. Solo
-`LIMPIO` puede ser evidencia. `PENDIENTE` o `INFECTADO` devuelve `422 EVIDENCE_NOT_ELIGIBLE` en
-comandos de negocio.
+Mismo multipart; `{serieId}` identifica `DOCUMENTO_SERIE`, exige motivo, `If-Match` de la última
+versión y registra `versionAnteriorId` con el identificador exacto de esa fila `DOCUMENTO`. Nunca
+sobrescribe o elimina. Un documento formalizado solo admite otra versión trazable.
 
 ## Validar clasificación inicial
 
@@ -52,25 +54,55 @@ momento y resultado. Efecto inmediato sobre accesos posteriores.
 
 | Ruta | Salida/regla |
 |---|---|
-| `GET /documentos/{id}` | Metadatos permitidos por ámbito y clasificación. |
-| `GET /documentos/{id}/versiones` | Historial paginado autorizado. |
-| `GET /documentos/{id}/contenido` | Stream institucional solo si `LIMPIO`, clasificación validada y ámbito permitido. |
+| `GET /documentos/{id}` | Metadatos de una versión permitidos por ámbito y clasificación. |
+| `GET /documentos/series/{serieId}/versiones` | Historial paginado autorizado de la serie. |
+| `GET /documentos/{id}/contenido` | Stream del BLOB de una versión institucional solo si la clasificación está validada y el ámbito permitido. |
 
 No existe ruta pública de contenido, descarga, URL firmada o `storageKey`.
 
 ## Publicación
 
-El modelo admite metadatos publicados, pero no se contrata un comando de publicación hasta aprobar
-actor y evento que fijan `fechaPublicacion`. En tanto el gate siga pendiente, ningún metadato
-documental se devuelve por consulta pública.
+`POST /documentos/{versionId}/publicaciones`
+
+Solo Evaluador; exige `Idempotency-Key` e `If-Match`. Entrada
+`PublishDocumentMetadataRequest { tituloPublico }`, sin fecha proporcionada por el cliente. La versión
+debe pertenecer a un propietario `PORTAFOLIO`, tener clasificación `PUBLICO` validada y título sin
+datos personales. Un propietario `EXPEDIENTE_INSTITUCIONAL` se rechaza. Salida
+`PublicDocumentMetadata { tipo, titulo, version, formato, fechaPublicacion }`, donde la fecha proviene
+del servidor. La confirmación es append-only y no crea contenido, URL o descarga pública.
+
+Errores: `PUBLIC_CLASSIFICATION_REQUIRED`, `CLASSIFICATION_NOT_VALIDATED`,
+`PUBLIC_METADATA_CONTAINS_PERSONAL_DATA`.
+
+## Expedientes institucionales
+
+| Operación | Regla |
+|---|---|
+| `POST /expedientes-institucionales` | Crea expediente para documentos formales sin portafolio. |
+| `GET /expedientes-institucionales/{id}` | Detalle autorizado. |
+| `GET /expedientes-institucionales/{id}/documentos` | Series y versiones autorizadas. |
+
+`CreateInstitutionalFileRequest { asunto, moduloOrigen, referenciaCasoUso, unidadId?, clasificacion }`.
+El backend autoriza creación y consulta mediante el permiso y ámbito del módulo/caso de uso indicado;
+el cliente no obtiene permisos por declarar `moduloOrigen`. Crear el expediente no concede por sí
+mismo permiso documental. Errores:
+`DOCUMENT_OWNER_REQUIRED`, `DOCUMENT_OWNER_XOR_VIOLATION`, `DOCUMENT_OWNER_IMMUTABLE`,
+`INSTITUTIONAL_FILE_SCOPE_DENIED`, `FORMAL_DOCUMENT_FILE_MISMATCH`.
+
+Los casos de uso se exponen mediante `ExpedienteInstitucionalService` y `DocumentoService`; los
+controladores solo validan y delegan. Ambos contratos usan DTO y nunca exponen entidades o claves de
+almacenamiento.
 
 ## Fallos y compensación
 
 - `413 DOCUMENT_TOO_LARGE` para 104857601 bytes o más.
 - `415 DOCUMENT_TYPE_NOT_ALLOWED` para formato real no permitido.
-- `422 CLASSIFICATION_NOT_VALIDATED`, `MALWARE_SCAN_PENDING`, `DOCUMENT_INFECTED`.
+- `422 CLASSIFICATION_NOT_VALIDATED`.
 - `403 DOCUMENT_CLASSIFICATION_DENIED` sin revelar contenido.
 - Fallo al persistir elimina solo temporal no referenciado; fallo después de confirmar se registra y
   recupera, nunca elimina una versión formal.
 
 Carga, versión, consulta de contenido, validación, reclasificación y denegación se auditan.
+
+OGTI administra fuera de PIIP el análisis, bloqueo, cuarentena y respuesta antimalware de los BLOB
+Oracle. Este contrato no expone estados, resultados, informes ni operaciones antimalware.
