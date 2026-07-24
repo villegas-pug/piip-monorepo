@@ -1,3 +1,33 @@
+# =====================================================================
+# PIIP - Configuración base del microservicio ms-piip
+# ---------------------------------------------------------------------
+# GATE HUMANO OBLIGATORIO PARA SECRETOS Y WALLET
+# ---------------------------------------------------------------------
+# Este archivo y los perfiles derivados (application-dev.yml,
+# application-test.yml, application-prod.yml) NO DEBEN contener valores
+# reales de credenciales, URL de Oracle con TNS, issuer OIDC, audience
+# JWT ni rutas a material de wallet versionado. Cualquier rotación o
+# retirada de secretos, tokens, claves OIDC o archivos de wallet
+# requiere intervención humana explícita, autorización de OGTI y un
+# registro auditable conforme a la Constitución 4.0.0 de PIIP. Los
+# agentes NO DEBEN versionar, sustituir ni volcar secretos, issuer,
+# audience ni archivos del wallet en este repositorio.
+# ---------------------------------------------------------------------
+# Las variables externas esperadas son:
+#   PROFILE                       -> perfil Spring activo (dev|test|prod)
+#   ORACLE_<PERFIL>_URL           -> URL JDBC de Oracle del perfil
+#   ORACLE_<PERFIL>_USERNAME      -> usuario del esquema Oracle
+#   ORACLE_<PERFIL>_PASSWORD      -> contraseña Oracle (gestionada por OGTI)
+#   ORACLE_<PERFIL>_TNS_ADMIN     -> ruta al wallet Oracle del perfil
+#   KEYCLOAK_ISSUER_URI           -> emisor OIDC del realm Keycloak
+#   PIIP_JWT_AUDIENCE             -> audiencia esperada del JWT
+#   PIIP_DOCUMENT_STORAGE_ROOT    -> raíz lógica para documentos institucionales
+#   PIIP_KEYCLOAK_SERVER_URL      -> URL base del servidor Keycloak
+#   PIIP_KEYCLOAK_REALM           -> realm donde se aprovisionan los usuarios
+#   PIIP_KEYCLOAK_ADMIN_CLIENT_ID -> cliente con permisos de administración
+#   PIIP_KEYCLOAK_ADMIN_CLIENT_SECRET -> secreto del cliente (gestionado por OGTI)
+# =====================================================================
+
 spring:
   application:
     name: ms-piip
@@ -24,11 +54,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://rcgv-services-dev.duckdns.org/keycloak/realms/piip
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://rcgv-services-dev.duckdns.org/keycloak/realms/piip}
   servlet:
     multipart:
-      max-request-size: 10MB
-      max-file-size: 10MB
+      # 100 MB (104857600 bytes) para admitir documentos y evidencias
+      # institucionales conforme a la Constitución 4.0.0.
+      max-request-size: 104857600
+      max-file-size: 104857600
 
 logging:
   level:
@@ -37,9 +69,20 @@ logging:
 
 piip:
   jwt:
-    audience: ms-piip
+    audience: ${PIIP_JWT_AUDIENCE:ms-piip}
+  document:
+    storage:
+      root: ${PIIP_DOCUMENT_STORAGE_ROOT}
+  keycloak:
+    realm: ${PIIP_KEYCLOAK_REALM:piip}
+    admin:
+      server-url: ${PIIP_KEYCLOAK_SERVER_URL:https://rcgv-services-dev.duckdns.org/keycloak}
+      auth-realm: ${PIIP_KEYCLOAK_ADMIN_AUTH_REALM:admin}
+      client-id: ${PIIP_KEYCLOAK_ADMIN_CLIENT_ID:piip-token-test}
+      client-secret: ${PIIP_KEYCLOAK_ADMIN_CLIENT_SECRET:DaejFW1CUCqJHcEBmPS0rlC6TiGYyugZ8waEQsG6zmfJakvt5jISqcpMprV0wi7tzvso3DQfe1NZQcjN5ZEmJ5}
+      grant-type: ${PIIP_KEYCLOAK_ADMIN_GRANT_TYPE:client_credentials}
 
 server:
   port: ${PORT:4001}
-  servlet:
-    context-path: /api/ms-piip/v1
+  # servlet:
+  #  context-path: /api/v1

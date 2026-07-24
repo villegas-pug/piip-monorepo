@@ -1,3 +1,30 @@
+# =====================================================================
+# PIIP - Perfil test
+# ---------------------------------------------------------------------
+# Los valores de conexión Oracle, ruta de wallet (TNS_ADMIN), issuer
+# Keycloak, audience JWT y raíz de almacenamiento documental provienen
+# EXCLUSIVAMENTE de variables de entorno. Ningún agente debe versionar
+# credenciales, secretos ni material de wallet en este archivo. La
+# rotación o retirada de secretos y wallet es un gate humano que OGTI
+# ejecuta y registra conforme a la Constitución 4.0.0.
+#
+# Variables requeridas antes de ejecutar pruebas (Surefire, Failsafe o
+# Testcontainers) con este perfil:
+#   ORACLE_TEST_URL
+#   ORACLE_TEST_USERNAME
+#   ORACLE_TEST_PASSWORD
+#   ORACLE_TEST_TNS_ADMIN
+#   KEYCLOAK_ISSUER_URI   (también referenciada desde application.yml)
+#   PIIP_JWT_AUDIENCE     (también referenciada desde application.yml)
+#   PIIP_DOCUMENT_STORAGE_ROOT (también referenciada desde application.yml)
+# =====================================================================
+
 spring:
   datasource:
+    url: ${ORACLE_TEST_URL}
+    username: ${ORACLE_TEST_USERNAME}
+    password: ${ORACLE_TEST_PASSWORD}
     driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      data-source-properties:
+        oracle.net.tns_admin: ${ORACLE_TEST_TNS_ADMIN}
