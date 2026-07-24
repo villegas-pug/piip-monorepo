@@ -12,6 +12,13 @@ N.º 003-2025-PCM-SGP, desde el registro hasta el reporte y la consulta pública
 trazable y respaldado por responsables, decisiones formales y evidencias, reduciendo la dispersión
 de información y el riesgo de reportes incompletos o desactualizados.
 
+## Diferimiento aprobado de US9
+
+La subcapacidad US9, sus prototipos, mediciones, matrices de metas, preparación de liberación y los
+gates asociados a interfaces quedan diferidos a una fase posterior por la enmienda constitucional
+5.0.0 del 2026-07-22. FR-140 a FR-160 y sus escenarios se conservan como trazabilidad futura, pero
+no son requisitos ejecutables de la Fase 1 actual.
+
 **In Scope**:
 
 - Registrar y mantener iniciativas con sus datos oficiales, participantes y documentos.
@@ -28,7 +35,6 @@ de información y el riesgo de reportes incompletos o desactualizados.
 - Buscar y consultar públicamente `Tipo de registro`, `Código`, `Nombre de iniciativa o proyecto`
   y `Estado`, además de tipo documental, título sin datos personales, versión, formato y fecha de
   publicación.
-- Diseñar, validar y aprobar prototipos PIIP para los recorridos funcionales críticos.
 
 **Out of Scope**:
 
@@ -38,6 +44,8 @@ de información y el riesgo de reportes incompletos o desactualizados.
   ciclo de identidad definido por la Constitución.
 - Reportes mensuales o trimestrales obligatorios durante la Fase 1.
 - Mostrar contenido documental o permitir descargas en la consulta pública durante la Fase 1.
+- Diseñar, validar o persistir prototipos PIIP, mediciones, datasets sintéticos, matrices de metas o
+  preparación de liberación; quedan diferidos a una fase posterior.
 - Administrar análisis, detección, bloqueo, cuarentena o respuesta antimalware; corresponden
   exclusivamente a OGTI fuera de PIIP.
 - Considerar aprobados los prototipos existentes o genéricos.

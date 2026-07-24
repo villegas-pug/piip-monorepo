@@ -1,0 +1,279 @@
+<!--
+  Página accesible de administración de asignaciones funcionales (US6 - T092).
+  - WCAG 2.1 AA: labels asociados, mensajes con `aria-describedby`,
+    regiones `aria-live`, foco visible y navegación por teclado.
+  - El cambio de vigencia requiere la ETag de la última lectura; el
+    servicio la traduce en `If-Match` y el backend rechaza con 412 si
+    cambió el estado entre lecturas.
+  - La revocación exige motivo obligatorio para auditoría y nunca
+    incluye credenciales.
+-->
+<a class="skip-link" href="#assignment-admin-contenido">Saltar al contenido principal</a>
+<main id="assignment-admin-contenido" tabindex="-1" aria-labelledby="assignment-admin-titulo">
+  <h1 id="assignment-admin-titulo">Administración de asignaciones funcionales</h1>
+  <p>
+    Una asignación combina una persona con una combinación vigente de la
+    matriz (función, perfil, unidad). El backend autoriza cada operación
+    conforme al perfil y la unidad efectivos; la revocación es inmediata
+    y se conserva en el historial para auditoría.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section aria-labelledby="assignment-alta-titulo">
+    <h2 id="assignment-alta-titulo">Alta de asignación</h2>
+    <form
+      [id]="formAltaId"
+      [formGroup]="formAlta"
+      (ngSubmit)="crearAsignacion()"
+      (keydown.escape)="cancelarAlta()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idAltaUsuario">Identificador de usuario PIIP</mat-label>
+        <input
+          matInput
+          [id]="idAltaUsuario"
+          type="number"
+          min="1"
+          formControlName="usuarioId"
+          [attr.aria-describedby]="idAltaUsuario + '-error'"
+          required
+        />
+        <mat-error [id]="idAltaUsuario + '-error'">
+          {{ mensajeError(formAlta.controls.usuarioId, submittedAlta()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idAltaCombinacion">Identificador de combinación matriz</mat-label>
+        <input
+          matInput
+          [id]="idAltaCombinacion"
+          type="number"
+          min="1"
+          formControlName="matrizCombinacionId"
+          [attr.aria-describedby]="idAltaCombinacion + '-error'"
+          required
+        />
+        <mat-hint>El backend valida que la combinación esté vigente y corresponda a la unidad efectiva.</mat-hint>
+        <mat-error [id]="idAltaCombinacion + '-error'">
+          {{ mensajeError(formAlta.controls.matrizCombinacionId, submittedAlta()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idAltaFechaInicio">Fecha de inicio (AAAA-MM-DD)</mat-label>
+        <input
+          matInput
+          [id]="idAltaFechaInicio"
+          type="date"
+          formControlName="fechaInicio"
+          [attr.aria-describedby]="idAltaFechaInicio + '-error'"
+          required
+        />
+        <mat-error [id]="idAltaFechaInicio + '-error'">
+          {{ mensajeError(formAlta.controls.fechaInicio, submittedAlta()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idAltaFechaFin">Fecha de fin (opcional)</mat-label>
+        <input matInput [id]="idAltaFechaFin" type="date" formControlName="fechaFin" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idAltaDocumento">Documento formal (opcional)</mat-label>
+        <input
+          matInput
+          [id]="idAltaDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoFormalVersionId"
+          [attr.aria-describedby]="idAltaDocumento + '-error'"
+        />
+        <mat-error [id]="idAltaDocumento + '-error'">
+          {{ mensajeError(formAlta.controls.documentoFormalVersionId, submittedAlta()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingAlta()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Crear asignación
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarAlta()" [disabled]="submittingAlta()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingAlta()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="assignment-cambio-titulo">
+    <h2 id="assignment-cambio-titulo">Cambio de vigencia</h2>
+    <p>
+      Solo se ajusta la vigencia. La combinación, el perfil y la unidad
+      permanecen fijos y la operación exige la ETag de la última lectura.
+    </p>
+    <form
+      [id]="formCambioId"
+      [formGroup]="formCambio"
+      (ngSubmit)="cambiarAsignacion()"
+      (keydown.escape)="cancelarCambio()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCambioId">Identificador de asignación</mat-label>
+        <input
+          matInput
+          [id]="idCambioId"
+          type="number"
+          min="1"
+          formControlName="idAsignacion"
+          [attr.aria-describedby]="idCambioId + '-error'"
+          required
+        />
+        <mat-error [id]="idCambioId + '-error'">
+          {{ mensajeError(formCambio.controls.idAsignacion, submittedCambio()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCambioFechaInicio">Nueva fecha de inicio</mat-label>
+        <input
+          matInput
+          [id]="idCambioFechaInicio"
+          type="date"
+          formControlName="fechaInicio"
+          [attr.aria-describedby]="idCambioFechaInicio + '-error'"
+          required
+        />
+        <mat-error [id]="idCambioFechaInicio + '-error'">
+          {{ mensajeError(formCambio.controls.fechaInicio, submittedCambio()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCambioFechaFin">Nueva fecha de fin (opcional)</mat-label>
+        <input matInput [id]="idCambioFechaFin" type="date" formControlName="fechaFin" />
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingCambio()">
+          <mat-icon aria-hidden="true">edit_calendar</mat-icon>
+          Cambiar vigencia
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarCambio()" [disabled]="submittingCambio()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingCambio()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="assignment-revocacion-titulo">
+    <h2 id="assignment-revocacion-titulo">Revocación inmediata</h2>
+    <p>
+      La revocación es inmediata. El motivo es obligatorio para auditoría
+      y nunca incluye credenciales. El backend rechaza la revocación del
+      último <code>GlobalAdmin</code> institucional.
+    </p>
+    <form
+      [id]="formRevocacionId"
+      [formGroup]="formRevocacion"
+      (ngSubmit)="revocarAsignacion()"
+      (keydown.escape)="cancelarRevocacion()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idRevocacionId">Identificador de asignación</mat-label>
+        <input
+          matInput
+          [id]="idRevocacionId"
+          type="number"
+          min="1"
+          formControlName="idAsignacion"
+          [attr.aria-describedby]="idRevocacionId + '-error'"
+          required
+        />
+        <mat-error [id]="idRevocacionId + '-error'">
+          {{ mensajeError(formRevocacion.controls.idAsignacion, submittedRevocacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idRevocacionMotivo">Motivo obligatorio</mat-label>
+        <textarea
+          matInput
+          [id]="idRevocacionMotivo"
+          rows="3"
+          formControlName="motivo"
+          [attr.aria-describedby]="idRevocacionMotivo + '-error'"
+          required
+        ></textarea>
+        <mat-hint>Máximo 2000 caracteres. No incluir contraseñas, tokens ni datos personales sensibles.</mat-hint>
+        <mat-error [id]="idRevocacionMotivo + '-error'">
+          {{ mensajeError(formRevocacion.controls.motivo, submittedRevocacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idRevocacionDocumento">Documento formal (opcional)</mat-label>
+        <input
+          matInput
+          [id]="idRevocacionDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoFormalVersionId"
+        />
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="warn" type="submit" [disabled]="submittingRevocacion()">
+          <mat-icon aria-hidden="true">block</mat-icon>
+          Revocar asignación
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarRevocacion()" [disabled]="submittingRevocacion()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingRevocacion()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section *ngIf="asignacionActual() as asignacion" aria-labelledby="assignment-actual-titulo">
+    <h2 id="assignment-actual-titulo">Asignación afectada</h2>
+    <output aria-live="polite">
+      <dl>
+        <dt>Identificador</dt>
+        <dd>{{ asignacion.id }}</dd>
+        <dt>Usuario</dt>
+        <dd>{{ asignacion.usuarioId }}</dd>
+        <dt *ngIf="asignacion.perfil">Perfil</dt>
+        <dd *ngIf="asignacion.perfil">{{ asignacion.perfil }}</dd>
+        <dt *ngIf="asignacion.unidadId">Unidad</dt>
+        <dd *ngIf="asignacion.unidadId">{{ asignacion.unidadId }}</dd>
+        <dt>Inicio</dt>
+        <dd>{{ asignacion.fechaInicio }}</dd>
+        <dt *ngIf="asignacion.fechaFin">Fin</dt>
+        <dd *ngIf="asignacion.fechaFin">{{ asignacion.fechaFin }}</dd>
+        <dt *ngIf="asignacion.revocadaEn">Revocada en</dt>
+        <dd *ngIf="asignacion.revocadaEn">{{ asignacion.revocadaEn }}</dd>
+        <dt>Versión (ETag)</dt>
+        <dd><code>{{ asignacion.etag }}</code></dd>
+      </dl>
+    </output>
+  </section>
+
+  <div *ngIf="problema() as problema" role="alert" aria-live="assertive" class="problema">
+    <h2>{{ problema.title }} <small>({{ problema.code }})</small></h2>
+    <p>{{ problema.detail }}</p>
+    <ul *ngIf="problema.violations.length">
+      <li *ngFor="let violacion of problema.violations">
+        <strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}
+      </li>
+    </ul>
+    <p *ngIf="problema.correlationId">Identificador de correlación: <code>{{ problema.correlationId }}</code></p>
+  </div>
+</main>

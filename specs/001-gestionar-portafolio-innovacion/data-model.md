@@ -21,7 +21,7 @@
 |---|---|---|
 | `organizacion` | `UnidadOrganizacional` | `ObjetivoPei`, `ActividadPoi` |
 | `seguridad` | `UsuarioPiip`, `MatrizFuncionalVersion` | `MatrizFuncion`, `MatrizFuncionPerfilUnidad`, `AsignacionFuncional`, `EventoAsignacion`, `SuplenciaFuncional`, `OperacionAprovisionamiento` |
-| `portafolio` | `RegistroPortafolio` (`PROYECTO`) | `RelacionIniciativaProyecto`, `UnidadResponsable`, `TitularidadResponsable`, `ParticipantePersona`, `ParticipacionPersona`, `ParticipacionUnidad`, `EvaluacionIniciativa`, `Subsanacion`, `Aplicabilidad`, `TransicionEstado`, `PlanificacionProyecto`, `CicloProyecto`, `ProductoParcial`, `PresentacionProductoFinal`, `CierreProyecto`, `IncorporacionRegistro`, `ClasificacionCampo`, `PrototipoPiip` |
+| `portafolio` | `RegistroPortafolio` (`PROYECTO`) | `RelacionIniciativaProyecto`, `UnidadResponsable`, `TitularidadResponsable`, `ParticipantePersona`, `ParticipacionPersona`, `ParticipacionUnidad`, `EvaluacionIniciativa`, `Subsanacion`, `Aplicabilidad`, `TransicionEstado`, `PlanificacionProyecto`, `CicloProyecto`, `ProductoParcial`, `PresentacionProductoFinal`, `CierreProyecto`, `IncorporacionRegistro`, `ClasificacionCampo` |
 | `documentos` | `ExpedienteInstitucional`, `SerieDocumental` | `DocumentoVersion`, `HistorialClasificacionDocumento`, `PublicacionDocumento` |
 | `reportes` | `ReporteInstitucional` | `SnapshotReporte`, `ArchivoReporte`, `AprobacionReporte`, `DestinatarioReporte`, `RemisionReporte` |
 | `auditoria` | `EventoAuditoria` | `AuditoriaAcceso`, `SolicitudIdempotente` |
@@ -146,7 +146,7 @@ El prefijo procede de un valor formalmente aprobado para la unidad principal. Si
 servicio rechaza la presentación o creación; no usa nombre, abreviatura o jerarquía como fallback.
 `ADMINISTRACION` permanece como columna legacy nullable, sin autoridad ni obligatoriedad para nuevos
 casos de uso. La separación de `DESCRIPCION` legacy en problema y solución requiere un mapeo aprobado;
-sin él, el backfill y el corte final se detienen.
+sin él, cualquier migración futura permanece diferida.
 
 ### RelacionIniciativaProyecto
 
@@ -286,7 +286,7 @@ rechaza y audita.
 | Clasificación | `PUBLICO`, `INTERNO`, `RESTRINGIDO` | Servicios propietarios y CHECK Oracle. |
 | Tipo documental | Los trece tipos y condiciones de la Constitución/especificación | `documentos`; datos controlados, no regla duplicada. |
 | Estado de incorporación | `PENDIENTE`, `VALIDADO`, `RECHAZADO` | `portafolio`, separado del estado de negocio. |
-| Estado de prototipo | `BORRADOR`, `EN_VALIDACION`, `OBSERVADO`, `VALIDADO`, `APROBADO`, `RECHAZADO` | `portafolio`. |
+| Estado de prototipo | Diferido junto con US9; valores preservados solo para trazabilidad futura. | No activo en la Fase 1 actual. |
 | Objetivo PEI/Actividad POI | Versiones independientes con semillas aprobadas | `organizacion`; planeamiento aprueba y `GlobalAdmin` registra. |
 
 Los catálogos retirados se inactivan y se conservan para históricos. Cambiar un catálogo controlado
@@ -370,7 +370,11 @@ y clasificación. El proceso serializa de forma determinista claves, números, f
 antes de calcular el hash. PDF y XLSX referencian el mismo snapshot y nunca reconstruyen el corte
 desde datos operativos posteriores.
 
-## Prototipos y medición
+## Prototipos y medición (diferido)
+
+US9, sus objetos físicos y el incremento 018 están diferidos a una fase posterior por la enmienda
+constitucional 5.0.0. La siguiente descripción se conserva como trazabilidad y no define entidades,
+tablas ni contratos activos de la Fase 1 actual.
 
 - `PrototipoPiip`: recorrido limitado a `REGISTRO`, `EVALUACION`, `DECISION`, `SEGUIMIENTO`,
   `APROBACION_PRODUCTO`, `CIERRE`, `CONSULTA_INSTITUCIONAL` o `CONSULTA_PUBLICA`; además código,
@@ -434,7 +438,7 @@ columnas o expresiones indexadas y secuencias.
 | `portafolio` - incorporación | `INCORPORACION_REGISTRO`, `INCORPORACION_CAMBIO`, `INCORPORACION_CONFLICTO` |
 | `documentos` | `EXPEDIENTE_INSTITUCIONAL`, `DOCUMENTO_SERIE`, `DOCUMENTO_CLASIFICACION_HIST`, `DOCUMENTO_PUBLICACION` |
 | `reportes` | `REPORTE_INSTITUCIONAL`, `REPORTE_SNAPSHOT`, `REPORTE_ARCHIVO`, `REPORTE_APROBACION`, `REPORTE_DESTINATARIO`, `REPORTE_REMISION` |
-| `portafolio` - prototipos | `PROTOTIPO_PIIP`, `PROTOTIPO_VALIDACION`, `PROTOTIPO_HALLAZGO`, `MEDICION_EXPERIENCIA`, `MEDICION_MUESTRA`, `MATRIZ_META_RECORRIDO` |
+| `portafolio` - prototipos | Diferido a una fase posterior; no se crean objetos 018 en la Fase 1 actual. |
 
 Cada PK numérica nueva usa una secuencia Oracle versionada siguiendo el baseline. Los scripts crean
 primero tablas maestras, luego dependientes, después backfill, índices y constraints finales. No se
@@ -458,7 +462,7 @@ usan triggers para reglas funcionales ni procedimientos almacenados.
 - No existen relación derivada, unidad principal, titular histórico, participantes, versiones
   independientes PEI/POI, matriz funcional, expediente institucional, evaluación, ciclos,
   incorporación, reportes o prototipos.
-- PEI/POI y unidades orgánicas son texto legacy; deben preservarse hasta un backfill aprobado.
+- PEI/POI y unidades orgánicas son texto legacy; se preservan y no se migran en la Fase 1 actual.
 - Asignaciones no soportan vigencia completa, revocación, suplencia ni historial repetido.
 - `TIPO_DOCUMENTO.ESTADO_ASOCIADO` es obligatorio y solo admite estados del portafolio; debe
   distinguir contexto institucional antes de cargar documentos aprobatorios sin proyecto.
@@ -469,8 +473,8 @@ usan triggers para reglas funcionales ni procedimientos almacenados.
 
 - El baseline no se renombra, reemplaza ni reejecuta.
 - Cada incremento prevalida datos y conserva columnas legacy hasta confirmar el corte.
-- Textos PEI/POI no mapeables bloquean el backfill; no se asigna un valor por inferencia. Los mapeos
-  apuntan a ítems de las versiones independientes aprobadas.
+- Textos PEI/POI no mapeables se conservan sin migrar; una fase futura no podrá asignar valores por
+  inferencia y exigirá mapeos hacia ítems de versiones independientes aprobadas.
 - Las cadenas documentales legacy deben migrarse a series de un único propietario. Cadenas rotas,
   ciclos o versiones con proyectos incompatibles bloquean el corte.
 - Las asignaciones legacy requieren una combinación aprobada de función, perfil y unidad concreta;

@@ -1,11 +1,18 @@
 ---
 description: Orquesta exclusivamente scripts y catálogo Oracle de PIIP mediante SKILLs db-.
 mode: subagent
+# model: openai/gpt-5.4-mini
+# reasoningEffort: low
 permission:
+  "*": allow
+  read:
+    "*": allow
+    "*.env": deny
+    "*.env.*": deny
+    "database/ddl/init/oracle-wallet.zip": deny
   edit:
-    "*": deny
-    "database/**": ask
-  bash: ask
+    "database/**": allow
+  bash: allow
   task: deny
   skill:
     "*": deny

@@ -347,10 +347,11 @@ clasificación, alcance organizacional, conservación y eventos de auditoría an
 el reporte.
 
 Los flujos de registro, evaluación, decisión, seguimiento, aprobación del producto, cierre,
-consulta institucional y consulta pública DEBEN contar con prototipos específicos de PIIP
-validados por usuarios de negocio y formalmente aprobados antes de implementar sus interfaces.
-Los prototipos existentes o genéricos no se consideran aprobados por defecto. La especificación
-funcional DEBE identificar al aprobador, los criterios de aceptación y la evidencia de aprobación.
+consulta institucional y consulta pública PUEDEN incorporar prototipos específicos de PIIP cuando
+la especificación de la fase los incluya. US9, sus prototipos, mediciones, matrices de metas y
+preparación de liberación quedan diferidos de la Fase 1 actual mediante la enmienda 5.0.0. Una fase
+que los reactive DEBE definir aprobador, criterios de aceptación, evidencia y persistencia antes de
+convertirlos en gate de interfaz.
 
 ## Flujo de entrega, calidad y especificaciones
 
@@ -364,7 +365,8 @@ como supuestos.
 Las especificaciones del portafolio DEBEN identificar además los campos oficiales afectados y su
 matriz de obligatoriedad, la separación o relación entre iniciativa y proyecto, el rol que decide
 y el rol que registra cada transición, los documentos habilitantes, el tratamiento de proyectos
-directos, el alcance de consulta y la evidencia de aprobación de prototipos cuando corresponda.
+directos y el alcance de consulta. La evidencia de aprobación de prototipos se exige solo cuando
+esa subcapacidad forme parte del alcance aprobado de la fase.
 
 Los planes DEBEN documentar propiedad de reglas autoritativas, límites de módulos, transacciones,
 scripts o procedimientos Oracle, contratos API, efectos en Keycloak e impacto en privacidad. Un
@@ -407,10 +409,11 @@ planificación y antes de completar la implementación.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 5.0.0 | 2026-07-22 | Difiere US9, prototipos, mediciones, matrices de metas y sus gates de interfaz a una fase posterior; la Fase 1 actual mantiene accesibilidad, seguridad y pruebas sin ese gate. |
 | 4.0.0 | 2026-07-21 | Traslada a OGTI la responsabilidad exclusiva sobre seguridad antimalware de binarios, elimina sus estados y gates funcionales de PIIP y establece la semilla SQL auditada del primer `GlobalAdmin`. |
 | 3.2.0 | 2026-07-21 | Alinea el ciclo de vida, registros vinculados, roles de decisión y registro, documentos de hasta 100 MB, campos oficiales, cierre, alcance sectorial, reportes y prototipos con la gestión institucional del portafolio. |
 | 3.1.0 | 2026-07-18 | Fija las versiones de referencia del template backend PIIP y sus dependencias de seguridad y OpenAPI. |
 | 3.0.0 | 2026-07-18 | Sustituye la plantilla sin completar de Spec Kit por la constitución de monolito modular PIIP, catálogos canónicos, modelo de seguridad, puertas de calidad y gobierno. |
 | 2.0.0 | 2026-07-18 | Registro histórico del proyecto: sustituyó una plantilla ajena por la constitución PIIP. |
 
-**Versión**: 4.0.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-21
+**Versión**: 5.0.0 | **Ratificada**: 2026-07-18 | **Última enmienda**: 2026-07-22

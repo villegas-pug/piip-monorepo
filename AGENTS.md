@@ -28,5 +28,5 @@
 ## Orquestación OpenCode
 - `PLAN` y `BUILD` median todo trabajo entre `frontend-specialist`, `backend-specialist` y `database-specialist`; los especialistas no se comunican ni delegan entre sí.
 - Las SKILLs se invocan solo desde su especialista propietario: `fe-*`, `be-*` y `db-*`, respectivamente. Los agentes primarios no invocan SKILLs.
-- Toda edición de un especialista solicita aprobación. Para SQL, deposita scripts y actualiza `database/CHANGELOG.md`, pero solo actualiza `database/database-schema.md` después de la confirmación humana de ejecución exitosa.
+- Los especialistas editan sin aprobación adicional únicamente dentro de su dominio autorizado. Sus permisos propios no heredan las restricciones de `PLAN`; cuando `PLAN` delega, debe ordenar explícitamente solo análisis y ninguna edición. Para SQL, `database-specialist` puede usar `bash`, pero tiene prohibido ejecutar sentencias o conectarse a Oracle: deposita scripts y actualiza `database/CHANGELOG.md`, y solo actualiza `database/database-schema.md` después de la confirmación humana de ejecución exitosa.
 - El protocolo de handoff y los estados de coordinación están en `.opencode/instructions/orchestration.md`.

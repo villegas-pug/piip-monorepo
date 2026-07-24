@@ -1,0 +1,222 @@
+<!--
+  Página accesible de administración de suplencias funcionales (US6 - T092).
+  - WCAG 2.1 AA: labels asociados, mensajes con `aria-describedby`,
+    regiones `aria-live`, foco visible y navegación por teclado.
+  - La página no incluye campos de contraseña, token ni atributo
+    sensible: la identidad permanece en Keycloak.
+  - La creación de suplencias exige documento formal; la terminación
+    anticipada exige motivo obligatorio.
+-->
+<a class="skip-link" href="#substitution-admin-contenido">Saltar al contenido principal</a>
+<main id="substitution-admin-contenido" tabindex="-1" aria-labelledby="substitution-admin-titulo">
+  <h1 id="substitution-admin-titulo">Administración de suplencias funcionales</h1>
+  <p>
+    Una suplencia es una delegación funcional temporal sobre una asignación
+    titular. El backend rechaza solapes, exige documento formal y
+    restringe la terminación a la misma autoridad que la autorizó. PIIP
+    nunca comparte ni entrega la contraseña del titular.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section aria-labelledby="substitution-create-titulo">
+    <h2 id="substitution-create-titulo">Crear suplencia</h2>
+    <form
+      [id]="formCrearId"
+      [formGroup]="formCrear"
+      (ngSubmit)="crearSuplencia()"
+      (keydown.escape)="cancelarCrear()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCrearTitular">Asignación titular</mat-label>
+        <input
+          matInput
+          [id]="idCrearTitular"
+          type="number"
+          min="1"
+          formControlName="titularAsignacionId"
+          [attr.aria-describedby]="idCrearTitular + '-error'"
+          required
+        />
+        <mat-hint>Identificador PIIP de la asignación titular sobre la que recae la suplencia.</mat-hint>
+        <mat-error [id]="idCrearTitular + '-error'">
+          {{ mensajeError(formCrear.controls.titularAsignacionId, submittedCrear()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCrearSuplente">Suplente (usuario PIIP)</mat-label>
+        <input
+          matInput
+          [id]="idCrearSuplente"
+          type="number"
+          min="1"
+          formControlName="suplenteUsuarioId"
+          [attr.aria-describedby]="idCrearSuplente + '-error'"
+          required
+        />
+        <mat-error [id]="idCrearSuplente + '-error'">
+          {{ mensajeError(formCrear.controls.suplenteUsuarioId, submittedCrear()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCrearInicio">Inicio</mat-label>
+        <input
+          matInput
+          [id]="idCrearInicio"
+          type="date"
+          formControlName="inicio"
+          [attr.aria-describedby]="idCrearInicio + '-error'"
+          required
+        />
+        <mat-error [id]="idCrearInicio + '-error'">
+          {{ mensajeError(formCrear.controls.inicio, submittedCrear()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCrearFin">Fin</mat-label>
+        <input
+          matInput
+          [id]="idCrearFin"
+          type="date"
+          formControlName="fin"
+          [attr.aria-describedby]="idCrearFin + '-error'"
+          required
+        />
+        <mat-error [id]="idCrearFin + '-error'">
+          {{ mensajeError(formCrear.controls.fin, submittedCrear()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCrearDocumento">Documento formal de aprobación</mat-label>
+        <input
+          matInput
+          [id]="idCrearDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoFormalVersionId"
+          [attr.aria-describedby]="idCrearDocumento + '-error'"
+          required
+        />
+        <mat-error [id]="idCrearDocumento + '-error'">
+          {{ mensajeError(formCrear.controls.documentoFormalVersionId, submittedCrear()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingCrear()">
+          <mat-icon aria-hidden="true">person</mat-icon>
+          Crear suplencia
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarCrear()" [disabled]="submittingCrear()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingCrear()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="substitution-terminate-titulo">
+    <h2 id="substitution-terminate-titulo">Terminar suplencia anticipadamente</h2>
+    <p>
+      Solo la misma autoridad que autorizó la suplencia puede terminarla
+      antes de la fecha prevista. El motivo es obligatorio para auditoría.
+    </p>
+    <form
+      [id]="formTerminarId"
+      [formGroup]="formTerminar"
+      (ngSubmit)="terminarSuplencia()"
+      (keydown.escape)="cancelarTerminar()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idTerminarId">Identificador de suplencia</mat-label>
+        <input
+          matInput
+          [id]="idTerminarId"
+          type="number"
+          min="1"
+          formControlName="suplenciaId"
+          [attr.aria-describedby]="idTerminarId + '-error'"
+          required
+        />
+        <mat-error [id]="idTerminarId + '-error'">
+          {{ mensajeError(formTerminar.controls.suplenciaId, submittedTerminar()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idTerminarMotivo">Motivo obligatorio</mat-label>
+        <textarea
+          matInput
+          [id]="idTerminarMotivo"
+          rows="3"
+          formControlName="motivo"
+          [attr.aria-describedby]="idTerminarMotivo + '-error'"
+          required
+        ></textarea>
+        <mat-hint>Máximo 2000 caracteres. No incluir contraseñas, tokens ni datos personales sensibles.</mat-hint>
+        <mat-error [id]="idTerminarMotivo + '-error'">
+          {{ mensajeError(formTerminar.controls.motivo, submittedTerminar()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idTerminarDocumento">Documento formal (opcional)</mat-label>
+        <input
+          matInput
+          [id]="idTerminarDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoFormalVersionId"
+        />
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="warn" type="submit" [disabled]="submittingTerminar()">
+          <mat-icon aria-hidden="true">stop_circle</mat-icon>
+          Terminar suplencia
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarTerminar()" [disabled]="submittingTerminar()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingTerminar()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section *ngIf="suplenciaActual() as suplencia" aria-labelledby="substitution-actual-titulo">
+    <h2 id="substitution-actual-titulo">Suplencia afectada</h2>
+    <output aria-live="polite">
+      <dl>
+        <dt>Identificador</dt>
+        <dd>{{ suplencia.id }}</dd>
+        <dt>Asignación titular</dt>
+        <dd>{{ suplencia.asignacionTitularId }}</dd>
+        <dt>Suplente</dt>
+        <dd>{{ suplencia.suplenteUsuarioId }}</dd>
+        <dt>Inicio</dt>
+        <dd><time [attr.datetime]="suplencia.inicio">{{ suplencia.inicio }}</time></dd>
+        <dt>Fin</dt>
+        <dd><time [attr.datetime]="suplencia.fin">{{ suplencia.fin }}</time></dd>
+        <dt *ngIf="suplencia.terminadaEn">Terminada en</dt>
+        <dd *ngIf="suplencia.terminadaEn"><time [attr.datetime]="suplencia.terminadaEn">{{ suplencia.terminadaEn }}</time></dd>
+      </dl>
+    </output>
+  </section>
+
+  <div *ngIf="problema() as problema" role="alert" aria-live="assertive" class="problema">
+    <h2>{{ problema.title }} <small>({{ problema.code }})</small></h2>
+    <p>{{ problema.detail }}</p>
+    <ul *ngIf="problema.violations.length">
+      <li *ngFor="let violacion of problema.violations">
+        <strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}
+      </li>
+    </ul>
+    <p *ngIf="problema.correlationId">Identificador de correlación: <code>{{ problema.correlationId }}</code></p>
+  </div>
+</main>

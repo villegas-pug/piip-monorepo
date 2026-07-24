@@ -1,0 +1,423 @@
+<!--
+  Página accesible de generación de reportes institucionales (US8 - T109).
+  - WCAG 2.1 AA: skip link, etiquetas asociadas, mensajes con
+    `aria-describedby`, regiones `aria-live` separadas para resultados
+    y errores, foco visible.
+  - La pantalla NO decide transiciones, cortes ni filtros más allá de los
+    declarados por el backend; los cortes 30/06 y 31/12 los deriva el
+    servidor, y la clasificación la aplica Oracle.
+  - `Idempotency-Key` se conserva entre envíos para que un reintento con
+    la misma clave y mismo payload no duplique el reporte.
+  - No expone eliminación, disposición ni acciones de purga: la
+    Constitución veta la eliminación mientras no exista tabla de
+    retención aprobada.
+-->
+<a class="skip-link" [href]="'#' + idMain">Saltar al contenido principal</a>
+<main
+  [id]="idMain"
+  tabindex="-1"
+  aria-labelledby="report-generation-titulo"
+  class="report-generation"
+  [attr.aria-busy]="submitting() || submittingExtra() ? 'true' : null"
+>
+  <h1 id="report-generation-titulo">Generación de reportes institucionales</h1>
+  <p id="report-generation-ayuda" class="report-generation__help">
+    Esta pantalla delega en el backend el corte (30/06 o 31/12 para el reporte
+    semestral), la clasificación y la transición de estados. La operación es
+    asíncrona: el servidor responde <code>202</code> y la UI debe mantenerse
+    actualizada hasta que el estado técnico se estabilice en
+    <code>GENERADA</code>, <code>APROBADA</code> o <code>FALLIDA</code>.
+  </p>
+
+  <mat-radio-group
+    [value]="tipo()"
+    (change)="tipo.set($event.value)"
+    aria-label="Seleccionar el tipo de reporte a generar"
+  >
+    <mat-radio-button value="SEMESTRAL">Reporte semestral</mat-radio-button>
+    <mat-radio-button value="EXTRAORDINARIO">Reporte extraordinario</mat-radio-button>
+  </mat-radio-group>
+
+  @if (tipo() === 'SEMESTRAL') {
+    <section aria-labelledby="report-generation-semestral-titulo" class="report-generation__seccion">
+      <h2 id="report-generation-semestral-titulo">Reporte semestral oficial</h2>
+      <p class="report-generation__ayuda">
+        El servidor deriva el periodo y la fecha de corte. El semestre 1
+        corresponde al corte 30/06 y el semestre 2 al corte 31/12. No se
+        acepta una fecha de corte distinta.
+      </p>
+      <form
+        [id]="idFormSemestral"
+        [formGroup]="formSemestral"
+        (ngSubmit)="generarSemestral()"
+        (keydown.escape)="cancelarSemestral()"
+        novalidate
+        aria-describedby="report-generation-semestral-ayuda"
+      >
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idAnio">Año</mat-label>
+          <input
+            matInput
+            [id]="idAnio"
+            type="number"
+            [min]="2000"
+            [max]="2100"
+            formControlName="anio"
+            [attr.aria-describedby]="idAnio + '-error'"
+            required
+          />
+          <mat-hint>Entre 2000 y 2100.</mat-hint>
+          <mat-error [id]="idAnio + '-error'">
+            {{ mensajeError(formSemestral.controls.anio, submitted()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idSemestre">Semestre</mat-label>
+          <input
+            matInput
+            [id]="idSemestre"
+            type="number"
+            min="1"
+            max="2"
+            formControlName="semestre"
+            [attr.aria-describedby]="idSemestre + '-error'"
+            required
+          />
+          <mat-hint>1 para enero-junio (corte 30/06) y 2 para julio-diciembre (corte 31/12).</mat-hint>
+          <mat-error [id]="idSemestre + '-error'">
+            {{ mensajeError(formSemestral.controls.semestre, submitted()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <div class="report-generation__acciones">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="submitting()"
+            aria-label="Generar reporte semestral"
+          >
+            <mat-icon aria-hidden="true">play_arrow</mat-icon>
+            Generar reporte semestral
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="cancelarSemestral()"
+            [disabled]="submitting()"
+          >
+            Cancelar
+          </button>
+          <mat-progress-spinner
+            *ngIf="submitting()"
+            diameter="20"
+            mode="indeterminate"
+            aria-label="Generando reporte semestral"
+          />
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (tipo() === 'EXTRAORDINARIO') {
+    <section aria-labelledby="report-generation-extraordinario-titulo" class="report-generation__seccion">
+      <h2 id="report-generation-extraordinario-titulo">Reporte extraordinario</h2>
+      <p class="report-generation__ayuda">
+        Exige solicitud y aprobación documentadas (BR-120, BR-121, BR-122,
+        BR-123). Los filtros se limitan a los campos aprobados por BR-123 y
+        nunca amplían el ámbito del generador.
+      </p>
+      <form
+        [id]="idFormExtraordinario"
+        [formGroup]="formExtraordinario"
+        (ngSubmit)="generarExtraordinario()"
+        (keydown.escape)="cancelarExtraordinario()"
+        novalidate
+      >
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idSolicitudDoc">Identificador de la solicitud documentada</mat-label>
+          <input
+            matInput
+            [id]="idSolicitudDoc"
+            type="number"
+            min="1"
+            formControlName="solicitudDocumentoId"
+            [attr.aria-describedby]="idSolicitudDoc + '-error'"
+            required
+          />
+          <mat-error [id]="idSolicitudDoc + '-error'">
+            {{ mensajeError(formExtraordinario.controls.solicitudDocumentoId, submittedExtra()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idAprobacionDoc">Identificador de la aprobación de la Oficina</mat-label>
+          <input
+            matInput
+            [id]="idAprobacionDoc"
+            type="number"
+            min="1"
+            formControlName="aprobacionOficinaDocumentoId"
+            [attr.aria-describedby]="idAprobacionDoc + '-error'"
+            required
+          />
+          <mat-error [id]="idAprobacionDoc + '-error'">
+            {{ mensajeError(formExtraordinario.controls.aprobacionOficinaDocumentoId, submittedExtra()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idPeriodo">Periodo del reporte</mat-label>
+          <input
+            matInput
+            [id]="idPeriodo"
+            type="text"
+            formControlName="periodo"
+            [attr.aria-describedby]="idPeriodo + '-error'"
+            required
+          />
+          <mat-hint>Máximo 30 caracteres. El servidor conserva el periodo exacto declarado.</mat-hint>
+          <mat-error [id]="idPeriodo + '-error'">
+            {{ mensajeError(formExtraordinario.controls.periodo, submittedExtra()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label [attr.for]="idFechaCorte">Fecha de corte (AAAA-MM-DD)</mat-label>
+          <input
+            matInput
+            [id]="idFechaCorte"
+            type="date"
+            formControlName="fechaCorte"
+            [attr.aria-describedby]="idFechaCorte + '-error'"
+            required
+          />
+          <mat-error [id]="idFechaCorte + '-error'">
+            {{ mensajeError(formExtraordinario.controls.fechaCorte, submittedExtra()) }}
+          </mat-error>
+        </mat-form-field>
+
+        <fieldset class="report-generation__filtros">
+          <legend>Filtros BR-123 (opcionales, no amplían el ámbito)</legend>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroUnidad">Unidad</mat-label>
+            <input
+              matInput
+              [id]="idFiltroUnidad"
+              type="number"
+              min="1"
+              formControlName="unidadId"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroResponsable">Responsable</mat-label>
+            <input
+              matInput
+              [id]="idFiltroResponsable"
+              type="number"
+              min="1"
+              formControlName="responsableId"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroFuente">Fuente</mat-label>
+            <input matInput [id]="idFiltroFuente" type="text" formControlName="fuente" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroTipo">Tipo</mat-label>
+            <input matInput [id]="idFiltroTipo" type="text" formControlName="tipo" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroEstado">Estado</mat-label>
+            <input matInput [id]="idFiltroEstado" type="text" formControlName="estado" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroTipoSolucion">Tipo de solución</mat-label>
+            <input
+              matInput
+              [id]="idFiltroTipoSolucion"
+              type="text"
+              formControlName="tipoSolucion"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idFiltroProducto">Producto</mat-label>
+            <input
+              matInput
+              [id]="idFiltroProducto"
+              type="text"
+              formControlName="producto"
+            />
+          </mat-form-field>
+        </fieldset>
+
+        <div class="report-generation__acciones">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="submittingExtra()"
+            aria-label="Generar reporte extraordinario"
+          >
+            <mat-icon aria-hidden="true">play_arrow</mat-icon>
+            Generar reporte extraordinario
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="cancelarExtraordinario()"
+            [disabled]="submittingExtra()"
+          >
+            Cancelar
+          </button>
+          <mat-progress-spinner
+            *ngIf="submittingExtra()"
+            diameter="20"
+            mode="indeterminate"
+            aria-label="Generando reporte extraordinario"
+          />
+        </div>
+      </form>
+    </section>
+  }
+
+  <section
+    [id]="idResultados"
+    aria-labelledby="report-generation-resultados-titulo"
+    class="report-generation__resultados"
+    aria-live="polite"
+  >
+    <h2 id="report-generation-resultados-titulo" class="piip-visually-hidden">
+      Resultado de la generación
+    </h2>
+
+    @if (operacion(); as op) {
+      <article class="report-generation__operacion">
+        <h3>Operación registrada</h3>
+        <dl>
+          <div>
+            <dt>Identificador de reporte</dt>
+            <dd>{{ op.reporteId }}</dd>
+          </div>
+          <div>
+            <dt>Identificador de operación</dt>
+            <dd><code>{{ op.operacionId }}</code></dd>
+          </div>
+          <div>
+            <dt>Fecha de corte</dt>
+            <dd><time [attr.datetime]="op.corte">{{ op.corte }}</time></dd>
+          </div>
+          <div>
+            <dt>Versión de datos</dt>
+            <dd>{{ op.versionDatos }}</dd>
+          </div>
+          <div>
+            <dt>Estado técnico</dt>
+            <dd>
+              <span aria-label="Estado técnico de la operación">
+                {{ descripcionEstado(op.estadoTecnico) }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Clasificación</dt>
+            <dd>{{ descripcionClasificacion(op.clasificacion) }}</dd>
+          </div>
+          @if (op.hashSnapshot) {
+            <div>
+              <dt>Hash SHA-256 del snapshot</dt>
+              <dd><code>{{ op.hashSnapshot }}</code></dd>
+            </div>
+          }
+        </dl>
+        <p class="report-generation__ayuda">
+          La operación es asíncrona. Use el detalle del reporte para
+          consultar el estado técnico, los indicadores y los archivos
+          PDF/XLSX cuando el estado técnico sea <code>GENERADA</code> o
+          <code>APROBADA</code>.
+        </p>
+      </article>
+    }
+
+    @if (operacionExtra(); as op) {
+      <article class="report-generation__operacion">
+        <h3>Operación registrada (extraordinario)</h3>
+        <dl>
+          <div>
+            <dt>Identificador de reporte</dt>
+            <dd>{{ op.reporteId }}</dd>
+          </div>
+          <div>
+            <dt>Identificador de operación</dt>
+            <dd><code>{{ op.operacionId }}</code></dd>
+          </div>
+          <div>
+            <dt>Fecha de corte</dt>
+            <dd><time [attr.datetime]="op.corte">{{ op.corte }}</time></dd>
+          </div>
+          <div>
+            <dt>Versión de datos</dt>
+            <dd>{{ op.versionDatos }}</dd>
+          </div>
+          <div>
+            <dt>Estado técnico</dt>
+            <dd>
+              <span aria-label="Estado técnico de la operación">
+                {{ descripcionEstado(op.estadoTecnico) }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Clasificación</dt>
+            <dd>{{ descripcionClasificacion(op.clasificacion) }}</dd>
+          </div>
+        </dl>
+      </article>
+    }
+  </section>
+
+  <section
+    [id]="idErrores"
+    aria-labelledby="report-generation-errores-titulo"
+    class="report-generation__errores"
+    aria-live="assertive"
+    role="alert"
+  >
+    <h2 id="report-generation-errores-titulo" class="piip-visually-hidden">Errores de generación</h2>
+    @if (problema(); as problema) {
+      <p>
+        <strong>{{ problema.title }}</strong>
+        <span> ({{ problema.code }})</span>
+      </p>
+      <p>{{ problema.detail }}</p>
+      @if (problema.violations.length) {
+        <ul>
+          @for (violacion of problema.violations; track violacion.field) {
+            <li><strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}</li>
+          }
+        </ul>
+      }
+      @if (problema.correlationId) {
+        <p class="piip-visually-hidden">Identificador de correlación: {{ problema.correlationId }}</p>
+      }
+    }
+    @if (problemaExtra(); as problemaExtra) {
+      <p>
+        <strong>{{ problemaExtra.title }}</strong>
+        <span> ({{ problemaExtra.code }})</span>
+      </p>
+      <p>{{ problemaExtra.detail }}</p>
+      @if (problemaExtra.violations.length) {
+        <ul>
+          @for (violacion of problemaExtra.violations; track violacion.field) {
+            <li><strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}</li>
+          }
+        </ul>
+      }
+      @if (problemaExtra.correlationId) {
+        <p class="piip-visually-hidden">Identificador de correlación: {{ problemaExtra.correlationId }}</p>
+      }
+    }
+  </section>
+</main>

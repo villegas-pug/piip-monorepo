@@ -1,0 +1,194 @@
+-- ============================================================================
+-- PIIP MIDAGRI - Correccion forward-only 021.1 - Bootstrap fundacional
+-- Archivo: 021.1_bootstrap_matriz_fundacional.sql
+-- Esquema: KALLPA_PIIP
+-- Modulo: seguridad
+-- Dependencias: 002, 007, 008+008.1, 019 VIGENTES.
+-- Compensacion: abortar si la columna ES_BOOTSTRAP ya existe.
+-- NOTA DDL: los ALTER TABLE se autocommitan en Oracle.
+-- ============================================================================
+
+SET VERIFY OFF
+SET FEEDBACK ON
+SET SERVEROUTPUT ON SIZE UNLIMITED
+SET SQLBLANKLINES ON
+SET DEFINE OFF
+
+-- ============================================================================
+-- DDL: anyadir columna ES_BOOTSTRAP y ajustar constraints
+-- ============================================================================
+WHENEVER SQLERROR CONTINUE
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    ADD (ES_BOOTSTRAP CHAR(1 CHAR) DEFAULT 'N' NOT NULL);
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    DROP CONSTRAINT CK_MFPU_APROBADOR_DISTINTO_REGISTRADOR;
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    DROP CONSTRAINT FK_MFPU_APROBADOR;
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    DROP CONSTRAINT FK_MFPU_REGISTRADOR;
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    DROP CONSTRAINT FK_MFPU_DOCUMENTO;
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    MODIFY (ID_APROBADOR NULL);
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    MODIFY (ID_REGISTRADOR NULL);
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    MODIFY (ID_DOCUMENTO_APROBACION NULL);
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    ADD CONSTRAINT CK_MFPU_REGLA_FUNDACION
+    CHECK (
+        (ES_BOOTSTRAP = 'S'
+            AND ID_APROBADOR IS NULL
+            AND ID_REGISTRADOR IS NULL
+            AND ID_DOCUMENTO_APROBACION IS NULL)
+        OR
+        (ES_BOOTSTRAP = 'N'
+            AND ID_APROBADOR IS NOT NULL
+            AND ID_REGISTRADOR IS NOT NULL
+            AND ID_DOCUMENTO_APROBACION IS NOT NULL)
+    );
+
+ALTER TABLE MATRIZ_FUNCION_PERFIL_UNIDAD
+    ADD CONSTRAINT CK_MFPU_NO_BOOTSTRAP_REGISTRO
+    CHECK (
+        ES_BOOTSTRAP = 'S'
+        OR ID_APROBADOR <> ID_REGISTRADOR
+    );
+
+CREATE UNIQUE INDEX UIX_MFPU_ES_BOOTSTRAP
+    ON MATRIZ_FUNCION_PERFIL_UNIDAD (
+        CASE WHEN ES_BOOTSTRAP = 'S' THEN 'S' ELSE NULL END
+    );
+
+ALTER TABLE MATRIZ_FUNCIONAL_VERSION
+    DROP CONSTRAINT FK_MFV_DOCUMENTO;
+
+ALTER TABLE MATRIZ_FUNCIONAL_VERSION
+    MODIFY (ID_DOCUMENTO_APROBACION NULL);
+
+-- ============================================================================
+-- DML: bootstrap fundacional
+-- ============================================================================
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+
+DECLARE
+    v_id_version     NUMBER(10);
+    v_id_funcion     NUMBER(10);
+    v_id_unidad      NUMBER(10);
+    v_id_combinacion NUMBER(12);
+    v_id_usuario     NUMBER(10);
+    v_id_rol         NUMBER(5);
+    v_id_asignacion  NUMBER(10);
+BEGIN
+    INSERT INTO MATRIZ_FUNCIONAL_VERSION (
+        ID_VERSION, CODIGO_VERSION, ID_VERSION_ANTERIOR,
+        ID_DOCUMENTO_APROBACION, VIGENTE_DESDE, VIGENTE_HASTA,
+        ACTIVA, CREADO_POR, FECHA_CREACION
+    ) VALUES (
+        SEQ_MATRIZ_VERSION.NEXTVAL, 'MFV-001', NULL,
+        NULL, SYSDATE, NULL,
+        'S', '<SUSTITUIR_DBA_EJECUTOR>', SYSTIMESTAMP
+    )
+    RETURNING ID_VERSION INTO v_id_version;
+
+    MERGE INTO MATRIZ_FUNCION t
+    USING (SELECT 'ADMINISTRADOR_PIIP' AS CODIGO,
+                  'Administrador PIIP' AS DESCRIPCION
+             FROM DUAL) s
+    ON (t.ID_VERSION = v_id_version AND t.CODIGO = s.CODIGO)
+    WHEN NOT MATCHED THEN
+        INSERT (ID_FUNCION, ID_VERSION, CODIGO, DESCRIPCION, ACTIVA)
+        VALUES (SEQ_MATRIZ_FUNCION.NEXTVAL, v_id_version, s.CODIGO, s.DESCRIPCION, 'S')
+    ;
+    SELECT ID_FUNCION INTO v_id_funcion
+      FROM MATRIZ_FUNCION
+     WHERE ID_VERSION = v_id_version
+       AND CODIGO = 'ADMINISTRADOR_PIIP';
+
+    SELECT ID_ROL INTO v_id_rol
+      FROM ROL
+     WHERE NOMBRE_ROL = 'GlobalAdmin';
+    SELECT ID_UNIDAD INTO v_id_unidad
+      FROM UNIDAD_EJECUTORA
+     WHERE ID_UNIDAD = 1;
+
+    INSERT INTO USUARIO (
+        ID_USUARIO, KEYCLOAK_ID, LOGIN, NOMBRE_COMPLETO, CORREO,
+        ACTIVO, CREADO_POR, FECHA_CREACION, LOGIN_SINTETICO
+    ) VALUES (
+        SEQ_USUARIO.NEXTVAL, '<SUSTITUIR_SUB_KEYCLOAK>', NULL, NULL, NULL,
+        'S', '<SUSTITUIR_DBA_EJECUTOR>', SYSTIMESTAMP, 'S'
+    )
+    RETURNING ID_USUARIO INTO v_id_usuario;
+
+    INSERT INTO MATRIZ_FUNCION_PERFIL_UNIDAD (
+        ID_COMBINACION, ID_VERSION, ID_FUNCION, ID_ROL, ID_UNIDAD,
+        ID_APROBADOR, ID_REGISTRADOR, ID_DOCUMENTO_APROBACION,
+        VIGENTE_DESDE, VIGENTE_HASTA, ACTIVA, CREADO_POR, FECHA_CREACION,
+        ES_BOOTSTRAP
+    ) VALUES (
+        SEQ_MATRIZ_COMBINACION.NEXTVAL, v_id_version, v_id_funcion, v_id_rol, v_id_unidad,
+        NULL, NULL, NULL,
+        SYSDATE, NULL, 'S', '<SUSTITUIR_DBA_EJECUTOR>', SYSTIMESTAMP,
+        'S'
+    )
+    RETURNING ID_COMBINACION INTO v_id_combinacion;
+
+    INSERT INTO USUARIO_ROL_UNIDAD (
+        ID_USR_ROL_UNIDAD, ID_USUARIO, ID_ROL, ID_UNIDAD,
+        ACTIVO, FECHA_ASIGNACION, ASIGNADO_POR,
+        FECHA_INICIO, FECHA_FIN, REVOCADA_EN, REVOCADA_POR, MOTIVO_REVOCACION,
+        INACTIVA_TEMPORALMENTE, ID_COMBINACION_MATRIZ, ID_DOCUMENTO_FORMAL,
+        VERSION
+    ) VALUES (
+        SEQ_USUARIO_ROL_UNIDAD.NEXTVAL, v_id_usuario, v_id_rol, v_id_unidad,
+        'S', SYSDATE, '<SUSTITUIR_DBA_EJECUTOR>',
+        SYSTIMESTAMP, NULL, NULL, NULL, NULL,
+        'N', v_id_combinacion, NULL,
+        0
+    )
+    RETURNING ID_USR_ROL_UNIDAD INTO v_id_asignacion;
+
+    INSERT INTO AUDITORIA_ACCESO (
+        ID_AUDIT, ID_USUARIO, ENDPOINT, METODO_HTTP, CODIGO_RESPUESTA,
+        IP_CLIENTE, FECHA_HORA, DURACION_MS
+    ) VALUES (
+        SEQ_AUDITORIA_ACCESO.NEXTVAL, v_id_usuario,
+        '/internal/seed/021.1/bootstrap', 'POST', 201,
+        '127.0.0.1', SYSTIMESTAMP, NULL
+    );
+
+    INSERT INTO AUDITORIA_EVENTO (
+        ID_EVENTO, TIPO_EVENTO, ENTIDAD_TIPO, ENTIDAD_ID, PAYLOAD_JSON,
+        ID_USUARIO, FECHA_EVENTO, PROCESADO
+    ) VALUES (
+        SEQ_AUDITORIA_EVENTO.NEXTVAL, 'INICIALIZACION_GLOBAL_ADMIN',
+        'USUARIO_ROL_UNIDAD', v_id_asignacion,
+        '{"jefatura_autorizante":"<SUSTITUIR_JEFATURA_AUTORIZANTE>",'
+        || '"aprobacion_despliegue":"<SUSTITUIR_APROBACION_DESPLIEGUE>",'
+        || '"dba_ejecutor":"<SUSTITUIR_DBA_EJECUTOR>",'
+        || '"fecha_ejecucion":"<SUSTITUIR_FECHA_EJECUCION>",'
+        || '"id_combinacion_matriz":' || TO_CHAR(v_id_combinacion) || ','
+        || '"id_usuario":' || TO_CHAR(v_id_usuario) || ','
+        || '"id_unidad_midagri":' || TO_CHAR(v_id_unidad) || ','
+        || '"resultado":"EXITOSA"}',
+        v_id_usuario, SYSTIMESTAMP, 'S'
+    );
+END;
+/
+
+COMMENT ON TABLE MATRIZ_FUNCIONAL_VERSION
+    IS 'PIIP 021.1: bootstrap fundacional GlobalAdmin ejecutado';
+
+COMMIT;
+
+PROMPT 021.1_bootstrap_matriz_fundacional completada correctamente.

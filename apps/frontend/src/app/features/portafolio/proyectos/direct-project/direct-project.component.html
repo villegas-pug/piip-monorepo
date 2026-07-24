@@ -1,0 +1,339 @@
+<section class="direct-project" aria-labelledby="direct-project-title">
+  <h2 id="direct-project-title">Crear proyecto directo</h2>
+  <p class="direct-project__help" id="direct-project-help">
+    La Autoridad o el Evaluador con documento formal registra un proyecto directo
+    heredado o excepcional sin iniciativa origen. Si existe una iniciativa
+    <code>PRESENTADO</code> en la misma unidad responsable, la creacion queda bloqueada
+    (regla constitucional "no omite la evaluacion").
+  </p>
+
+  @if (bloqueadoPorIniciativaPresentada()) {
+    <div class="direct-project__scope-blocked" role="alert" aria-live="assertive">
+      Existe una iniciativa <code>PRESENTADO</code> en la unidad responsable
+      (id {{ iniciativaPresentadaConflicto()?.id }}). No se omite la evaluacion: la
+      Autoridad debe esperar a que se evalue la iniciativa o cambiar la unidad responsable.
+    </div>
+  }
+
+  <form
+    [formGroup]="form"
+    (ngSubmit)="enviar()"
+    novalidate
+    [id]="formId"
+    class="direct-project__form"
+    aria-labelledby="direct-form-titulo">
+    <h3 id="direct-form-titulo">Datos del proyecto directo</h3>
+
+    <div class="direct-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idTipoOrigen">Tipo de origen</mat-label>
+        <mat-select
+          [id]="idTipoOrigen"
+          formControlName="tipoOrigen"
+          required
+          [attr.aria-describedby]="idTipoOrigen + '-help ' + idTipoOrigen + '-error'">
+          @for (opcion of tipoOrigenOpciones; track opcion) {
+            <mat-option [value]="opcion">{{ opcion }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint [id]="idTipoOrigen + '-help'">HEREDADO o EXCEPCION_FORMAL.</mat-hint>
+        <mat-error [id]="idTipoOrigen + '-error'">{{ mensajeError('tipoOrigen') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCodigoOrigen">Codigo de origen</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idCodigoOrigen"
+          formControlName="codigoOrigen"
+          maxlength="50"
+          [attr.aria-describedby]="idCodigoOrigen + '-help ' + idCodigoOrigen + '-error'" />
+        <mat-hint [id]="idCodigoOrigen + '-help'">Obligatorio solo cuando el origen es EXCEPCION_FORMAL.</mat-hint>
+        <mat-error [id]="idCodigoOrigen + '-error'">{{ mensajeError('codigoOrigen') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="direct-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idFechaInicio">Fecha de inicio</mat-label>
+        <input
+          matInput
+          type="date"
+          [id]="idFechaInicio"
+          formControlName="fechaInicio"
+          required
+          [attr.aria-describedby]="idFechaInicio + '-help ' + idFechaInicio + '-error'" />
+        <mat-hint [id]="idFechaInicio + '-help'">Dato contractual. La fecha efectiva la fija el servidor.</mat-hint>
+        <mat-error [id]="idFechaInicio + '-error'">{{ mensajeError('fechaInicio') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idNombre">Nombre</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idNombre"
+          formControlName="nombre"
+          required
+          maxlength="500"
+          [attr.aria-describedby]="idNombre + '-help ' + idNombre + '-error'" />
+        <mat-hint [id]="idNombre + '-help'">Obligatorio. Maximo 500 caracteres.</mat-hint>
+        <mat-error [id]="idNombre + '-error'">{{ mensajeError('nombre') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="direct-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idObjetivoPei">Objetivo PEI (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idObjetivoPei"
+          formControlName="objetivoPeiId"
+          required
+          min="1"
+          [attr.aria-describedby]="idObjetivoPei + '-help ' + idObjetivoPei + '-error'" />
+        <mat-hint [id]="idObjetivoPei + '-help'">Campo oficial 6.</mat-hint>
+        <mat-error [id]="idObjetivoPei + '-error'">{{ mensajeError('objetivoPeiId') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idActividadPoi">Actividad POI (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idActividadPoi"
+          formControlName="actividadPoiId"
+          required
+          min="1"
+          [attr.aria-describedby]="idActividadPoi + '-help ' + idActividadPoi + '-error'" />
+        <mat-hint [id]="idActividadPoi + '-help'">Campo oficial 7.</mat-hint>
+        <mat-error [id]="idActividadPoi + '-error'">{{ mensajeError('actividadPoiId') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="direct-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idUnidadResponsable">Unidad responsable (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idUnidadResponsable"
+          formControlName="unidadResponsableId"
+          required
+          min="1"
+          (change)="cambiarUnidadResponsable(($any($event.target).valueAsNumber))"
+          [attr.aria-describedby]="idUnidadResponsable + '-help ' + idUnidadResponsable + '-error'" />
+        <mat-hint [id]="idUnidadResponsable + '-help'">Solo una unidad ejecutora por anio.</mat-hint>
+        <mat-error [id]="idUnidadResponsable + '-error'">{{ mensajeError('unidadResponsableId') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idResponsable">Responsable (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idResponsable"
+          formControlName="responsableId"
+          required
+          min="1"
+          [attr.aria-describedby]="idResponsable + '-help ' + idResponsable + '-error'" />
+        <mat-hint [id]="idResponsable + '-help'">Campo oficial 8.</mat-hint>
+        <mat-error [id]="idResponsable + '-error'">{{ mensajeError('responsableId') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDescripcion">Descripcion</mat-label>
+      <textarea
+        matInput
+        [id]="idDescripcion"
+        formControlName="descripcion"
+        required
+        maxlength="2000"
+        rows="4"
+        [attr.aria-describedby]="idDescripcion + '-help ' + idDescripcion + '-error'"></textarea>
+      <mat-hint [id]="idDescripcion + '-help'">Obligatoria. Maximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idDescripcion + '-error'">{{ mensajeError('descripcion') }}</mat-error>
+    </mat-form-field>
+
+    <div class="direct-project__row">
+      <mat-checkbox [id]="idComponenteDigital" formControlName="componenteDigital">
+        Componente digital
+      </mat-checkbox>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idDetalleDigital">Detalle del componente digital</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idDetalleDigital"
+          formControlName="detalleComponenteDigital"
+          maxlength="500"
+          [attr.aria-describedby]="idDetalleDigital + '-help ' + idDetalleDigital + '-error'" />
+        <mat-hint [id]="idDetalleDigital + '-help'">Obligatorio al activar el flag.</mat-hint>
+        <mat-error [id]="idDetalleDigital + '-error'">{{ mensajeError('detalleComponenteDigital') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idNota">Nota</mat-label>
+      <textarea
+        matInput
+        [id]="idNota"
+        formControlName="nota"
+        maxlength="1000"
+        rows="3"
+        [attr.aria-describedby]="idNota + '-help ' + idNota + '-error'"></textarea>
+      <mat-hint [id]="idNota + '-help'">Opcional. Maximo 1000 caracteres.</mat-hint>
+      <mat-error [id]="idNota + '-error'">{{ mensajeError('nota') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDocumentoAutorizacion">{{ tituloDocumentoFormal }} (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idDocumentoAutorizacion"
+        formControlName="documentoAutorizacionId"
+        required
+        min="1"
+        [attr.aria-describedby]="idDocumentoAutorizacion + '-help ' + idDocumentoAutorizacion + '-error'" />
+      <mat-hint [id]="idDocumentoAutorizacion + '-help'">Version documental aprobada (campo 15).</mat-hint>
+      <mat-error [id]="idDocumentoAutorizacion + '-error'">{{ mensajeError('documentoAutorizacionId') }}</mat-error>
+    </mat-form-field>
+
+    <fieldset class="direct-project__evidences" aria-labelledby="direct-evidencias-titulo">
+      <legend id="direct-evidencias-titulo">Evidencias</legend>
+      <p class="direct-project__evidences-help" [id]="idEvidenciaBase + '-help'">
+        Al menos una evidencia idonea (campo 18).
+      </p>
+
+      @for (evidencia of evidencias.value; track $index; let i = $index) {
+        <div class="direct-project__evidence">
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="idEvidenciaBase + '-' + i">Evidencia (id)</mat-label>
+            <input
+              matInput
+              type="number"
+              [id]="idEvidenciaBase + '-' + i"
+              [value]="evidencia"
+              (input)="evidencias.setValue(actualizarEvidencia(i, $any($event.target).valueAsNumber))"
+              min="1"
+              [attr.aria-describedby]="idEvidenciaBase + '-' + i + '-help'" />
+            <mat-hint [id]="idEvidenciaBase + '-' + i + '-help'">Identificador de la evidencia documental.</mat-hint>
+          </mat-form-field>
+
+          <button
+            mat-stroked-button
+            type="button"
+            [attr.aria-label]="'Quitar evidencia ' + (i + 1)"
+            (click)="quitarEvidencia(i)">
+            Quitar
+          </button>
+        </div>
+      }
+
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="agregar-evidencia"
+        (click)="agregarEvidencia()">
+        Agregar evidencia
+      </button>
+
+      @if (mensajeError('evidenciaIds')) {
+        <p class="direct-project__evidences-error" role="alert">
+          {{ mensajeError('evidenciaIds') }}
+        </p>
+      }
+    </fieldset>
+
+    <div class="direct-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idFuente">Fuente de origen</mat-label>
+        <mat-select
+          [id]="idFuente"
+          formControlName="fuenteOrigen"
+          required
+          [attr.aria-describedby]="idFuente + '-help ' + idFuente + '-error'">
+          @for (opcion of fuenteOrigenOpciones; track opcion) {
+            <mat-option [value]="opcion">{{ opcion }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint [id]="idFuente + '-help'">Discriminador del catalogo canonico.</mat-hint>
+        <mat-error [id]="idFuente + '-error'">{{ mensajeError('fuenteOrigen') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idDetalleFuente">Detalle de la fuente</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idDetalleFuente"
+          formControlName="detalleFuente"
+          maxlength="500"
+          [attr.aria-describedby]="idDetalleFuente + '-help ' + idDetalleFuente + '-error'" />
+        <mat-hint [id]="idDetalleFuente + '-help'">Obligatorio solo cuando la fuente es OTROS.</mat-hint>
+        <mat-error [id]="idDetalleFuente + '-error'">{{ mensajeError('detalleFuente') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div role="alert" aria-live="assertive" class="direct-project__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Codigo: {{ problemDetail.code }} &middot; Correlacion: {{ problemDetail.correlationId }}</small></p>
+        @if (violacionesPara('documentoAutorizacionId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="direct-project__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('unidadResponsableId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="direct-project__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('evidenciaIds'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="direct-project__violacion">{{ v.message }}</p>
+          }
+        }
+      }
+    </div>
+
+    <div class="direct-project__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-action="crear-directo"
+        [disabled]="submitting() || !permiteEnvio()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Crear proyecto directo
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-directo"
+        [attr.aria-controls]="formId"
+        (click)="cancelarCreacion()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <output class="direct-project__result" aria-live="polite">
+    @if (proyectoCreado(); as detalle) {
+      <h3>Proyecto directo creado</h3>
+      <p>Codigo: <strong>{{ detalle.codigo }}</strong></p>
+      <p>Estado: <strong>{{ detalle.estado }}</strong></p>
+      <p>Fecha de inicio: <code>{{ detalle.fechaInicio }}</code></p>
+      <p>ETag: <code>{{ detalle.etag }}</code></p>
+    }
+  </output>
+</section>

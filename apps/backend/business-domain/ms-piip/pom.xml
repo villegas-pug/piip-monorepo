@@ -22,20 +22,56 @@
 			<artifactId>shared-data</artifactId>
 			<version>1.0</version>
 		</dependency>
+      <dependency>
+         <groupId>com.oracle.database.security</groupId>
+         <artifactId>oraclepki</artifactId>
+         <version>21.9.0.0</version>
+      </dependency>
+      <dependency>
+         <groupId>com.oracle.database.security</groupId>
+         <artifactId>osdt_core</artifactId>
+         <version>21.9.0.0</version>
+      </dependency>
+      <dependency>
+         <groupId>com.oracle.database.security</groupId>
+         <artifactId>osdt_cert</artifactId>
+         <version>21.9.0.0</version>
+      </dependency>
+
+      <!--
+        Keycloak Admin API para el ciclo de identidad constitucional.
+        Su uso está limitado a pe.gob.midagri.piip.seguridad.service.impl;
+        ver prueba arquitectónica ModularArchitectureTest#keycloak_only_in_seguridad_service_impl.
+      -->
+      <dependency>
+         <groupId>org.keycloak</groupId>
+         <artifactId>keycloak-admin-client-jakarta</artifactId>
+      </dependency>
+
+		<!-- ArchUnit: pruebas de límites arquitectónicos del monolito modular PIIP -->
 		<dependency>
-			<groupId>com.oracle.database.security</groupId>
-			<artifactId>oraclepki</artifactId>
-			<version>21.9.0.0</version>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<scope>test</scope>
 		</dependency>
+
+		<!--
+		   OpenPDF: motor de generacion PDF que JasperReports
+		   7.x usa internamente. Se declara explicitamente
+		   para que PdfReportRenderer pueda componer el PDF
+		   oficial del reporte institucional a partir del
+		   snapshot JSON canonico sin necesidad de plantillas
+		   .jrxml. Es la unica libreria de renderizado PDF
+		   usada por el modulo reportes; su API de bajo nivel
+		   (com.lowagie.text.*) es compatible con iText 4.
+		   La declaracion explicita refleja una dependencia
+		   transitiva de jasperreports-pdf y mantiene aislado
+		   el alcance del modulo reportes.
+		-->
 		<dependency>
-			<groupId>com.oracle.database.security</groupId>
-			<artifactId>osdt_core</artifactId>
-			<version>21.9.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.oracle.database.security</groupId>
-			<artifactId>osdt_cert</artifactId>
-			<version>21.9.0.0</version>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>1.3.32</version>
 		</dependency>
 	</dependencies>
 
@@ -51,6 +87,11 @@
 				<configuration>
 					<outputDirectory>${output.dir}</outputDirectory>
 				</configuration>
+			</plugin>
+			<!-- JaCoCo: prepare-agent, report y check 80% líneas en pe.gob.midagri.piip.*.service.** en verify -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>

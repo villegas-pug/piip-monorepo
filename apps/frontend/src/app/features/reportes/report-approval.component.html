@@ -1,0 +1,471 @@
+<!--
+  Página accesible de aprobación y remisión de reporte institucional
+  (US8 - T109).
+  - WCAG 2.1 AA: skip link, regiones `aria-live` separadas, listas con
+    `aria-label`, foco visible.
+  - La aprobación exige documento formal de aprobación y al menos un
+    destinatario (BR-125, BR-127). La remisión solo se registra contra
+    destinatarios aprobados (BR-128).
+  - `Idempotency-Key` se conserva entre envíos para que un reintento
+    con la misma clave y mismo payload no duplique la operación.
+  - `If-Match` se envía con la ETag de la lectura previa del detalle;
+    una segunda aprobación para la misma versión produce
+    `REPORT_VERSION_ALREADY_APPROVED` y una remisión contra una versión
+    distinta de la aprobada produce `REPORT_VERSION_NOT_APPROVED`.
+  - Sin eliminación ni disposición: la Constitución veta la purga
+    mientras no exista tabla de retención aprobada.
+-->
+<a class="skip-link" [href]="'#' + idMain">Saltar al contenido principal</a>
+
+<main
+  [id]="idMain"
+  tabindex="-1"
+  aria-labelledby="report-approval-titulo"
+  class="report-approval"
+  [attr.aria-busy]="cargando() || submittingAprobacion() || submittingRemision() ? 'true' : null"
+>
+  <h1 id="report-approval-titulo">Aprobación y remisión del reporte</h1>
+  <p id="report-approval-ayuda" class="report-approval__help">
+    Esta pantalla delega en el backend la transición entre estados. La
+    aprobación fija la versión exacta y los destinatarios permitidos; la
+    remisión se registra solo contra esa versión aprobada. La
+    autorización efectiva sigue siendo del servidor.
+  </p>
+
+  <section class="report-approval__acciones" aria-label="Acciones de la página">
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="volver()"
+      aria-describedby="report-approval-acciones-ayuda"
+    >
+      Volver al detalle
+    </button>
+    <p id="report-approval-acciones-ayuda" class="piip-visually-hidden">
+      Volver al detalle cancela el formulario sin enviar al backend.
+    </p>
+  </section>
+
+  <section
+    aria-labelledby="report-approval-aprobacion-titulo"
+    class="report-approval__seccion"
+  >
+    <h2 id="report-approval-aprobacion-titulo">Aprobar versión del reporte</h2>
+    <p class="report-approval__ayuda">
+      La Oficina de Modernización aprueba la versión exacta del reporte
+      (BR-127) y fija el documento de aprobación. Los destinatarios
+      admitidos son autoridades MIDAGRI, la propia Oficina o PCM-SGP
+      cuando esté autorizado (BR-125).
+    </p>
+    <form
+      [id]="idFormAprobacion"
+      [formGroup]="formAprobacion"
+      (ngSubmit)="aprobar()"
+      (keydown.escape)="cancelarAprobacion()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersion">Versión exacta</mat-label>
+        <input
+          matInput
+          [id]="idVersion + '-aprobacion'"
+          type="number"
+          min="1"
+          formControlName="idVersion"
+          [attr.aria-describedby]="idVersion + '-aprobacion-error'"
+          required
+        />
+        <mat-hint>
+          Versión de datos actual: <strong>{{ versionActual() }}</strong>
+        </mat-hint>
+        <mat-error [id]="idVersion + '-aprobacion-error'">
+          {{ mensajeError(formAprobacion.controls.idVersion, submittedAprobacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idDocumentoAprobacion">Documento de aprobación</mat-label>
+        <input
+          matInput
+          [id]="idDocumentoAprobacion"
+          type="number"
+          min="1"
+          formControlName="idDocumentoAprobacion"
+          [attr.aria-describedby]="idDocumentoAprobacion + '-error'"
+          required
+        />
+        <mat-error [id]="idDocumentoAprobacion + '-error'">
+          {{ mensajeError(formAprobacion.controls.idDocumentoAprobacion, submittedAprobacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <fieldset class="report-approval__destinatarios">
+        <legend>Destinatarios aprobados</legend>
+        <div formArrayName="destinatarios">
+          @for (grupo of formAprobacion.controls.destinatarios.controls; track $index) {
+            <div [formGroupName]="$index" class="report-approval__destinatario">
+              <mat-form-field appearance="outline">
+                <mat-label [attr.for]="'tipo-destinatario-' + $index">Tipo de destinatario</mat-label>
+                <mat-select
+                  [id]="'tipo-destinatario-' + $index"
+                  formControlName="tipoDestinatario"
+                  [attr.aria-describedby]="'tipo-destinatario-' + $index + '-error'"
+                  required
+                >
+                  @for (tipo of tiposDestinatario; track tipo) {
+                    <mat-option [value]="tipo">{{ descripcionTipo(tipo) }}</mat-option>
+                  }
+                </mat-select>
+                <mat-error [id]="'tipo-destinatario-' + $index + '-error'">
+                  {{ mensajeError(grupo.controls.tipoDestinatario, submittedAprobacion()) }}
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label [attr.for]="'id-entidad-' + $index">Identificador de entidad</mat-label>
+                <input
+                  matInput
+                  [id]="'id-entidad-' + $index"
+                  type="number"
+                  min="1"
+                  formControlName="idEntidad"
+                  [attr.aria-describedby]="'id-entidad-' + $index + '-error'"
+                  required
+                />
+                <mat-error [id]="'id-entidad-' + $index + '-error'">
+                  {{ mensajeError(grupo.controls.idEntidad, submittedAprobacion()) }}
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label [attr.for]="'nombre-' + $index">Nombre</mat-label>
+                <input
+                  matInput
+                  [id]="'nombre-' + $index"
+                  type="text"
+                  formControlName="nombre"
+                  [attr.aria-describedby]="'nombre-' + $index + '-error'"
+                  required
+                />
+                <mat-error [id]="'nombre-' + $index + '-error'">
+                  {{ mensajeError(grupo.controls.nombre, submittedAprobacion()) }}
+                </mat-error>
+              </mat-form-field>
+
+              <button
+                mat-stroked-button
+                color="warn"
+                type="button"
+                (click)="eliminarDestinatario($index)"
+                [disabled]="formAprobacion.controls.destinatarios.length <= 1"
+                [attr.aria-label]="'Quitar destinatario ' + ($index + 1)"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+                Quitar
+              </button>
+            </div>
+          }
+        </div>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="agregarDestinatario()"
+          aria-label="Agregar un nuevo destinatario a la aprobación"
+        >
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Agregar destinatario
+        </button>
+      </fieldset>
+
+      <div class="report-approval__acciones-formulario">
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="submittingAprobacion()"
+          aria-label="Registrar aprobación del reporte"
+        >
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          Aprobar versión
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="cancelarAprobacion()"
+          [disabled]="submittingAprobacion()"
+        >
+          Cancelar
+        </button>
+        <mat-progress-spinner
+          *ngIf="submittingAprobacion()"
+          diameter="20"
+          mode="indeterminate"
+          aria-label="Registrando aprobación"
+        />
+      </div>
+    </form>
+  </section>
+
+  <section
+    [id]="idDestinatarios"
+    aria-labelledby="report-approval-destinatarios-titulo"
+    class="report-approval__seccion"
+    aria-live="polite"
+  >
+    <h2 id="report-approval-destinatarios-titulo">Destinatarios aprobados</h2>
+    @if (destinatarios().length === 0) {
+      <p>El reporte aún no tiene destinatarios aprobados.</p>
+    } @else {
+      <table aria-describedby="report-approval-destinatarios-ayuda">
+        <caption class="piip-visually-hidden">
+          Listado de destinatarios aprobados en la última versión del reporte.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Tipo</th>
+            <th scope="col">Entidad</th>
+            <th scope="col">Nombre</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of destinatarios(); track trackDestinatarioAprobado($index, d)) {
+            <tr>
+              <td>{{ descripcionTipo(d.tipoDestinatario) }}</td>
+              <td>{{ d.idEntidad }}</td>
+              <td>{{ d.nombre }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p id="report-approval-destinatarios-ayuda" class="piip-visually-hidden">
+        Solo se admiten destinatarios autorizados por la matriz BR-125.
+      </p>
+    }
+  </section>
+
+  <section
+    aria-labelledby="report-approval-remision-titulo"
+    class="report-approval__seccion"
+  >
+    <h2 id="report-approval-remision-titulo">Registrar remisión manual</h2>
+    <p class="report-approval__ayuda">
+      La remisión es declarativa (BR-128). Un resultado
+      <code>FALLIDA</code> exige motivo. El backend rechaza remitir una
+      versión distinta de la aprobada (<code>409
+      REPORT_VERSION_NOT_APPROVED</code>).
+    </p>
+    <form
+      [id]="idFormRemision"
+      [formGroup]="formRemision"
+      (ngSubmit)="remitir()"
+      (keydown.escape)="cancelarRemision()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersion + '-remision'">Versión exacta</mat-label>
+        <input
+          matInput
+          [id]="idVersion + '-remision'"
+          type="number"
+          min="1"
+          formControlName="idVersion"
+          [attr.aria-describedby]="idVersion + '-remision-error'"
+          required
+        />
+        <mat-hint>
+          Debe coincidir con la versión aprobada. La fija el backend.
+        </mat-hint>
+        <mat-error [id]="idVersion + '-remision-error'">
+          {{ mensajeError(formRemision.controls.idVersion, submittedRemision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idResultado">Resultado de la remisión</mat-label>
+        <mat-select
+          [id]="idResultado"
+          formControlName="resultado"
+          [attr.aria-describedby]="idResultado + '-error'"
+          required
+        >
+          @for (resultado of resultadosRemision; track resultado) {
+            <mat-option [value]="resultado">{{ descripcionResultado(resultado) }}</mat-option>
+          }
+        </mat-select>
+        <mat-error [id]="idResultado + '-error'">
+          {{ mensajeError(formRemision.controls.resultado, submittedRemision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <fieldset class="report-approval__destinatarios">
+        <legend>Destinatarios a remitir</legend>
+        @if (destinatarios().length === 0) {
+          <p>No hay destinatarios aprobados para esta versión.</p>
+        } @else {
+          <ul class="report-approval__lista-destinatarios" aria-label="Destinatarios aprobados">
+            @for (d of destinatarios(); track trackDestinatarioAprobado($index, d)) {
+              <li>
+                <mat-checkbox
+                  [checked]="destinatarioEstaSeleccionado(d.idDestinatario)"
+                  (change)="alternarDestinatario(d.idDestinatario, $event.checked)"
+                  [disabled]="!esDestinatarioAprobable(d)"
+                  [attr.aria-label]="
+                    'Seleccionar destinatario ' + d.nombre + ' ' + descripcionTipo(d.tipoDestinatario)
+                  "
+                >
+                  {{ d.nombre }} · {{ descripcionTipo(d.tipoDestinatario) }}
+                </mat-checkbox>
+              </li>
+            }
+          </ul>
+        }
+      </fieldset>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idMotivo">Motivo (obligatorio si el resultado es FALLIDA)</mat-label>
+        <textarea
+          matInput
+          [id]="idMotivo"
+          rows="3"
+          formControlName="motivo"
+          [attr.aria-describedby]="idMotivo + '-error'"
+        ></textarea>
+        <mat-hint>Máximo {{ maxMotivo }} caracteres.</mat-hint>
+        <mat-error [id]="idMotivo + '-error'">
+          {{ mensajeError(formRemision.controls.motivo, submittedRemision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="report-approval__acciones-formulario">
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="submittingRemision() || !puedeRemitir()"
+          aria-label="Registrar la remisión del reporte"
+        >
+          <mat-icon aria-hidden="true">send</mat-icon>
+          Registrar remisión
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="cancelarRemision()"
+          [disabled]="submittingRemision()"
+        >
+          Cancelar
+        </button>
+        <mat-progress-spinner
+          *ngIf="submittingRemision()"
+          diameter="20"
+          mode="indeterminate"
+          aria-label="Registrando remisión"
+        />
+      </div>
+    </form>
+  </section>
+
+  <section
+    [id]="idRemisiones"
+    aria-labelledby="report-approval-remisiones-titulo"
+    class="report-approval__seccion"
+    aria-live="polite"
+  >
+    <h2 id="report-approval-remisiones-titulo">Historial de remisiones</h2>
+    @if (remision()?.remisiones?.length) {
+      <table aria-describedby="report-approval-remisiones-ayuda">
+        <caption class="piip-visually-hidden">
+          Historial de remisiones registradas para esta versión.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Destinatario</th>
+            <th scope="col">Resultado</th>
+            <th scope="col">Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of remision()?.remisiones ?? []; track trackRemision($index, r)) {
+            <tr>
+              <td>
+                <time [attr.datetime]="r.fechaRemision">{{ r.fechaRemision }}</time>
+              </td>
+              <td>{{ r.idDestinatario }}</td>
+              <td>{{ descripcionResultado(r.resultado) }}</td>
+              <td>{{ r.motivo || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p id="report-approval-remisiones-ayuda" class="piip-visually-hidden">
+        Cada fila corresponde a una remisión individual registrada contra
+        un destinatario aprobado.
+      </p>
+    } @else {
+      <p>Sin remisiones registradas para esta versión.</p>
+    }
+  </section>
+
+  <section
+    [id]="idResultados"
+    aria-labelledby="report-approval-resultados-titulo"
+    class="report-approval__resultados"
+    aria-live="polite"
+  >
+    <h2 id="report-approval-resultados-titulo" class="piip-visually-hidden">
+      Resultados
+    </h2>
+    @if (aprobacion(); as aprobacion) {
+      <p>
+        Aprobación registrada: versión <strong>{{ aprobacion.idVersion }}</strong>,
+        documento <strong>{{ aprobacion.idDocumentoAprobacion }}</strong>,
+        fecha <time [attr.datetime]="aprobacion.fechaAprobacion">{{ aprobacion.fechaAprobacion }}</time>.
+      </p>
+    }
+  </section>
+
+  <section
+    [id]="idErrores"
+    aria-labelledby="report-approval-errores-titulo"
+    class="report-approval__errores"
+    aria-live="assertive"
+    role="alert"
+  >
+    <h2 id="report-approval-errores-titulo" class="piip-visually-hidden">Errores</h2>
+    @if (problema(); as problema) {
+      <p>
+        <strong>{{ problema.title }}</strong>
+        <span> ({{ problema.code }})</span>
+      </p>
+      <p>{{ problema.detail }}</p>
+      @if (problema.violations.length) {
+        <ul>
+          @for (violacion of problema.violations; track violacion.field) {
+            <li><strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}</li>
+          }
+        </ul>
+      }
+      @if (problema.correlationId) {
+        <p class="piip-visually-hidden">Identificador de correlación: {{ problema.correlationId }}</p>
+      }
+    }
+    @if (problemaRemision(); as problemaRemision) {
+      <p>
+        <strong>{{ problemaRemision.title }}</strong>
+        <span> ({{ problemaRemision.code }})</span>
+      </p>
+      <p>{{ problemaRemision.detail }}</p>
+      @if (problemaRemision.violations.length) {
+        <ul>
+          @for (violacion of problemaRemision.violations; track violacion.field) {
+            <li><strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}</li>
+          }
+        </ul>
+      }
+      @if (problemaRemision.correlationId) {
+        <p class="piip-visually-hidden">Identificador de correlación: {{ problemaRemision.correlationId }}</p>
+      }
+    }
+  </section>
+</main>

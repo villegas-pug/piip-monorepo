@@ -1,0 +1,16 @@
+# Dependencias y salidas de compilación
+node_modules/
+dist/
+build/
+out-tsc/
+.angular/
+coverage/
+
+# Lockfiles
+package-lock.json
+
+# Playwright y pruebas
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

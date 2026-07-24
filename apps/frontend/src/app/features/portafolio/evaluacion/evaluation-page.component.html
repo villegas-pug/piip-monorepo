@@ -1,0 +1,230 @@
+<section class="evaluation-page" aria-labelledby="evaluation-page-title">
+  <h2 id="evaluation-page-title">Evaluación de iniciativa</h2>
+  <p class="evaluation-page__help" id="evaluation-page-help">
+    El Evaluador registra la decisión de admisibilidad y, si aplica, de aplicabilidad.
+    La subsanación única se atiende durante la ventana abierta por el propio Evaluador.
+  </p>
+
+  @if (iniciativa(); as ctx) {
+    <output class="evaluation-page__contexto" aria-live="polite">
+      <p><strong>Código:</strong> {{ ctx.codigo }}</p>
+      <p><strong>Estado:</strong> {{ ctx.estado }}</p>
+      @if (ctx.nombre) {
+        <p><strong>Nombre:</strong> {{ ctx.nombre }}</p>
+      }
+      <p><strong>Versión:</strong> {{ ctx.version }} · <strong>ETag:</strong> {{ etagActual() }}</p>
+    </output>
+  }
+
+  @if (estadoBloqueante(); as estado) {
+    <div role="status" aria-live="polite" class="evaluation-page__estado-bloqueante">
+      La iniciativa se encuentra en estado <strong>{{ estado }}</strong>. Las acciones de evaluación
+      están deshabilitadas hasta que el flujo de transición la devuelva a <code>PRESENTADO</code>.
+    </div>
+  }
+
+  <form
+    [formGroup]="formAdmisibilidad"
+    (ngSubmit)="registrarAdmisibilidad()"
+    novalidate
+    [id]="formAdmisibilidadId"
+    class="evaluation-page__form evaluation-page__form--admisibilidad"
+    aria-labelledby="evaluation-admisibilidad-titulo">
+    <h3 id="evaluation-admisibilidad-titulo">Decisión de admisibilidad</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idResultadoAdmisibilidad">Resultado</mat-label>
+      <mat-select
+        [id]="idResultadoAdmisibilidad"
+        formControlName="resultado"
+        required
+        [attr.required]="''"
+        [attr.aria-describedby]="idResultadoAdmisibilidad + '-help ' + idResultadoAdmisibilidad + '-error'">
+        @for (opcion of resultadosAdmisibilidad; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint [id]="idResultadoAdmisibilidad + '-help'">Seleccione ADMITIDA o NO_ADMISIBLE.</mat-hint>
+      <mat-error [id]="idResultadoAdmisibilidad + '-error'">{{ mensajeErrorAdmisibilidad('resultado') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idObservacionAdmisibilidad">Observación</mat-label>
+      <textarea
+        matInput
+        [id]="idObservacionAdmisibilidad"
+        formControlName="observacion"
+        required
+        maxlength="2000"
+        rows="4"
+        [attr.aria-describedby]="idObservacionAdmisibilidad + '-help ' + idObservacionAdmisibilidad + '-error'"></textarea>
+      <mat-hint [id]="idObservacionAdmisibilidad + '-help'">Obligatorio. Máximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idObservacionAdmisibilidad + '-error'">{{ mensajeErrorAdmisibilidad('observacion') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDocumentoAdmisibilidad">Documento de Opinión Técnica (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idDocumentoAdmisibilidad"
+        formControlName="documentoOpinionId"
+        required
+        min="1"
+        [attr.aria-describedby]="idDocumentoAdmisibilidad + '-help ' + idDocumentoAdmisibilidad + '-error'" />
+      <mat-hint [id]="idDocumentoAdmisibilidad + '-help'">Versión documental aprobada por la OTI.</mat-hint>
+      <mat-error [id]="idDocumentoAdmisibilidad + '-error'">{{ mensajeErrorAdmisibilidad('documentoOpinionId') }}</mat-error>
+    </mat-form-field>
+
+    <div role="alert" aria-live="assertive" class="evaluation-page__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+        @if (violacionesPara('observacion'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="evaluation-page__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('documentoOpinionId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="evaluation-page__violacion">{{ v.message }}</p>
+          }
+        }
+      }
+    </div>
+
+    <div class="evaluation-page__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-action="admisibilidad"
+        [disabled]="submitting() || !permiteAdmisibilidad()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Registrar admisibilidad
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-admisibilidad"
+        [attr.aria-controls]="formAdmisibilidadId"
+        (click)="cancelarAdmisibilidad()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <form
+    [formGroup]="formAplicabilidad"
+    (ngSubmit)="registrarAplicabilidad()"
+    novalidate
+    [id]="formAplicabilidadId"
+    class="evaluation-page__form evaluation-page__form--aplicabilidad"
+    aria-labelledby="evaluation-aplicabilidad-titulo">
+    <h3 id="evaluation-aplicabilidad-titulo">Decisión de aplicabilidad</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idResultadoAplicabilidad">Resultado</mat-label>
+      <mat-select
+        [id]="idResultadoAplicabilidad"
+        formControlName="resultado"
+        required
+        [attr.required]="''"
+        [attr.aria-describedby]="idResultadoAplicabilidad + '-help ' + idResultadoAplicabilidad + '-error'">
+        @for (opcion of resultadosAplicabilidad; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint [id]="idResultadoAplicabilidad + '-help'">Seleccione APLICABLE o NO_APLICABLE.</mat-hint>
+      <mat-error [id]="idResultadoAplicabilidad + '-error'">{{ mensajeErrorAplicabilidad('resultado') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idMotivoAplicabilidad">Motivo</mat-label>
+      <textarea
+        matInput
+        [id]="idMotivoAplicabilidad"
+        formControlName="motivo"
+        maxlength="2000"
+        rows="3"
+        [attr.aria-describedby]="idMotivoAplicabilidad + '-help ' + idMotivoAplicabilidad + '-error'"></textarea>
+      <mat-hint [id]="idMotivoAplicabilidad + '-help'">Obligatorio cuando el resultado es NO_APLICABLE. Máximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idMotivoAplicabilidad + '-error'">{{ mensajeErrorAplicabilidad('motivo') }}</mat-error>
+    </mat-form-field>
+
+    <fieldset class="evaluation-page__criterios" formArrayName="criterios">
+      <legend>Criterios estructurados de aplicabilidad</legend>
+      @for (criterio of criteriosAplicabilidad.controls; track criterio.controls.codigo.value; let i = $index) {
+        <div [formGroupName]="i" class="evaluation-page__criterio">
+          <h4 [id]="'evaluation-aplicabilidad-criterio-' + i">
+            {{ criteriosCatalogo[i].etiqueta }}
+          </h4>
+          <mat-radio-group formControlName="cumple" [attr.aria-describedby]="'evaluation-aplicabilidad-criterio-' + i">
+            <mat-radio-button [value]="true">Cumple</mat-radio-button>
+            <mat-radio-button [value]="false">No cumple</mat-radio-button>
+          </mat-radio-group>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'evaluation-aplicabilidad-criterio-' + i + '-observacion'">Observación</mat-label>
+            <input
+              matInput
+              type="text"
+              [id]="'evaluation-aplicabilidad-criterio-' + i + '-observacion'"
+              formControlName="observacion"
+              maxlength="500" />
+          </mat-form-field>
+          @if (mensajeErrorCriterio(criterio, 'observacion'); as mensaje) {
+            <p class="evaluation-page__criterio-error" role="alert">{{ mensaje }}</p>
+          }
+        </div>
+      }
+    </fieldset>
+
+    <div class="evaluation-page__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-action="aplicabilidad"
+        [disabled]="submitting() || !permiteAplicabilidad()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Registrar aplicabilidad
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-aplicabilidad"
+        [attr.aria-controls]="formAplicabilidadId"
+        (click)="cancelarAplicabilidad()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <output class="evaluation-page__result" aria-live="polite">
+    @if (ultimaEvaluacion(); as detalle) {
+      <h3>Evaluación registrada</h3>
+      <p>Tipo: <strong>{{ detalle.tipoEvaluacion }}</strong></p>
+      <p>Estado: <strong>{{ detalle.estadoIniciativa }}</strong></p>
+      <p>Fecha: <code>{{ detalle.fechaEvaluacion }}</code></p>
+      <p>ETag: <code>{{ detalle.etag }}</code></p>
+    }
+  </output>
+
+  <div class="evaluation-page__global-actions">
+    <button
+      mat-stroked-button
+      type="button"
+      data-action="cancelar-evaluacion"
+      [attr.aria-controls]="formAdmisibilidadId + ' ' + formAplicabilidadId"
+      (click)="cancelarEvaluacion()">
+      Cancelar evaluación
+    </button>
+  </div>
+</section>

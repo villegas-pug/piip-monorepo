@@ -1,0 +1,2 @@
+uid=1_0 RootWebArea url="http://localhost:4200/"
+  uid=1_1 StaticText "Header "host" with value "localhost:4200" is not allowed."

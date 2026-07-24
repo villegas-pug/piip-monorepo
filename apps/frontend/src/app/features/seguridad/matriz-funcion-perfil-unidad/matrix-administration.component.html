@@ -1,0 +1,444 @@
+<!--
+  Página accesible de administración de la matriz función-perfil-unidad
+  (US6 - T092).
+  - WCAG 2.1 AA: tablas con `<caption>` y `<th scope="col">`, regiones
+    `aria-live`, labels asociados, mensajes de error con
+    `aria-describedby`, foco visible y navegación por teclado.
+  - La creación de versiones exige código único, documento de aprobación
+    y, por cada combinación, perfil, unidad, vigencia y aprobador
+    `Autoridad` en la unidad concreta.
+  - La inactivación registra una nueva versión que omite la combinación;
+    la nueva versión también exige documento de aprobación.
+-->
+<a class="skip-link" href="#matrix-admin-contenido">Saltar al contenido principal</a>
+<main id="matrix-admin-contenido" tabindex="-1" aria-labelledby="matrix-admin-titulo">
+  <h1 id="matrix-admin-titulo">Matriz función-perfil-unidad</h1>
+  <p>
+    La matriz versiona la combinación canónica entre función, perfil y
+    unidad. Las versiones son inmutables: la única forma de inactivar una
+    combinación es registrar una nueva versión aprobada que la omita.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section aria-labelledby="matrix-versiones-titulo">
+    <h2 id="matrix-versiones-titulo">Historial de versiones</h2>
+    <div class="acciones-listado">
+      <button mat-stroked-button type="button" (click)="cargarVersiones()" [disabled]="submittingListado()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Recargar
+      </button>
+      <mat-progress-spinner *ngIf="submittingListado()" diameter="20" mode="indeterminate" aria-label="Cargando"></mat-progress-spinner>
+    </div>
+    <table mat-table [dataSource]="versiones()" aria-describedby="matrix-versiones-titulo">
+      <caption class="sr-only">Listado paginado de versiones inmutables de la matriz función-perfil-unidad.</caption>
+      <ng-container matColumnDef="codigo">
+        <th mat-header-cell *matHeaderCellDef scope="col">Código</th>
+        <td mat-cell *matCellDef="let version">{{ version.codigoVersion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="vigencia">
+        <th mat-header-cell *matHeaderCellDef scope="col">Vigencia</th>
+        <td mat-cell *matCellDef="let version">
+          <time [attr.datetime]="version.vigenteDesde">{{ version.vigenteDesde }}</time>
+          <span aria-hidden="true"> – </span>
+          <time *ngIf="version.vigenteHasta" [attr.datetime]="version.vigenteHasta">{{ version.vigenteHasta }}</time>
+          <span *ngIf="!version.vigenteHasta">abierta</span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="funciones">
+        <th mat-header-cell *matHeaderCellDef scope="col">Funciones</th>
+        <td mat-cell *matCellDef="let version">{{ version.funciones.length }}</td>
+      </ng-container>
+      <ng-container matColumnDef="combinaciones">
+        <th mat-header-cell *matHeaderCellDef scope="col">Combinaciones</th>
+        <td mat-cell *matCellDef="let version">{{ version.combinaciones.length }}</td>
+      </ng-container>
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef scope="col">Acciones</th>
+        <td mat-cell *matCellDef="let version">
+          <button mat-stroked-button type="button" (click)="verCombinaciones(version)">
+            <mat-icon aria-hidden="true">list</mat-icon>
+            Ver combinaciones
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columnasVersiones"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnasVersiones"></tr>
+    </table>
+    <div class="paginacion">
+      <button mat-stroked-button type="button" (click)="paginaAnterior()" [disabled]="paginaActual() === 0">
+        <mat-icon aria-hidden="true">chevron_left</mat-icon>
+        Anterior
+      </button>
+      <span aria-live="polite">Página {{ paginaActual() + 1 }} de {{ totalVersiones() }} versiones</span>
+      <button mat-stroked-button type="button" (click)="paginaSiguiente()" [disabled]="(paginaActual() + 1) * tamanioPagina() >= totalVersiones()">
+        Siguiente
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    </div>
+  </section>
+
+  <section *ngIf="hayCombinaciones()" aria-labelledby="matrix-combinaciones-titulo">
+    <h2 id="matrix-combinaciones-titulo">Combinaciones de la versión consultada</h2>
+    <table mat-table [dataSource]="combinacionesSeleccionadas()" aria-describedby="matrix-combinaciones-titulo">
+      <caption class="sr-only">Combinaciones función-perfil-unidad registradas en la versión consultada.</caption>
+      <ng-container matColumnDef="funcion">
+        <th mat-header-cell *matHeaderCellDef scope="col">Función</th>
+        <td mat-cell *matCellDef="let combinacion">{{ combinacion.funcion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="perfil">
+        <th mat-header-cell *matHeaderCellDef scope="col">Perfil</th>
+        <td mat-cell *matCellDef="let combinacion">{{ combinacion.perfil }}</td>
+      </ng-container>
+      <ng-container matColumnDef="unidad">
+        <th mat-header-cell *matHeaderCellDef scope="col">Unidad</th>
+        <td mat-cell *matCellDef="let combinacion">{{ combinacion.unidadId }}</td>
+      </ng-container>
+      <ng-container matColumnDef="vigente">
+        <th mat-header-cell *matHeaderCellDef scope="col">Vigencia</th>
+        <td mat-cell *matCellDef="let combinacion">
+          <time [attr.datetime]="combinacion.vigenteDesde">{{ combinacion.vigenteDesde }}</time>
+          <span aria-hidden="true"> – </span>
+          <time *ngIf="combinacion.vigenteHasta" [attr.datetime]="combinacion.vigenteHasta">{{ combinacion.vigenteHasta }}</time>
+          <span *ngIf="!combinacion.vigenteHasta">abierta</span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="activa">
+        <th mat-header-cell *matHeaderCellDef scope="col">Activa</th>
+        <td mat-cell *matCellDef="let combinacion">{{ combinacion.activa ? 'Sí' : 'No' }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="['funcion', 'perfil', 'unidad', 'vigente', 'activa']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['funcion', 'perfil', 'unidad', 'vigente', 'activa']"></tr>
+    </table>
+  </section>
+
+  <section aria-labelledby="matrix-version-titulo">
+    <h2 id="matrix-version-titulo">Registrar nueva versión</h2>
+    <form
+      [id]="formVersionId"
+      [formGroup]="formVersion"
+      (ngSubmit)="crearVersion()"
+      (keydown.escape)="cancelarVersion()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersionCodigo">Código de versión</mat-label>
+        <input
+          matInput
+          [id]="idVersionCodigo"
+          type="text"
+          formControlName="codigoVersion"
+          [attr.aria-describedby]="idVersionCodigo + '-error'"
+          required
+          maxlength="30"
+        />
+        <mat-error [id]="idVersionCodigo + '-error'">
+          {{ mensajeError(formVersion.controls.codigoVersion, submittedVersion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersionAnterior">Versión anterior (opcional)</mat-label>
+        <input
+          matInput
+          [id]="idVersionAnterior"
+          type="number"
+          min="1"
+          formControlName="versionAnteriorId"
+          [attr.aria-describedby]="idVersionAnterior + '-error'"
+        />
+        <mat-error [id]="idVersionAnterior + '-error'">
+          {{ mensajeError(formVersion.controls.versionAnteriorId, submittedVersion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersionFechaInicio">Vigente desde</mat-label>
+        <input
+          matInput
+          [id]="idVersionFechaInicio"
+          type="date"
+          formControlName="vigenteDesde"
+          [attr.aria-describedby]="idVersionFechaInicio + '-error'"
+          required
+        />
+        <mat-error [id]="idVersionFechaInicio + '-error'">
+          {{ mensajeError(formVersion.controls.vigenteDesde, submittedVersion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersionFechaFin">Vigente hasta (opcional)</mat-label>
+        <input matInput [id]="idVersionFechaFin" type="date" formControlName="vigenteHasta" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idVersionDocumento">Documento de aprobación</mat-label>
+        <input
+          matInput
+          [id]="idVersionDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoAprobacionVersionId"
+          [attr.aria-describedby]="idVersionDocumento + '-error'"
+          required
+        />
+        <mat-error [id]="idVersionDocumento + '-error'">
+          {{ mensajeError(formVersion.controls.documentoAprobacionVersionId, submittedVersion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <fieldset formArrayName="funciones" aria-labelledby="matrix-version-funciones-titulo">
+        <legend id="matrix-version-funciones-titulo">Funciones</legend>
+        <div *ngFor="let funcion of funciones.controls; let i = index" [formGroupName]="i" class="fila-dinamica">
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-funcion-codigo-' + i">Código de función</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-funcion-codigo-' + i"
+              type="text"
+              formControlName="codigo"
+              required
+              maxlength="30"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-funcion-descripcion-' + i">Descripción</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-funcion-descripcion-' + i"
+              type="text"
+              formControlName="descripcion"
+              required
+              maxlength="500"
+            />
+          </mat-form-field>
+          <button mat-stroked-button type="button" color="warn" (click)="removerFuncion(i)" [disabled]="funciones.length === 1">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            Quitar
+          </button>
+        </div>
+        <button mat-stroked-button type="button" (click)="agregarFuncion()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Añadir función
+        </button>
+      </fieldset>
+
+      <fieldset formArrayName="combinaciones" aria-labelledby="matrix-version-combinaciones-titulo">
+        <legend id="matrix-version-combinaciones-titulo">Combinaciones</legend>
+        <div *ngFor="let combinacion of combinaciones.controls; let i = index" [formGroupName]="i" class="fila-dinamica">
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-funcion-' + i">Código de función</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-funcion-' + i"
+              type="text"
+              formControlName="funcionCodigo"
+              required
+              maxlength="30"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-perfil-' + i">Perfil</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-perfil-' + i"
+              type="text"
+              formControlName="perfil"
+              required
+              maxlength="50"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-unidad-' + i">Unidad</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-unidad-' + i"
+              type="number"
+              min="1"
+              formControlName="unidadId"
+              required
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-vigente-desde-' + i">Vigente desde</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-vigente-desde-' + i"
+              type="date"
+              formControlName="vigenteDesde"
+              required
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-vigente-hasta-' + i">Vigente hasta (opcional)</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-vigente-hasta-' + i"
+              type="date"
+              formControlName="vigenteHasta"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-documento-' + i">Documento de aprobación</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-documento-' + i"
+              type="number"
+              min="1"
+              formControlName="documentoAprobacionVersionId"
+              required
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'matrix-version-combinacion-aprobador-' + i">Aprobador (Usuario PIIP Autoridad)</mat-label>
+            <input
+              matInput
+              [id]="'matrix-version-combinacion-aprobador-' + i"
+              type="number"
+              min="1"
+              formControlName="aprobadorUsuarioId"
+              required
+            />
+          </mat-form-field>
+          <button mat-stroked-button type="button" color="warn" (click)="removerCombinacion(i)" [disabled]="combinaciones.length === 1">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            Quitar
+          </button>
+        </div>
+        <button mat-stroked-button type="button" (click)="agregarCombinacion()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Añadir combinación
+        </button>
+      </fieldset>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingVersion()">
+          <mat-icon aria-hidden="true">save</mat-icon>
+          Registrar versión
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarVersion()" [disabled]="submittingVersion()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingVersion()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="matrix-deactivation-titulo">
+    <h2 id="matrix-deactivation-titulo">Inactivar combinación</h2>
+    <p>
+      La inactivación registra una nueva versión que omite la combinación.
+      El backend exige documento de aprobación, aprobador y motivo.
+    </p>
+    <form
+      [id]="formInactivacionId"
+      [formGroup]="formInactivacion"
+      (ngSubmit)="inactivarCombinacion()"
+      (keydown.escape)="cancelarInactivacion()"
+      novalidate
+    >
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idInactCombinacion">Identificador de combinación</mat-label>
+        <input
+          matInput
+          [id]="idInactCombinacion"
+          type="number"
+          min="1"
+          formControlName="combinacionId"
+          [attr.aria-describedby]="idInactCombinacion + '-error'"
+          required
+        />
+        <mat-error [id]="idInactCombinacion + '-error'">
+          {{ mensajeError(formInactivacion.controls.combinacionId, submittedInactivacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idInactVersion">Código de la nueva versión</mat-label>
+        <input
+          matInput
+          [id]="idInactVersion"
+          type="text"
+          formControlName="codigoNuevaVersion"
+          [attr.aria-describedby]="idInactVersion + '-error'"
+          required
+          maxlength="30"
+        />
+        <mat-error [id]="idInactVersion + '-error'">
+          {{ mensajeError(formInactivacion.controls.codigoNuevaVersion, submittedInactivacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idInactDocumento">Documento de aprobación</mat-label>
+        <input
+          matInput
+          [id]="idInactDocumento"
+          type="number"
+          min="1"
+          formControlName="documentoAprobacionVersionId"
+          [attr.aria-describedby]="idInactDocumento + '-error'"
+          required
+        />
+        <mat-error [id]="idInactDocumento + '-error'">
+          {{ mensajeError(formInactivacion.controls.documentoAprobacionVersionId, submittedInactivacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idInactAprobador">Aprobador (Usuario PIIP Autoridad)</mat-label>
+        <input
+          matInput
+          [id]="idInactAprobador"
+          type="number"
+          min="1"
+          formControlName="aprobadorUsuarioId"
+          [attr.aria-describedby]="idInactAprobador + '-error'"
+          required
+        />
+        <mat-error [id]="idInactAprobador + '-error'">
+          {{ mensajeError(formInactivacion.controls.aprobadorUsuarioId, submittedInactivacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idInactMotivo">Motivo obligatorio</mat-label>
+        <textarea
+          matInput
+          [id]="idInactMotivo"
+          rows="3"
+          formControlName="motivo"
+          [attr.aria-describedby]="idInactMotivo + '-error'"
+          required
+          maxlength="2000"
+        ></textarea>
+        <mat-error [id]="idInactMotivo + '-error'">
+          {{ mensajeError(formInactivacion.controls.motivo, submittedInactivacion()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="warn" type="submit" [disabled]="submittingInactivacion()">
+          <mat-icon aria-hidden="true">block</mat-icon>
+          Inactivar combinación
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarInactivacion()" [disabled]="submittingInactivacion()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingInactivacion()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <div *ngIf="problema() as problema" role="alert" aria-live="assertive" class="problema">
+    <h2>{{ problema.title }} <small>({{ problema.code }})</small></h2>
+    <p>{{ problema.detail }}</p>
+    <ul *ngIf="problema.violations.length">
+      <li *ngFor="let violacion of problema.violations">
+        <strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}
+      </li>
+    </ul>
+    <p *ngIf="problema.correlationId">Identificador de correlación: <code>{{ problema.correlationId }}</code></p>
+  </div>
+</main>

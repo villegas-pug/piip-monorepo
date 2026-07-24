@@ -1,0 +1,390 @@
+<!--
+  Página accesible de detalle y estado de reporte institucional (US8 - T109).
+  - WCAG 2.1 AA: skip link, regiones `aria-live` separadas para estado
+    de polling y errores, tablas con `caption` y `scope`, foco visible.
+  - La pantalla refleja el estado técnico (`INICIADA`, `GENERADA`,
+    `APROBADA`, `FALLIDA`) declarado por el backend; no decide
+    transiciones ni cortes.
+  - El polling se detiene automáticamente al alcanzar un estado
+    terminal; el botón "Detener polling" fuerza la cancelación
+    manual y el botón "Reintentar" usa `If-None-Match` con la última
+    ETag conocida.
+  - Sin eliminación ni disposición: la Constitución veta la purga
+    mientras no exista tabla de retención aprobada.
+-->
+<a class="skip-link" [href]="'#' + idMain">Saltar al contenido principal</a>
+
+<main
+  [id]="idMain"
+  tabindex="-1"
+  aria-labelledby="report-detail-titulo"
+  class="report-detail"
+  [attr.aria-busy]="cargando() ? 'true' : null"
+>
+  <h1 id="report-detail-titulo">Detalle del reporte institucional</h1>
+  <p id="report-detail-ayuda" class="report-detail__help">
+    La página refleja la información autorizada por el backend dentro del
+    ámbito efectivo. El polling se detiene automáticamente al alcanzar un
+    estado terminal; mientras el estado técnico sea <code>INICIADA</code> o
+    <code>FALLIDA</code>, la consulta se repite cada pocos segundos con
+    <code>If-None-Match</code> para evitar re-renderizados innecesarios.
+  </p>
+
+  <section class="report-detail__acciones" aria-label="Acciones del detalle">
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="volver()"
+      aria-describedby="report-detail-acciones-ayuda"
+    >
+      Volver al listado
+    </button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="reintentar()"
+      [disabled]="cargando()"
+      aria-describedby="report-detail-acciones-ayuda"
+    >
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+      Reintentar
+    </button>
+    @if (pollingActivo()) {
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="detenerPolling()"
+        aria-label="Detener el polling del estado"
+      >
+        <mat-icon aria-hidden="true">pause</mat-icon>
+        Detener polling
+      </button>
+    }
+    <p
+      id="report-detail-acciones-ayuda"
+      class="piip-visually-hidden"
+    >
+      Use Reintentar para volver a consultar el detalle conservando la
+      ETag. Detener polling cancela las actualizaciones automáticas;
+      el estado terminal se sigue mostrando.
+    </p>
+  </section>
+
+  <section
+    [id]="idEstado"
+    aria-labelledby="report-detail-estado-titulo"
+    class="report-detail__estado"
+    aria-live="polite"
+    role="status"
+  >
+    <h2 id="report-detail-estado-titulo" class="piip-visually-hidden">Estado de la consulta</h2>
+    @if (cargando()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="32"
+        aria-label="Cargando detalle del reporte"
+      />
+      <span>Cargando detalle del reporte&hellip;</span>
+    } @else if (notModified()) {
+      <span>El detalle no cambió desde la última lectura.</span>
+    } @else {
+      <span>
+        Estado técnico actual:
+        <strong>{{ descripcionEstado(detalle().estadoTecnico) }}</strong>
+        @if (pollingActivo()) {
+          · Polling activo
+        } @else {
+          · Polling detenido
+        }
+      </span>
+    }
+  </section>
+
+  <section
+    [id]="idResultados"
+    aria-labelledby="report-detail-resultados-titulo"
+    class="report-detail__resultados"
+    aria-live="polite"
+  >
+    <h2 id="report-detail-resultados-titulo" class="piip-visually-hidden">Contenido del reporte</h2>
+
+    <article class="report-detail__seccion report-detail__seccion--cabecera" aria-labelledby="report-detail-cabecera-titulo">
+      <h3 id="report-detail-cabecera-titulo">Identidad del reporte</h3>
+      <dl class="report-detail__definition">
+        <div>
+          <dt>Identificador</dt>
+          <dd>{{ detalle().idReporte }}</dd>
+        </div>
+        <div>
+          <dt>Tipo</dt>
+          <dd>{{ descripcionTipo(detalle().tipo) }}</dd>
+        </div>
+        <div>
+          <dt>Año</dt>
+          <dd>{{ detalle().anio }}</dd>
+        </div>
+        <div>
+          <dt>Semestre</dt>
+          <dd>{{ detalle().semestre ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Periodo</dt>
+          <dd>{{ detalle().periodo || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Fecha de corte</dt>
+          <dd>
+            @if (detalle().fechaCorte) {
+              <time [attr.datetime]="detalle().fechaCorte">{{ detalle().fechaCorte }}</time>
+            } @else {
+              —
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Versión de datos</dt>
+          <dd>{{ detalle().versionDatos }}</dd>
+        </div>
+        <div>
+          <dt>Estado técnico</dt>
+          <dd>
+            <span aria-label="Estado técnico del reporte">
+              {{ descripcionEstado(detalle().estadoTecnico) }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Clasificación</dt>
+          <dd>
+            <span
+              [class.report-detail__clasificacion--restringida]="detalle().clasificacion === 'RESTRINGIDO'"
+              [attr.aria-label]="'Clasificación ' + descripcionClasificacion(detalle().clasificacion)"
+            >
+              {{ descripcionClasificacion(detalle().clasificacion) }}
+            </span>
+            @if (detalle().clasificacion === 'RESTRINGIDO') {
+              <small class="report-detail__clasificacion-aviso">
+                Contiene datos restringidos. Solo destinatarios autorizados.
+              </small>
+            }
+          </dd>
+        </div>
+        @if (detalle().hashSnapshot) {
+          <div>
+            <dt>Hash SHA-256 del snapshot</dt>
+            <dd><code>{{ detalle().hashSnapshot }}</code></dd>
+          </div>
+        }
+        @if (ultimoIntento(); as intento) {
+          <div>
+            <dt>Última consulta</dt>
+            <dd>
+              <time [attr.datetime]="intento.toISOString()">{{ intento | date: 'medium' }}</time>
+            </dd>
+          </div>
+        }
+      </dl>
+    </article>
+
+    <article [id]="idIndicadores" aria-labelledby="report-detail-indicadores-titulo" class="report-detail__seccion">
+      <h3 id="report-detail-indicadores-titulo">Indicadores BR-122</h3>
+      <p class="report-detail__help">{{ pistaIndicador() }}</p>
+      <table aria-describedby="report-detail-indicadores-ayuda">
+        <caption class="piip-visually-hidden">
+          Indicadores BR-122 del reporte. Cuando el denominador es cero el
+          indicador se presenta como no aplicable.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Indicador</th>
+            <th scope="col">Numerador</th>
+            <th scope="col">Denominador</th>
+            <th scope="col">Porcentaje</th>
+            <th scope="col">Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (indicador of detalle().indicadores; track trackIndicador($index, indicador)) {
+            <tr>
+              <td>{{ indicador.nombre }}</td>
+              <td>{{ indicador.numerador }}</td>
+              <td>{{ indicador.denominador }}</td>
+              <td>
+                @if (esIndicadorNoAplicable(indicador)) {
+                  <span aria-label="Indicador no aplicable">No aplicable</span>
+                } @else {
+                  <span aria-label="Porcentaje calculado">
+                    {{ (indicador.porcentaje ?? 0).toFixed(2) }} %
+                  </span>
+                }
+              </td>
+              <td>{{ descripcionIndicador(indicador) }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">El reporte no incluye indicadores.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p id="report-detail-indicadores-ayuda" class="piip-visually-hidden">
+        La columna Detalle repite la información calculada por el servidor
+        para usuarios con tecnologías de asistencia que no anuncien la
+        estructura tabular.
+      </p>
+    </article>
+
+    <article [id]="idTotales" aria-labelledby="report-detail-totales-titulo" class="report-detail__seccion">
+      <h3 id="report-detail-totales-titulo">Totales BR-121</h3>
+      @if (detalle().totales.length === 0) {
+        <p>El reporte no incluye totales agrupados.</p>
+      }
+      @for (total of detalle().totales; track trackTotal($index, total)) {
+        <table aria-describedby="report-detail-totales-ayuda-{{ total.dimension }}">
+          <caption class="piip-visually-hidden">
+            Totales agrupados por la dimensión {{ total.dimension }}.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Clave</th>
+              <th scope="col">Etiqueta</th>
+              <th scope="col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of total.items; track item.clave) {
+              <tr>
+                <td>{{ item.clave }}</td>
+                <td>{{ item.etiqueta }}</td>
+                <td>{{ item.total }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p [id]="'report-detail-totales-ayuda-' + total.dimension" class="piip-visually-hidden">
+          Total agrupado por la dimensión {{ total.dimension }}.
+        </p>
+      }
+    </article>
+
+    <article [id]="idArchivos" aria-labelledby="report-detail-archivos-titulo" class="report-detail__seccion">
+      <h3 id="report-detail-archivos-titulo">Archivos del snapshot</h3>
+      <p class="report-detail__help">
+        PDF y XLSX se emiten desde el mismo snapshot, parámetros y versión
+        de datos. La descarga usa el explorador y conserva la ETag del
+        snapshot.
+      </p>
+      @if (detalle().archivos.length === 0) {
+        <p>El servidor aún no emitió archivos para este reporte.</p>
+      }
+      <ul class="report-detail__archivos">
+        @for (archivo of detalle().archivos; track trackArchivo($index, archivo)) {
+          <li>
+            <span class="report-detail__archivo-formato">{{ formatoArchivo(archivo) }}</span>
+            <span>Versión {{ archivo.version }}</span>
+            <code>{{ archivo.hashSha256 }}</code>
+            <button
+              mat-stroked-button
+              color="primary"
+              type="button"
+              (click)="descargar(formatoArchivo(archivo))"
+              [disabled]="descargando() === formatoArchivo(archivo)"
+              [attr.aria-label]="'Descargar archivo ' + formatoArchivo(archivo) + ' del reporte'"
+            >
+              <mat-icon aria-hidden="true">download</mat-icon>
+              Descargar
+            </button>
+            @if (descargando() === formatoArchivo(archivo)) {
+              <mat-progress-spinner
+                diameter="16"
+                mode="indeterminate"
+                aria-label="Descargando archivo"
+              />
+            }
+          </li>
+        }
+      </ul>
+    </article>
+
+    <article class="report-detail__seccion report-detail__seccion--acciones" aria-label="Acciones de aprobación y remisión">
+      <h3>Aprobación y remisión</h3>
+      <p class="report-detail__help">
+        La aprobación fija la versión exacta y los destinatarios permitidos.
+        La remisión solo se registra contra esa versión aprobada.
+      </p>
+      <div class="report-detail__acciones-rol">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="irAprobacion()"
+          [disabled]="!puedeAprobar()"
+          [attr.aria-label]="'Aprobar la versión del reporte ' + detalle().idReporte"
+        >
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          Aprobar versión
+        </button>
+        <button
+          mat-stroked-button
+          color="primary"
+          type="button"
+          (click)="irRemision()"
+          [disabled]="!puedeRemitir()"
+          [attr.aria-label]="'Registrar remisión del reporte ' + detalle().idReporte"
+        >
+          <mat-icon aria-hidden="true">send</mat-icon>
+          Registrar remisión
+        </button>
+        @if (!puedeAprobar() && detalle().estadoTecnico === 'INICIADA') {
+          <p class="piip-visually-hidden">
+            La aprobación estará disponible cuando el estado técnico sea
+            GENERADA.
+          </p>
+        }
+        @if (detalle().estadoTecnico === 'APROBADA') {
+          <p class="piip-visually-hidden">
+            La remisión está disponible porque el reporte está aprobado.
+          </p>
+        }
+      </div>
+    </article>
+  </section>
+
+  <section
+    [id]="idErrores"
+    aria-labelledby="report-detail-errores-titulo"
+    class="report-detail__errores"
+    aria-live="assertive"
+    role="alert"
+  >
+    <h2 id="report-detail-errores-titulo" class="piip-visually-hidden">Errores del detalle</h2>
+    @if (problema(); as problema) {
+      <p>
+        <strong>{{ problema.title }}</strong>
+        <span> ({{ problema.code }})</span>
+      </p>
+      <p>{{ problema.detail }}</p>
+      @if (problema.violations.length) {
+        <ul>
+          @for (violacion of problema.violations; track violacion.field) {
+            <li><strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}</li>
+          }
+        </ul>
+      }
+      @if (problema.correlationId) {
+        <p class="piip-visually-hidden">Identificador de correlación: {{ problema.correlationId }}</p>
+      }
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="reintentar()"
+        [disabled]="cargando()"
+      >
+        Reintentar
+      </button>
+    } @else if (correlationId()) {
+      <p class="piip-visually-hidden">Última correlación: {{ correlationId() }}</p>
+    }
+  </section>
+</main>

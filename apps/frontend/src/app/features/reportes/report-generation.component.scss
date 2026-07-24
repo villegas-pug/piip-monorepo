@@ -1,0 +1,97 @@
+// Estilos del componente de generación de reportes institucionales
+// (US8 - T109). El tema PIIP (`shared/ui/piip-theme.scss`) aporta el
+// contraste y la tipografía base; aquí se ajustan márgenes y regiones
+// para mantener densidad consistente con el resto del recorrido
+// institucional.
+
+section {
+  margin-block-end: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--piip-color-border, #d0d4da);
+  border-radius: 0.5rem;
+  background: var(--piip-color-surface, #ffffff);
+}
+
+fieldset.report-generation__filtros {
+  border: 1px dashed var(--piip-color-border, #d0d4da);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin-block-end: 1rem;
+}
+
+fieldset.report-generation__filtros legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.report-generation__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-block-start: 0.5rem;
+}
+
+.report-generation__operacion {
+  border: 1px solid var(--piip-color-border, #d0d4da);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: var(--piip-color-surface-alt, #f5f7fa);
+}
+
+.report-generation__operacion dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.report-generation__operacion dt {
+  font-weight: 600;
+}
+
+.report-generation__operacion dd {
+  margin: 0;
+}
+
+.report-generation__errores {
+  border: 1px solid var(--piip-color-error, #b3261e);
+  background: var(--piip-color-error-background, #fdecea);
+  color: var(--piip-color-error-text, #410002);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-block-start: 1rem;
+}
+
+.report-generation__errores ul {
+  margin: 0.5rem 0 0 1rem;
+  padding: 0;
+}
+
+.report-generation__ayuda {
+  margin-block: 0.5rem 0.75rem;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: 0.5rem;
+  inset-block-start: -2.5rem;
+  background: var(--piip-color-primary, #0b5cab);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  inset-block-start: 0.5rem;
+}
+
+mat-form-field {
+  width: min(100%, 32rem);
+  display: block;
+}

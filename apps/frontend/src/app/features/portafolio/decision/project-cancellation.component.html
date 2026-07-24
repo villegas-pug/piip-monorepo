@@ -1,0 +1,152 @@
+<section class="cancellation-page" aria-labelledby="cancellation-page-title">
+  <h2 id="cancellation-page-title">Cancelación de proyecto</h2>
+  <p class="cancellation-page__help" id="cancellation-page-help">
+    La Autoridad registra la cancelación formal de un proyecto en ejecución.
+    El "Informe de la Oficina de Modernización, Cancelación" y la observación son obligatorios.
+  </p>
+
+  @if (proyecto(); as ctx) {
+    <output class="cancellation-page__contexto" aria-live="polite">
+      <p><strong>Código:</strong> {{ ctx.codigo }}</p>
+      <p><strong>Estado:</strong> {{ ctx.estado }}</p>
+      @if (ctx.nombre) {
+        <p><strong>Nombre:</strong> {{ ctx.nombre }}</p>
+      }
+      <p><strong>Versión:</strong> {{ ctx.version }} · <strong>ETag:</strong> {{ etagActual() }}</p>
+    </output>
+  }
+
+  @if (estadoBloqueante(); as estado) {
+    <div role="status" aria-live="polite" class="cancellation-page__estado-bloqueante">
+      El proyecto se encuentra en estado <strong>{{ estado }}</strong>. La cancelación solo
+      se permite cuando el proyecto está en <code>PROYECTO_EJECUCION</code>.
+    </div>
+  }
+
+  <form
+    [formGroup]="formCancelacion"
+    (ngSubmit)="confirmarCancelacion()"
+    novalidate
+    [id]="formId"
+    class="cancellation-page__form"
+    aria-labelledby="cancellation-form-titulo">
+    <h3 id="cancellation-form-titulo">Decisión de cancelación</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDocumento">{{ tituloDocumento }} (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idDocumento"
+        formControlName="documentoRefId"
+        required
+        min="1"
+        [attr.aria-describedby]="idDocumento + '-help ' + idDocumento + '-error'" />
+      <mat-hint [id]="idDocumento + '-help'">Versión documental aprobada (campo 15).</mat-hint>
+      <mat-error [id]="idDocumento + '-error'">{{ mensajeError('documentoRefId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idObservaciones">Observación</mat-label>
+      <textarea
+        matInput
+        [id]="idObservaciones"
+        formControlName="observaciones"
+        required
+        maxlength="2000"
+        rows="4"
+        [attr.aria-describedby]="idObservaciones + '-help ' + idObservaciones + '-error'"></textarea>
+      <mat-hint [id]="idObservaciones + '-help'">Obligatoria. Máximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idObservaciones + '-error'">{{ mensajeError('observaciones') }}</mat-error>
+    </mat-form-field>
+
+    <div role="alert" aria-live="assertive" class="cancellation-page__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+        @if (violacionesPara('documentoRefId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="cancellation-page__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('observaciones'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="cancellation-page__violacion">{{ v.message }}</p>
+          }
+        }
+      }
+    </div>
+
+    <div class="cancellation-page__actions">
+      <button
+        mat-flat-button
+        color="warn"
+        type="submit"
+        data-action="confirmar-cancelacion"
+        [disabled]="submitting() || !permiteCancelacion()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Confirmar cancelación
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-cancelacion"
+        [attr.aria-controls]="formId"
+        (click)="cancelarEdicion()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <output class="cancellation-page__result" aria-live="polite">
+    @if (ultimaTransicion(); as detalle) {
+      <h3>Cancelación registrada</h3>
+      <p>Estado anterior: <strong>{{ detalle.estadoAnterior }}</strong></p>
+      <p>Estado nuevo: <strong>{{ detalle.estadoNuevo }}</strong></p>
+      <p>Fecha: <code>{{ detalle.fechaTransicion }}</code></p>
+      <p>ETag: <code>{{ detalle.etag }}</code></p>
+    }
+  </output>
+</section>
+
+@if (mostrarDialogoConfirmacion()) {
+  <div
+    class="cancellation-dialog__backdrop"
+    role="presentation"
+    (click)="mantenerEdicion()"></div>
+  <div
+    [id]="dialogoId"
+    role="alertdialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="tituloDialogoId"
+    [attr.aria-describedby]="mensajeDialogoId"
+    class="cancellation-dialog">
+    <h3 [id]="tituloDialogoId">Confirmar cancelación</h3>
+    <p [id]="mensajeDialogoId">
+      Tiene cambios sin enviar. ¿Desea descartar los cambios o mantener la edición?
+    </p>
+    <div class="cancellation-dialog__actions">
+      <button
+        mat-stroked-button
+        type="button"
+        [id]="idBotonMantener"
+        data-action="mantener-edicion"
+        (click)="mantenerEdicion()">
+        Mantener edición
+      </button>
+      <button
+        mat-flat-button
+        color="warn"
+        type="button"
+        [id]="idBotonDescartar"
+        data-action="descartar-cambios"
+        (click)="descartarCambios()">
+        Descartar cambios
+      </button>
+    </div>
+  </div>
+}

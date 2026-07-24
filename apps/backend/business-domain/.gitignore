@@ -1,1 +1,14 @@
 dist/
+
+# Java/Maven
+target/
+*.class
+*.jar
+*.war
+.gradle/
+build/
+
+# Logs y entorno local
+*.log
+.env
+.env.*

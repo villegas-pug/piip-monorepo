@@ -1,4 +1,7 @@
-# Contrato: Prototipos, mediciones y metas
+# Contrato diferido: Prototipos, mediciones y metas
+
+> **Diferido**: este contrato no forma parte de la Fase 1 actual ni habilita rutas, DDL o clientes.
+> Se conserva para una fase posterior conforme a la enmienda constitucional 5.0.0.
 
 Base: `/api/v1/portafolio/prototipos`.
 

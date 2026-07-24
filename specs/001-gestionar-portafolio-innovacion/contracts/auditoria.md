@@ -41,7 +41,6 @@ necesarios.
 - aprovisionamiento, activación, desactivación, reactivación y fallo parcial Keycloak;
 - incorporación, corrección, conflicto, resolución, validación o rechazo;
 - generación, descarga, aprobación y remisión de reporte;
-- validación, medición, aprobación o rechazo de prototipo;
 - consulta/exportación institucional sensible.
 - creación/versionado/inactivación de función y combinación de matriz por unidad concreta;
 - registro independiente de versiones PEI y POI, incluida denegación por aprobación discordante;

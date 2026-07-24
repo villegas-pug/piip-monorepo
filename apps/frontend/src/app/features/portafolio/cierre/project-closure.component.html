@@ -1,0 +1,15 @@
+<section class="project-closure" aria-labelledby="project-closure-title">
+  <h1 id="project-closure-title">Cierre administrativo del proyecto</h1>
+  <p id="project-closure-help">Registre el informe final, aprendizajes, conclusión y observación. El servidor determina si el cierre procede y fija la fecha de cierre.</p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate aria-describedby="project-closure-help">
+    <mat-form-field appearance="outline"><mat-label>Informe final</mat-label><textarea matInput rows="4" formControlName="informeFinal"></textarea></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Documento del informe final (id)</mat-label><input matInput type="number" min="1" formControlName="informeFinalDocumentoId" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Aprendizajes</mat-label><textarea matInput rows="4" formControlName="aprendizajes"></textarea></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Conclusión</mat-label><textarea matInput rows="4" maxlength="2000" formControlName="conclusion"></textarea></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Observación de cierre</mat-label><textarea matInput rows="4" maxlength="2000" formControlName="observacion"></textarea></mat-form-field>
+    @if (problem(); as detail) { <div role="alert" aria-live="assertive"><strong>{{ detail.title }}</strong><p>{{ detail.detail }}</p><p>{{ detail.code }}</p></div> }
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">Completar cierre</button>
+  </form>
+  @if (closure(); as response) { <output aria-live="polite">Cierre registrado. Estado: <strong>{{ response.estado }}</strong>. Fecha de cierre: {{ response.fechaCierre }}.</output> }
+</section>

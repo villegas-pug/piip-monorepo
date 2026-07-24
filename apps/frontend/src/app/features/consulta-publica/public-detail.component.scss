@@ -1,0 +1,116 @@
+// Estilos del detalle público del portafolio (US7 - T101).
+//
+// Contraste WCAG 2.1 AA delegado al tema institucional M3. Los estilos
+// propios se limitan a layout, separación visual y refuerzo de foco
+// para la navegación por teclado dentro del detalle. No se incluye
+// ningún estilo de "descarga" porque la consulta pública no expone ni
+// permite descargar contenido.
+
+:host {
+  display: block;
+}
+
+.public-detail {
+  display: grid;
+  gap: var(--piip-space-6);
+  padding-block: var(--piip-space-4);
+}
+
+.public-detail__help {
+  color: var(--piip-color-on-surface-variant);
+  font-size: var(--piip-text-md);
+  line-height: var(--piip-leading-normal);
+  max-width: 80ch;
+}
+
+.public-detail__status {
+  display: flex;
+  gap: var(--piip-space-3);
+  align-items: center;
+  font-weight: var(--piip-weight-medium);
+}
+
+.public-detail__section {
+  border: 1px solid var(--piip-color-outline);
+  border-radius: 8px;
+  padding: var(--piip-space-4);
+  background-color: var(--piip-color-surface);
+  display: grid;
+  gap: var(--piip-space-3);
+}
+
+.public-detail__section h3 {
+  margin: 0;
+  font-size: var(--piip-text-lg);
+}
+
+.public-detail__definition {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--piip-space-3);
+  margin: 0;
+}
+
+.public-detail__definition > div {
+  display: grid;
+  gap: var(--piip-space-1);
+}
+
+.public-detail__definition dt {
+  font-weight: var(--piip-weight-medium);
+  color: var(--piip-color-on-surface-variant);
+}
+
+.public-detail__definition dd {
+  margin: 0;
+}
+
+.public-detail__badge {
+  display: inline-block;
+  padding: 2px var(--piip-space-2);
+  border-radius: 999px;
+  border: 1px solid var(--piip-color-outline);
+  font-size: var(--piip-text-sm);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--piip-text-md);
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--piip-color-outline);
+  padding: var(--piip-space-2) var(--piip-space-3);
+  text-align: left;
+}
+
+th {
+  background-color: var(--piip-color-surface);
+  font-weight: var(--piip-weight-medium);
+}
+
+.public-detail__errors {
+  display: grid;
+  gap: var(--piip-space-2);
+  border-left: 4px solid var(--piip-color-error);
+  padding: var(--piip-space-3);
+  color: var(--piip-color-error);
+  background-color: var(--piip-color-surface);
+}
+
+.skip-link {
+  position: absolute;
+  left: -1000px;
+  top: auto;
+  background-color: var(--piip-color-primary);
+  color: var(--piip-color-on-primary);
+  padding: var(--piip-space-2) var(--piip-space-3);
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  left: var(--piip-space-3);
+  top: var(--piip-space-3);
+}

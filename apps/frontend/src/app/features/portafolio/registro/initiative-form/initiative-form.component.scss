@@ -1,0 +1,94 @@
+// Estilos del formulario de presentación de iniciativa. El tema PIIP provee los tokens
+// institucionales (color, tipografía, contraste 4.5:1). Estos estilos solo definen
+// composición y separaciones para mantener legibilidad y foco visible.
+
+:host {
+  display: block;
+}
+
+.initiative-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.initiative-form__help {
+  color: var(--piip-color-text-secondary, rgba(0, 0, 0, 0.7));
+}
+
+.initiative-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--piip-color-border, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+}
+
+.initiative-form__array {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.initiative-form__array-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1rem;
+  align-items: start;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--piip-color-border, rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+
+  > mat-form-field {
+    grid-column: 1 / 2;
+  }
+
+  > button,
+  > mat-checkbox {
+    align-self: center;
+  }
+}
+
+.initiative-form__error {
+  color: var(--piip-color-error, #b00020);
+  font-weight: 500;
+}
+
+.initiative-form__hint {
+  color: var(--piip-color-text-secondary, rgba(0, 0, 0, 0.7));
+}
+
+.initiative-form__server-errors {
+  border-left: 4px solid var(--piip-color-error, #b00020);
+  padding: 0.75rem 1rem;
+  background: var(--piip-color-error-surface, rgba(176, 0, 32, 0.08));
+  border-radius: 4px;
+}
+
+.initiative-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.initiative-form__result {
+  border: 1px solid var(--piip-color-success, #2e7d32);
+  border-radius: 6px;
+  padding: 1rem;
+  background: var(--piip-color-success-surface, rgba(46, 125, 50, 0.08));
+}
+
+:host ::ng-deep {
+  // Foco visible consistente con WCAG 2.1 AA.
+  .mat-mdc-form-field-focus-overlay,
+  .mdc-text-field--focused,
+  .mat-mdc-checkbox:focus-visible .mdc-checkbox__background,
+  .mat-mdc-radio-button:focus-visible .mdc-radio__background {
+    outline: 3px solid var(--piip-color-focus, #1e88e5);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,15 @@
+<section class="final-product-decision" aria-labelledby="final-product-decision-title">
+  <h1 id="final-product-decision-title">Decisión sobre producto final</h1>
+  <p id="final-product-decision-help">Registre la decisión formal y sus referencias documentales. El servidor valida la decisión y actualiza el estado.</p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate aria-describedby="final-product-decision-help">
+    <mat-form-field appearance="outline"><mat-label>Decisión</mat-label><mat-select formControlName="decision">@for (option of decisionOptions; track option) { <mat-option [value]="option">{{ option }}</mat-option> }</mat-select></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Tipo de producto final</mat-label><mat-select formControlName="tipoProductoFinal">@for (type of productTypes; track type) { <mat-option [value]="type">{{ type }}</mat-option> }</mat-select></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Documento formal (id)</mat-label><input matInput type="number" min="1" formControlName="documentoId" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Evidencia (id)</mat-label><input matInput type="number" min="1" formControlName="evidenciaId" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Observación</mat-label><textarea matInput rows="4" maxlength="2000" formControlName="observacion"></textarea><mat-hint>Máximo 2000 caracteres.</mat-hint></mat-form-field>
+    @if (problem(); as detail) { <div role="alert" aria-live="assertive"><strong>{{ detail.title }}</strong><p>{{ detail.detail }}</p><p>{{ detail.code }}</p></div> }
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">Registrar decisión</button>
+  </form>
+  @if (decision(); as response) { <output aria-live="polite">Decisión registrada. Estado: <strong>{{ response.estado }}</strong>. Fecha: {{ response.fechaDecision }}.</output> }
+</section>

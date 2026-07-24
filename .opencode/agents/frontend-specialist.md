@@ -1,11 +1,18 @@
 ---
 description: Orquesta exclusivamente la implementación y el análisis de frontend Angular de PIIP mediante SKILLs fe-.
 mode: subagent
+# model: openai/gpt-5.4-mini
+# reasoningEffort: low
 permission:
+  "*": allow
+  read:
+    "*": allow
+    "*.env": deny
+    "*.env.*": deny
+    "database/ddl/init/oracle-wallet.zip": deny
   edit:
-    "*": deny
-    "apps/frontend/**": ask
-  bash: ask
+    "apps/frontend/**": allow
+  bash: allow
   task: deny
   skill:
     "*": deny

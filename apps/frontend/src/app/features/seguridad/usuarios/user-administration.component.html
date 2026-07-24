@@ -1,0 +1,228 @@
+<!--
+  Página accesible de administración de usuarios institucionales (US6 - T092).
+  - WCAG 2.1 AA: labels asociados, mensajes con `aria-describedby`,
+    regiones `aria-live` separadas para éxito y error, foco visible.
+  - El formulario de aprovisionamiento excluye cualquier campo de contraseña,
+    token o atributo sensible; el cliente delega la identidad en Keycloak.
+  - La operación recuperable expone un botón de reintento que conserva la
+    autorización efectiva y la `Idempotency-Key` mediante los interceptores.
+-->
+<a class="skip-link" href="#user-admin-contenido">Saltar al contenido principal</a>
+<main id="user-admin-contenido" tabindex="-1" aria-labelledby="user-admin-titulo">
+  <h1 id="user-admin-titulo">Administración de usuarios institucionales</h1>
+  <p>
+    Esta pantalla delega la identidad en Keycloak. PIIP nunca solicita, procesa ni
+    almacena contraseñas. La activación inicial la realiza el propio usuario desde
+    el correo que Keycloak le envía; la desactivación bloquea el acceso en
+    Keycloak y PIIP conservando los registros para auditoría.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section aria-labelledby="user-provisioning-titulo">
+    <h2 id="user-provisioning-titulo">Aprovisionar usuario</h2>
+    <form
+      [id]="formId"
+      [formGroup]="formAprovisionamiento"
+      (ngSubmit)="aprovisionarUsuario()"
+      (keydown.escape)="cancelarAprovisionamiento()"
+      novalidate
+    >
+      <div role="group" aria-labelledby="user-provisioning-ayuda">
+        <p id="user-provisioning-ayuda">
+          El backend crea primero la identidad deshabilitada en Keycloak con
+          acción de correo y, si Oracle responde correctamente, la operación
+          pasa a <code>COMPLETADA</code>. Si Oracle falla, la operación queda
+          <code>recuperable</code> y debe reintentarse desde esta pantalla.
+        </p>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idCorreo">Correo institucional</mat-label>
+        <input
+          matInput
+          [id]="idCorreo"
+          type="email"
+          autocomplete="off"
+          formControlName="correoInstitucional"
+          [attr.aria-describedby]="idCorreo + '-error'"
+          required
+        />
+        <mat-error [id]="idCorreo + '-error'">
+          {{ mensajeError(formAprovisionamiento.controls.correoInstitucional, submittedAprovision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idNombre">Nombre completo</mat-label>
+        <input
+          matInput
+          [id]="idNombre"
+          type="text"
+          autocomplete="off"
+          formControlName="nombreCompleto"
+          [attr.aria-describedby]="idNombre + '-error'"
+          required
+        />
+        <mat-error [id]="idNombre + '-error'">
+          {{ mensajeError(formAprovisionamiento.controls.nombreCompleto, submittedAprovision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idUnidad">Unidad organizacional</mat-label>
+        <input
+          matInput
+          [id]="idUnidad"
+          type="number"
+          min="1"
+          formControlName="unidadId"
+          [attr.aria-describedby]="idUnidad + '-error'"
+          required
+        />
+        <mat-hint>Identificador PIIP de la unidad. El backend revalida el alcance exacto.</mat-hint>
+        <mat-error [id]="idUnidad + '-error'">
+          {{ mensajeError(formAprovisionamiento.controls.unidadId, submittedAprovision()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingAprovision()">
+          <mat-icon aria-hidden="true">person_add</mat-icon>
+          Aprovisionar usuario
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarAprovisionamiento()" [disabled]="submittingAprovision()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingAprovision()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+  </section>
+
+  <section *ngIf="operacionActual() as operacion" aria-labelledby="user-provisioning-resultado-titulo">
+    <h2 id="user-provisioning-resultado-titulo">Estado de la operación</h2>
+    <output aria-live="polite">
+      <dl>
+        <dt>Identificador de operación</dt>
+        <dd>{{ operacion.operacionId }}</dd>
+        <dt *ngIf="operacion.usuarioId">Identificador de usuario</dt>
+        <dd *ngIf="operacion.usuarioId">{{ operacion.usuarioId }}</dd>
+        <dt>Estado</dt>
+        <dd>{{ estadoOperacion() }}</dd>
+        <dt>Recuperable</dt>
+        <dd>{{ operacionRecuperable() ? 'Sí' : 'No' }}</dd>
+        <dt>Intento</dt>
+        <dd>{{ intentoActual() }}</dd>
+      </dl>
+    </output>
+    <div class="acciones-formulario">
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        (click)="consultarOperacion()"
+        [disabled]="submittingConsulta()"
+        aria-label="Consultar el estado actual de la operación de aprovisionamiento"
+      >
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Consultar
+      </button>
+      <button
+        *ngIf="operacionRecuperable()"
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="reintentarOperacion()"
+        [disabled]="submittingReintento()"
+        aria-label="Reintentar la operación de aprovisionamiento recuperable"
+      >
+        <mat-icon aria-hidden="true">replay</mat-icon>
+        Reintentar
+      </button>
+    </div>
+    <div *ngIf="problemaConsulta() as problemaConsulta" role="alert" aria-live="assertive">
+      <p><strong>{{ problemaConsulta.title }}</strong> ({{ problemaConsulta.code }}): {{ problemaConsulta.detail }}</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="user-status-titulo">
+    <h2 id="user-status-titulo">Desactivar o reactivar usuario</h2>
+    <form
+      [id]="formEstadoId"
+      [formGroup]="formEstado"
+      (ngSubmit)="aplicarCambioEstado()"
+      (keydown.escape)="cancelarCambioEstado()"
+      novalidate
+    >
+      <mat-radio-group
+        [value]="modoEstado()"
+        (change)="seleccionarModo($event.value)"
+        aria-label="Seleccionar transición de estado"
+      >
+        <mat-radio-button value="DESACTIVAR">Desactivar</mat-radio-button>
+        <mat-radio-button value="REACTIVAR">Reactivar</mat-radio-button>
+      </mat-radio-group>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idIdEstado">Identificador de usuario PIIP</mat-label>
+        <input
+          matInput
+          [id]="idIdEstado"
+          type="number"
+          min="1"
+          formControlName="idUsuario"
+          [attr.aria-describedby]="idIdEstado + '-error'"
+          required
+        />
+        <mat-error [id]="idIdEstado + '-error'">
+          {{ mensajeError(formEstado.controls.idUsuario, submittedEstado()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idMotivo">Motivo obligatorio para auditoría</mat-label>
+        <textarea
+          matInput
+          [id]="idMotivo"
+          rows="3"
+          formControlName="motivo"
+          [attr.aria-describedby]="idMotivo + '-error'"
+          required
+        ></textarea>
+        <mat-hint>El motivo nunca incluye contraseñas, tokens ni datos personales sensibles.</mat-hint>
+        <mat-error [id]="idMotivo + '-error'">
+          {{ mensajeError(formEstado.controls.motivo, submittedEstado()) }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="acciones-formulario">
+        <button mat-flat-button color="primary" type="submit" [disabled]="submittingEstado()">
+          <mat-icon aria-hidden="true">save</mat-icon>
+          Aplicar
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelarCambioEstado()" [disabled]="submittingEstado()">
+          Cancelar
+        </button>
+        <mat-progress-spinner *ngIf="submittingEstado()" diameter="20" mode="indeterminate" aria-label="Enviando"></mat-progress-spinner>
+      </div>
+    </form>
+
+    <div *ngIf="estadoActual() as estadoActual" role="status" aria-live="polite">
+      <p>
+        Usuario <strong>{{ estadoActual.usuarioId }}</strong> ahora en estado
+        <strong>{{ estadoActual.estado }}</strong>.
+      </p>
+    </div>
+  </section>
+
+  <div *ngIf="problema() as problema" role="alert" aria-live="assertive" class="problema">
+    <h2>{{ problema.title }} <small>({{ problema.code }})</small></h2>
+    <p>{{ problema.detail }}</p>
+    <ul *ngIf="problema.violations.length">
+      <li *ngFor="let violacion of problema.violations">
+        <strong>{{ violacion.field || 'general' }}:</strong> {{ violacion.message }}
+      </li>
+    </ul>
+    <p *ngIf="problema.correlationId">Identificador de correlación: <code>{{ problema.correlationId }}</code></p>
+  </div>
+</main>

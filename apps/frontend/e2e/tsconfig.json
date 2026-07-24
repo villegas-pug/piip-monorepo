@@ -1,0 +1,13 @@
+/* Configuración TypeScript del código E2E (Playwright) de PIIP.
+   Permite comprobar tipos sin compilar la aplicación:
+   npx tsc -p e2e/tsconfig.json --noEmit */
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "outDir": "../out-tsc/e2e",
+    "rootDir": "..",
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts", "../playwright.config.ts"]
+}

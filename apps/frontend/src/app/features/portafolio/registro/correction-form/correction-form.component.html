@@ -1,0 +1,182 @@
+<form
+  [formGroup]="form"
+  (ngSubmit)="enviar()"
+  novalidate
+  class="correction-form"
+  aria-labelledby="correction-form-title">
+  <h2 id="correction-form-title">
+    @if (mode === 'INICIATIVA_SUBSANACION') {
+      Subsanación de iniciativa
+    } @else {
+      Corrección de incorporación
+    }
+  </h2>
+
+  @if (mode === 'INICIATIVA_SUBSANACION') {
+    <p class="correction-form__help" id="correction-form-help">
+      Solo puede modificar los campos oficiales 5 a 12, 22 y 23 durante la subsanación abierta por el Evaluador.
+      Cada cambio crea una nueva versión y se conserva el histórico.
+    </p>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-nombre">Nombre</mat-label>
+      <input
+        matInput
+        id="correction-nombre"
+        type="text"
+        formControlName="nombre"
+        maxlength="500"
+        aria-describedby="correction-nombre-help" />
+      <mat-hint id="correction-nombre-help">Máximo 500 caracteres.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-tipo-solucion">Tipo de solución</mat-label>
+      <mat-select id="correction-tipo-solucion" formControlName="tipoSolucion">
+        @for (opcion of tipoSolucionOpciones; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-fuente">Fuente u origen</mat-label>
+      <mat-select id="correction-fuente" formControlName="fuenteOrigen" aria-describedby="correction-fuente-help">
+        @for (opcion of fuenteOrigenOpciones; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint id="correction-fuente-help">Si selecciona OTROS debe describir la fuente.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-detalle-fuente">Detalle de la fuente</mat-label>
+      <input
+        matInput
+        id="correction-detalle-fuente"
+        type="text"
+        formControlName="detalleFuente"
+        maxlength="500" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-problema">Problema público</mat-label>
+      <textarea
+        matInput
+        id="correction-problema"
+        formControlName="problemaPublico"
+        maxlength="2000"
+        rows="4"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-solucion">Solución propuesta</mat-label>
+      <textarea
+        matInput
+        id="correction-solucion"
+        formControlName="solucionPropuesta"
+        maxlength="2000"
+        rows="4"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-pei">Objetivo PEI</mat-label>
+      <input
+        matInput
+        id="correction-pei"
+        type="number"
+        formControlName="objetivoPeiId"
+        min="1" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-poi">Actividad POI</mat-label>
+      <input
+        matInput
+        id="correction-poi"
+        type="number"
+        formControlName="actividadPoiId"
+        min="1" />
+    </mat-form-field>
+
+    <mat-radio-group formControlName="componenteDigital" aria-label="Componente digital">
+      <mat-radio-button [value]="false">No</mat-radio-button>
+      <mat-radio-button [value]="true">Sí</mat-radio-button>
+    </mat-radio-group>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-detalle-digital">Detalle del componente digital</mat-label>
+      <input
+        matInput
+        id="correction-detalle-digital"
+        type="text"
+        formControlName="detalleComponenteDigital"
+        maxlength="500" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-nota">Nota</mat-label>
+      <textarea
+        matInput
+        id="correction-nota"
+        formControlName="nota"
+        maxlength="1000"
+        rows="3"></textarea>
+    </mat-form-field>
+  } @else {
+    <p class="correction-form__help" id="correction-form-help">
+      Cada corrección crea una nueva entrada append-only en el historial de la incorporación.
+      El campo `datosNuevos` reemplaza el contenido lógico hasta la próxima corrección.
+    </p>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="correction-datos-nuevos">Datos nuevos</mat-label>
+      <textarea
+        matInput
+        id="correction-datos-nuevos"
+        formControlName="datosNuevos"
+        required
+        maxlength="2000"
+        rows="6"
+        aria-describedby="correction-datos-nuevos-help correction-datos-nuevos-error"></textarea>
+      <mat-hint id="correction-datos-nuevos-help">Obligatorio. Reemplaza los datos originales.</mat-hint>
+      <mat-error id="correction-datos-nuevos-error">{{ mensajeError('datosNuevos') }}</mat-error>
+    </mat-form-field>
+  }
+
+  <mat-form-field appearance="outline">
+    <mat-label for="correction-motivo">Motivo</mat-label>
+    <textarea
+      matInput
+      id="correction-motivo"
+      formControlName="motivo"
+      required
+      maxlength="2000"
+      rows="3"
+      aria-describedby="correction-motivo-help correction-motivo-error"></textarea>
+    <mat-hint id="correction-motivo-help">Obligatorio. Máximo 2000 caracteres. Se registra en la auditoría.</mat-hint>
+    <mat-error id="correction-motivo-error">{{ mensajeError('motivo') }}</mat-error>
+  </mat-form-field>
+
+  <div role="alert" aria-live="assertive" class="correction-form__server-errors">
+    @if (problem(); as problemDetail) {
+      <h4>{{ problemDetail.title }}</h4>
+      <p>{{ problemDetail.detail }}</p>
+      <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+    }
+  </div>
+
+  <div class="correction-form__actions">
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+      [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" />
+      } @else {
+        Registrar corrección
+      }
+    </button>
+  </div>
+</form>

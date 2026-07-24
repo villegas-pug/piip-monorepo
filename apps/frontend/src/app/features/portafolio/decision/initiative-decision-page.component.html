@@ -1,0 +1,140 @@
+<section class="decision-page" aria-labelledby="decision-page-title">
+  <h2 id="decision-page-title">Decisión formal de iniciativa</h2>
+  <p class="decision-page__help" id="decision-page-help">
+    La Autoridad aprueba o archiva la iniciativa. El documento formal (campo 15) es obligatorio.
+    La observación es opcional en aprobación y obligatoria en archivo.
+  </p>
+
+  @if (iniciativa(); as ctx) {
+    <output class="decision-page__contexto" aria-live="polite">
+      <p><strong>Código:</strong> {{ ctx.codigo }}</p>
+      <p><strong>Estado:</strong> {{ ctx.estado }}</p>
+      @if (ctx.nombre) {
+        <p><strong>Nombre:</strong> {{ ctx.nombre }}</p>
+      }
+      <p><strong>Versión:</strong> {{ ctx.version }} · <strong>ETag:</strong> {{ etagActual() }}</p>
+    </output>
+  }
+
+  @if (estadoBloqueante(); as estado) {
+    <div role="status" aria-live="polite" class="decision-page__estado-bloqueante">
+      La iniciativa se encuentra en estado <strong>{{ estado }}</strong>. La decisión formal
+      solo se permite cuando la iniciativa está en <code>PRESENTADO</code>.
+    </div>
+  }
+
+  <form
+    [formGroup]="formDecision"
+    (ngSubmit)="confirmarDecision()"
+    novalidate
+    [id]="formId"
+    class="decision-page__form"
+    aria-labelledby="decision-form-titulo">
+    <h3 id="decision-form-titulo">Decisión</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDestino">Destino de la decisión</mat-label>
+      <mat-select
+        [id]="idDestino"
+        formControlName="destino"
+        required
+        [attr.required]="''"
+        [attr.aria-describedby]="idDestino + '-help ' + idDestino + '-error'">
+        @for (opcion of destinos; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint [id]="idDestino + '-help'">INICIATIVA_APROBADA o INICIATIVA_ARCHIVADA.</mat-hint>
+      <mat-error [id]="idDestino + '-error'">{{ mensajeError('destino') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDocumento">Documento formal (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idDocumento"
+        formControlName="documentoRefId"
+        required
+        min="1"
+        [attr.aria-describedby]="idDocumento + '-help ' + idDocumento + '-error'" />
+      <mat-hint [id]="idDocumento + '-help'">Versión documental aprobada (campo 15).</mat-hint>
+      <mat-error [id]="idDocumento + '-error'">{{ mensajeError('documentoRefId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idObservaciones">Observación</mat-label>
+      <textarea
+        matInput
+        [id]="idObservaciones"
+        formControlName="observaciones"
+        maxlength="2000"
+        rows="4"
+        [attr.aria-describedby]="idObservaciones + '-help ' + idObservaciones + '-error'"></textarea>
+      <mat-hint [id]="idObservaciones + '-help'">Obligatoria cuando el destino es INICIATIVA_ARCHIVADA. Máximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idObservaciones + '-error'">{{ mensajeError('observaciones') }}</mat-error>
+    </mat-form-field>
+
+    <div role="alert" aria-live="assertive" class="decision-page__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+        @if (violacionesPara('documentoRefId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="decision-page__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('observaciones'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="decision-page__violacion">{{ v.message }}</p>
+          }
+        }
+      }
+    </div>
+
+    <div class="decision-page__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-action="confirmar-decision"
+        [disabled]="submitting() || !permiteDecision()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Confirmar decision formal
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-decision"
+        [attr.aria-controls]="formId"
+        (click)="cancelarDecision()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <output class="decision-page__result" aria-live="polite">
+    @if (ultimaTransicion(); as detalle) {
+      <h3>Decisión registrada</h3>
+      <p>Estado anterior: <strong>{{ detalle.estadoAnterior }}</strong></p>
+      <p>Estado nuevo: <strong>{{ detalle.estadoNuevo }}</strong></p>
+      <p>Fecha: <code>{{ detalle.fechaTransicion }}</code></p>
+      <p>ETag: <code>{{ detalle.etag }}</code></p>
+    }
+  </output>
+
+  <div class="decision-page__global-actions">
+    <button
+      mat-stroked-button
+      type="button"
+      data-action="cancelar-vista"
+      [attr.aria-controls]="formId"
+      (click)="cancelarVista()">
+      Cancelar y volver
+    </button>
+  </div>
+</section>

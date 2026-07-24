@@ -1,0 +1,131 @@
+// ============================================================================
+// Tema institucional PIIP — Angular Material (M3) y tokens de diseño
+// ----------------------------------------------------------------------------
+// Decisiones de accesibilidad (WCAG 2.1 AA):
+// * Se usa la API `mat.theme` de Angular Material con las paletas tonales M3
+//   predefinidas. Los pares de roles que genera Material (primary/on-primary,
+//   surface/on-surface, outline, error, ...) están diseñados para cumplir el
+//   contraste AA por construcción (4.5:1 texto normal, 3:1 texto grande y
+//   componentes). No se sobreescriben tonos individuales para no romper esas
+//   parejas; cualquier personalización futura debe medir nuevamente el
+//   contraste para conservar la conformidad WCAG 2.1 AA.
+// * La paleta principal verde ($green-palette) recoge la identidad agraria de
+//   MIDAGRI con carácter sobrio; el acento azur ($azure-palette) se reserva
+//   para elementos terciarios (enlaces, acentos informativos).
+// * El anillo de foco (--piip-focus-ring-*) supera el contraste 3:1 frente al
+//   fondo claro M3 (criterio 1.4.11 de contraste no textual) y se aplica de
+//   forma consistente a todo interactivo desde styles.css vía :focus-visible
+//   (criterio 2.4.7 de foco visible).
+// * La tipografía base es de 16 px con altura de línea 1.5 en párrafos
+//   (criterios 1.4.8 y 1.4.12) y no depende de descargas externas de fuentes.
+// ============================================================================
+
+@use '@angular/material' as mat;
+
+// ---------- Tipografía ----------
+// Pila de fuentes del sistema: la aplicación institucional no depende de CDNs
+// ni de descargas de fuentes externas para renderizar texto.
+$piip-font-family:
+  'Roboto',
+  'Segoe UI',
+  system-ui,
+  -apple-system,
+  sans-serif;
+
+// ---------- Tema M3 de Angular Material ----------
+html {
+  // Fase 1 define únicamente esquema claro; un esquema oscuro requeriría su
+  // propia medición de contraste AA aprobada.
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$green-palette,
+        tertiary: mat.$azure-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: $piip-font-family,
+        brand-family: $piip-font-family,
+      ),
+      density: 0,
+    )
+  );
+}
+
+// ---------- Breakpoints responsive (SCSS) ----------
+// División principal móvil/escritorio documentada:
+// * Móvil:      < 600 px   (viewport de los proyectos Playwright móviles)
+// * Tablet:     600-959.98 px (comportamiento intermedio, mismo layout fluido)
+// * Escritorio: >= 960 px  (viewport de los proyectos Playwright de escritorio)
+// * Ancha:      >= 1280 px (densidades de información de tablero/reportes)
+$piip-breakpoint-mobile-max: 599.98px;
+$piip-breakpoint-tablet: 600px;
+$piip-breakpoint-desktop: 960px;
+$piip-breakpoint-wide: 1280px;
+
+// Mixins de apoyo para media queries consistentes en los componentes.
+@mixin piip-up($min-width) {
+  @media (min-width: $min-width) {
+    @content;
+  }
+}
+
+@mixin piip-down($max-width) {
+  @media (max-width: $max-width) {
+    @content;
+  }
+}
+
+// ---------- Tokens de diseño PIIP (custom properties) ----------
+// Alias semánticos de los roles M3 y escala propia de tipografía, espaciado y
+// breakpoints para uso en layouts y componentes compartidos.
+:root {
+  // ---- Colores semánticos (alias de los roles M3 generados por mat.theme) ----
+  --piip-color-primary: var(--mat-sys-primary);
+  --piip-color-on-primary: var(--mat-sys-on-primary);
+  --piip-color-surface: var(--mat-sys-surface);
+  --piip-color-on-surface: var(--mat-sys-on-surface);
+  --piip-color-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --piip-color-outline: var(--mat-sys-outline);
+  --piip-color-error: var(--mat-sys-error);
+  --piip-color-on-error: var(--mat-sys-on-error);
+
+  // ---- Anillo de foco visible ----
+  // Verde oscuro institucional #14532d: contraste aproximado de 8.4:1 sobre el
+  // fondo claro M3, muy por encima del mínimo 3:1 exigido a indicadores de
+  // componentes (1.4.11). Se aplica globalmente desde styles.css.
+  --piip-focus-ring-color: #14532d;
+  --piip-focus-ring-width: 3px;
+  --piip-focus-ring-offset: 2px;
+
+  // ---- Escala tipográfica (rem; 1 rem = 16 px) ----
+  --piip-font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --piip-text-xs: 0.75rem; // 12 px — solo metadatos no esenciales
+  --piip-text-sm: 0.875rem; // 14 px
+  --piip-text-md: 1rem; // 16 px — cuerpo base legible
+  --piip-text-lg: 1.25rem; // 20 px
+  --piip-text-xl: 1.5rem; // 24 px — desde aquí WCAG considera "texto grande" (umbral 3:1)
+  --piip-text-2xl: 2rem; // 32 px
+  --piip-leading-tight: 1.25;
+  --piip-leading-normal: 1.5; // altura de línea de párrafos (1.4.12)
+  --piip-weight-regular: 400;
+  --piip-weight-medium: 500;
+  --piip-weight-bold: 700;
+
+  // ---- Espaciado (múltiplos de 4 px) ----
+  --piip-space-1: 0.25rem; // 4 px
+  --piip-space-2: 0.5rem; // 8 px
+  --piip-space-3: 0.75rem; // 12 px
+  --piip-space-4: 1rem; // 16 px
+  --piip-space-6: 1.5rem; // 24 px
+  --piip-space-8: 2rem; // 32 px
+  --piip-space-12: 3rem; // 48 px
+  --piip-space-16: 4rem; // 64 px
+
+  // ---- Breakpoints (referencia; las media queries usan las variables SCSS) ----
+  --piip-breakpoint-tablet: 600px;
+  --piip-breakpoint-desktop: 960px;
+  --piip-breakpoint-wide: 1280px;
+}

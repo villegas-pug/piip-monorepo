@@ -1,0 +1,144 @@
+<a class="skip-link" href="#{{ idMain }}">Saltar al contenido principal</a>
+
+<main
+  [id]="idMain"
+  tabindex="-1"
+  aria-labelledby="public-detail-title"
+  class="public-detail"
+  [attr.aria-busy]="cargando() ? 'true' : null">
+  <h1 id="public-detail-title">Consulta pública del portafolio</h1>
+  <p class="public-detail__help" id="public-detail-help">
+    La consulta pública es anónima y muestra únicamente la información
+    clasificada como pública. No incluye contenido documental ni permite
+    descargas.
+  </p>
+
+  <section
+    aria-labelledby="public-detail-status-title"
+    class="public-detail__status"
+    [attr.aria-live]="cargando() ? 'polite' : null"
+    role="status">
+    <h2 id="public-detail-status-title" class="piip-visually-hidden">Estado de la carga</h2>
+    @if (cargando()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="32"
+        aria-label="Cargando detalle público" />
+      <span>Cargando detalle público&hellip;</span>
+    } @else if (notModified()) {
+      <span>El detalle no cambió desde la última lectura.</span>
+    } @else {
+      <span>Detalle cargado. Solo se muestran los campos públicos y los metadatos de publicaciones elegibles.</span>
+    }
+  </section>
+
+  <section
+    [id]="idResultsRegion"
+    aria-labelledby="public-detail-results-title"
+    class="public-detail__results"
+    aria-live="polite">
+    <h2 id="public-detail-results-title" class="piip-visually-hidden">
+      Campos públicos del registro
+    </h2>
+
+    <article
+      aria-labelledby="public-detail-fields-title"
+      class="public-detail__section public-detail__section--fields">
+      <h3 id="public-detail-fields-title">Identidad del registro</h3>
+      <dl class="public-detail__definition">
+        <div>
+          <dt>Tipo de registro</dt>
+          <dd>{{ descripcionTipo(detalle().tipoRegistro) }}</dd>
+        </div>
+        <div>
+          <dt>Código</dt>
+          <dd>{{ detalle().codigo || 'No disponible' }}</dd>
+        </div>
+        <div>
+          <dt>Nombre</dt>
+          <dd>{{ detalle().nombre || 'No disponible' }}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>
+            <span class="public-detail__badge" aria-label="Estado público">
+              {{ detalle().estado || 'No disponible' }}
+            </span>
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <article
+      [id]="idPublicaciones"
+      aria-labelledby="public-detail-publicaciones-title"
+      class="public-detail__section">
+      <h3 id="public-detail-publicaciones-title">Publicaciones elegibles</h3>
+      <p class="public-detail__help">
+        Esta sección solo incluye las versiones con publicación confirmada
+        y clasificación pública validada. Los títulos mostrados no contienen
+        datos personales y no se ofrece descarga.
+      </p>
+      @if (publicacionesVisibles()) {
+        <table aria-describedby="public-detail-publicaciones-help">
+          <caption class="piip-visually-hidden">
+            Listado de publicaciones elegibles con su tipo, título, versión,
+            formato y fecha de publicación.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Tipo documental</th>
+              <th scope="col">Título público</th>
+              <th scope="col">Versión</th>
+              <th scope="col">Formato</th>
+              <th scope="col">Fecha de publicación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (publicacion of detalle().publicaciones; track trackPublicacion($index, publicacion)) {
+              <tr>
+                <td>{{ publicacion.tipoDocumental }}</td>
+                <td>{{ publicacion.tituloPublico }}</td>
+                <td>{{ publicacion.version }}</td>
+                <td>{{ publicacion.formato }}</td>
+                <td>
+                  <time [attr.datetime]="publicacion.fechaPublicacion">{{ publicacion.fechaPublicacion }}</time>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p id="public-detail-publicaciones-help" class="piip-visually-hidden">
+          Cada fila corresponde a una publicación elegible. No hay enlaces de
+          descarga: la consulta pública no expone contenido ni URL firmada.
+        </p>
+      } @else {
+        <p>El registro no tiene publicaciones elegibles para consulta pública.</p>
+      }
+    </article>
+  </section>
+
+  <section
+    [id]="idErrorRegion"
+    aria-labelledby="public-detail-error-title"
+    class="public-detail__errors"
+    aria-live="assertive"
+    role="alert">
+    <h2 id="public-detail-error-title" class="piip-visually-hidden">Errores del detalle</h2>
+    @if (mensajeError(); as mensaje) {
+      <p>{{ mensaje }}</p>
+      @if (problema()?.code) {
+        <p>
+          Código de error: <code>{{ problema()?.code }}</code>
+        </p>
+      }
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="reintentar()"
+        [disabled]="cargando()">
+        Reintentar
+      </button>
+    }
+  </section>
+</main>

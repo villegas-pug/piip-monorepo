@@ -6,8 +6,10 @@ Los agentes primarios `PLAN` y `BUILD` son los únicos orquestadores. Los especi
 comunican directamente entre sí ni crean subagentes. El primario conserva el `task_id` de cada
 especialista, transmite los resultados y reanuda la misma sesión cuando sea necesario.
 
-`PLAN` solicita solo análisis y debe instruir explícitamente que no se edite. `BUILD` puede
-solicitar implementación, pero cada edición requiere aprobación del usuario mediante `edit: ask`.
+`PLAN` solicita solo análisis y debe instruir explícitamente que no se edite. Los permisos del
+agente primario no se heredan: los especialistas conservan sus permisos propios, por lo que esta
+restricción de `PLAN` es instructiva. `BUILD` puede solicitar implementación y los especialistas
+editan sin aprobación adicional únicamente dentro de su dominio autorizado.
 
 ## Selección del especialista
 

@@ -1,0 +1,8 @@
+{
+  "issuer": "https://rcgv-services-dev.duckdns.org/keycloak/realms/piip",
+  "clientId": "piip-token-test",
+  "redirectUri": "http://localhost:4200/auth/callback",
+  "postLogoutRedirectUri": "http://localhost:4200/consulta-publica",
+  "scopes": ["openid", "profile"],
+  "ogtiThemeConfirmationReference": "cualquier-texto"
+}

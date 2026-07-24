@@ -31,7 +31,7 @@
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": ["*"]
             },
             "ssr": {
               "entry": "src/server.ts"
@@ -74,7 +74,18 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "frontend:build:development",
+            "runner": "vitest",
+            "setupFiles": [
+              "src/test-setup.ts"
+            ],
+            "include": [
+              "src/**/*.spec.ts"
+            ]
+          }
         }
       }
     }

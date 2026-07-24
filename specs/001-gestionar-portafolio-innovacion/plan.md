@@ -2,7 +2,7 @@
 
 **Rama**: `001-gestionar-portafolio-innovacion` | **Fecha**: 2026-07-21 | **Especificación**: [spec.md](./spec.md)
 
-**Entrada**: Especificación funcional aprobada de la Fase 1, alineada con la Constitución 4.0.0 y las
+**Entrada**: Especificación funcional aprobada de la Fase 1, alineada con la Constitución 5.0.0 y las
 remediaciones C1/C2.
 
 **Estado del plan**: Diseño funcional y arquitectura objetivo conformes. El diccionario físico Oracle
@@ -19,10 +19,10 @@ servicios de aplicación Java/JPA serán la única fuente autoritativa de reglas
 autorización y máquina de estados. Oracle aportará persistencia, restricciones, índices y bloqueo de
 filas, sin procedimientos funcionales paralelos.
 
-El diseño cubre organización, seguridad, portafolio, documentos, reportes, consulta y auditoría. La
-implementación de cada uno de los ocho recorridos Angular queda condicionada a su prototipo PIIP
-aprobado, medición inicial y matriz de metas. No se incluyen despliegue productivo, infraestructura institucional,
-sincronizaciones externas, cargas masivas ni funcionalidades de Fase 2.
+El diseño cubre organización, seguridad, portafolio, documentos, reportes, consulta y auditoría. US9,
+sus prototipos, mediciones, matrices de metas y gates de interfaz se difieren a una fase posterior por
+la enmienda constitucional 5.0.0. No se incluyen despliegue productivo, infraestructura institucional,
+sincronizaciones externas, cargas masivas ni funcionalidades diferidas.
 
 ## Contexto técnico
 
@@ -76,17 +76,17 @@ sincronización funcional externa no aprobada, salvo Keycloak Admin API para el 
 sin descarga pública documental; sin reglas de negocio en controladores, Angular o PL/SQL; sin
 `model/`, `client/` o `integration/` genéricos.
 
-**Escala y alcance**: Desarrollo local de las nueve historias de usuario y los ocho recorridos
-críticos de la Fase 1 para MIDAGRI y entidades sectoriales dentro de unidades asignadas
+**Escala y alcance**: Desarrollo local de las ocho historias activas de usuario de la Fase 1 para
+MIDAGRI y entidades sectoriales dentro de unidades asignadas
 explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alcance.
 
 ## Constitution Check inicial
 
-*Gate realizado antes del diseño contra la Constitución 4.0.0.*
+*Gate realizado antes del diseño contra la Constitución 5.0.0.*
 
 | Control | Resultado | Evidencia o acción |
 |---|---|---|
-| Especificación aprobada y desconocidos materiales trazados | CUMPLE | `spec.md` está `Approved` y C1/C2 están resueltos por la Constitución 4.0.0. |
+| Especificación aprobada y desconocidos materiales trazados | CUMPLE | `spec.md` está `Approved`, C1/C2 están resueltos y US9 está diferida por la Constitución 5.0.0. |
 | Propósito, actores, reglas, estados, excepciones y aceptación | CUMPLE | `spec.md` define US1-US9, BR-001 a BR-152, FR-001 a FR-164 y criterios medibles. |
 | Límites modulares, DTO y transacciones | CUMPLE EN DISEÑO | Se asignan propietarios e interacciones en este plan y [contracts/README.md](./contracts/README.md). |
 | Fuente autoritativa única | CUMPLE EN DISEÑO | Servicios Java/JPA para operación ordinaria; semilla SQL 021 como única inicialización constitucional del primer `GlobalAdmin`. |
@@ -97,7 +97,7 @@ explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alc
 | Iniciativa y proyecto separados | CUMPLE | Relación derivada inmutable y única; proyectos directos exigen autoridad y evidencia. |
 | Decisor y registrador | CUMPLE | Se modelan ambos actores y el documento formal en cada transición aplicable. |
 | Consulta pública minimizada | CUMPLE EN DISEÑO | Cuatro campos y metadatos de publicaciones elegibles; nunca contenido o descarga. |
-| Prototipos aprobados | **GATE DE BUILD FRONTEND** | No hay evidencia local de prototipos aprobados; ninguna interfaz de recorrido puede implementarse todavía. |
+| Prototipos aprobados | DIFERIDO | US9 y sus gates no forman parte de la Fase 1 actual. |
 | SQL incremental, orden y compensación | CUMPLE EN DISEÑO | Scripts 002-024 propuestos; baseline intacto; compensación forward-only. |
 | Estrategia de pruebas | CUMPLE EN DISEÑO | Matriz de trazabilidad incluida al final de este plan. |
 | Exclusiones de Fase 1 | CUMPLE | No se diseñan integraciones externas, carga masiva ni transiciones futuras. |
@@ -110,10 +110,10 @@ explícitamente. La capacidad y dimensionamiento productivos quedan fuera de alc
 | Matriz inicial | Funciones y combinaciones función-perfil-unidad concreta formalmente aprobadas. |
 | Datos legacy | Mapeos explícitos para PEI/POI, documentos, unidades, titulares y asignaciones; ninguna inferencia automática. |
 | Esquema Oracle | Scripts revisados, registrados `PENDIENTE`, ejecutados manualmente y confirmados antes de actualizar el catálogo. |
-| Interfaces | Prototipo, medición inicial y matriz de metas aprobados para cada recorrido. |
+| Interfaces | Snapshot OpenAPI compatible, autorización backend y pruebas de accesibilidad. |
 | Configuración OIDC | Valores runtime aprobados por ambiente antes de verificar integración real. |
 | Tema de inicio Keycloak | OGTI configura el tema personalizado en el ambiente OIDC y entrega confirmación de configuración antes de verificar el redireccionamiento institucional. |
-| Dataset sintético | Versión y aprobación formal antes de registrar mediciones de experiencia. |
+| Dataset sintético | Diferido junto con US9. |
 | Diccionario físico | Revisión humana DB antes de crear cualquier script 002-024. |
 | Secretos y wallet | Retirada del repositorio y rotación por un administrador humano antes de ejecutar localmente. |
 | Semilla inicial `GlobalAdmin` | Scripts 002, 007 y 008 confirmados; `sub`, aprobación de despliegue, DBA ejecutor y valores canónicos incluidos en 021 antes de su ejecución manual. La dependencia confirmada prevalece, como excepción documentada, sobre el orden numérico de 021. |
@@ -137,7 +137,7 @@ specs/001-gestionar-portafolio-innovacion/
 │   ├── documentos.md
 │   ├── reportes.md
 │   ├── consulta.md
-│   ├── prototipos.md
+│   ├── prototipos.md (diferido)
 │   └── auditoria.md
 └── checklists/
 ```
@@ -170,7 +170,7 @@ apps/frontend/src/app/
     ├── consulta-institucional/
     ├── consulta-publica/
     ├── reportes/
-    └── portafolio/prototipos/
+    └── portafolio/prototipos/ (diferido)
 
 database/
 ├── ddl/{auditoria,organizacion,seguridad,portafolio,documentos,reportes,transversal}/
@@ -194,8 +194,8 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
   locales seguras. Este plan no manipula esos secretos.
 - `shared-data` contiene artefactos heredados y una ruta `db/migration`; no se usarán para crear o
   migrar el esquema PIIP ni se introducirá Flyway/Liquibase.
-- Angular es un scaffold sin `core/shared/features`, Material, OIDC/PKCE, rutas lazy o Playwright; el
-  BUILD de recorridos además depende del gate de prototipos.
+- Angular es un scaffold sin `core/shared/features`, Material, OIDC/PKCE, rutas lazy o Playwright;
+  US9 y sus gates de prototipos están diferidos de la Fase 1 actual.
 - Las pruebas actuales no cubren autorización Oracle, auditoría, estados, concurrencia, documentos,
   Keycloak, reportes ni límites arquitectónicos.
 
@@ -205,7 +205,7 @@ servicios, DTO o eventos internos para interactuar con otro módulo.
 |---|---|---|
 | `organizacion` | Unidad y versiones independientes de Objetivo PEI y Actividad POI aprobadas por planeamiento. | Seguridad, portafolio, consulta y reportes. |
 | `seguridad` | Usuario, matriz versionada función-perfil-unidad concreta, asignación, revocación, suplencia, ciclo Keycloak y asignación efectiva. | Todos los casos institucionales. |
-| `portafolio` | Registro iniciativa/proyecto, relación de origen, titular, participantes, evaluación, incorporación, ciclos, producto, cierre y prototipos. | Documentos, consulta y reportes. |
+| `portafolio` | Registro iniciativa/proyecto, relación de origen, titular, participantes, evaluación, incorporación, ciclos, producto y cierre. | Documentos, consulta y reportes. |
 | `documentos` | Expediente institucional, serie con propietario excluyente, versión, BLOB Oracle, hash, clasificación y publicación. | Organización, seguridad, portafolio, reportes y consulta. |
 | `reportes` | Solicitud, snapshot, generación PDF/XLSX, aprobación, destinatarios, remisión y expediente. | Evaluador y consulta institucional autorizada. |
 | `consulta` | Proyecciones institucional y pública ya minimizadas. | Angular institucional y acceso anónimo. |
@@ -302,13 +302,13 @@ objetos y datos antes del primer DDL. Cada script se registra como `PENDIENTE` e
 | 015 | `database/ddl/portafolio/015_ciclos_resultados_cierre.sql` | 003, 009, 014 | Detener cierres/ciclos; conservar versiones cerradas. |
 | 016 | `database/ddl/portafolio/016_incorporacion_individual.sql` | 003, 010, 012 | Mantener expedientes `PENDIENTE`; no borrar evidencia. |
 | 017 | `database/ddl/reportes/017_reporte_expediente_remision.sql` | 002, 003, 009, 015 | Detener generación/remisión; conservar expedientes. |
-| 018 | `database/ddl/portafolio/018_prototipos_mediciones_metas.sql` | 002, 003, 008 | Detener aprobaciones; conservar versiones y hallazgos. |
+| 018 | Diferido a una fase posterior; no se deposita DDL en la Fase 1 actual. | No aplicable | No aplicable. |
 | 019 | `database/seeds/019_catalogos_canonicos_portafolio.sql` | 003-018 | Inactivar semillas no referenciadas; nunca borrar referencias. |
 | 020 | `database/seeds/020_planeamiento_inicial_aprobado.sql` | 005, 006 | Requiere datasets y documentos aprobados; no inventar valores. |
 | 021 | `database/seeds/021_matriz_funcional_inicial_aprobada.sql` | 002, 007, 008 | Crea valores, combinación y primer `GlobalAdmin` con `sub` y aprobación de despliegue; aborta ante antecedentes y nunca revierte una asignación confirmada. Se deposita y ejecuta después de estas confirmaciones y antes de US1, como excepción documentada al orden numérico. |
-| 022 | `database/ddl/transversal/022_backfill_referencias_legacy.sql` | 019-021 | Backfill de documentos, organización, seguridad y portafolio; abortar ante mapeos no aprobados. |
-| 023 | `database/indexes/023_indices_operacion_piip.sql` | 003-022 | Retirar solo índices no esenciales tras revisión. |
-| 024 | `database/ddl/transversal/024_constraints_corte_piip.sql` | 022, 023 | Corte de documentos, organización, seguridad y portafolio; deshabilitar solo constraint incompatible. |
+| 022 | Diferido a una fase posterior; no se deposita DDL de backfill en la Fase 1 actual. | No aplicable | No aplicable. |
+| 023 | Diferido a una fase posterior; requiere revisión de dependencias, objetos y del índice existente. | No aplicable | No aplicable. |
+| 024 | Diferido a una fase posterior; no se deposita DDL de corte legacy en la Fase 1 actual. | No aplicable | No aplicable. |
 
 Cada script debe prevalidar datos antes del primer DDL, documentar commits implícitos Oracle,
 dependencias y compensación, y registrarse `PENDIENTE` en `database/CHANGELOG.md`. La semilla 021 es
@@ -331,7 +331,7 @@ esos scripts y no actualiza `database/database-schema.md`.
 - Toda operación sensible y denegación registra actor, asignación, perfil, unidad, instante,
   operación, resultado, correlación y cambios mínimos necesarios, sin tokens ni contenido de archivo.
 
-## Estrategia frontend y gate de prototipos
+## Estrategia frontend
 
 Cada feature Angular será lazy y standalone. `core` concentra OIDC, contexto de asignación,
 interceptores y shell; `shared` solo presentación reutilizable. Guards y acciones ocultas mejoran UX,
@@ -382,13 +382,13 @@ BUILD de interfaces está bloqueado.
 | Expedientes/publicación | Propiedad XOR e inmutable, documentos institucionales aislados, confirmación por Evaluador, fecha de servidor y reclasificación restrictiva. |
 | Incorporación | `PENDIENTE/VALIDADO/RECHAZADO`, correcciones ilimitadas, conflicto de código/relación, duplicado vinculado y auditoría original. |
 | Reportes | Cortes 30/06 y 31/12, BR-122 y denominador cero, filtros, snapshot PDF/XLSX, clasificación, aprobación, remisión y recuperación parcial. |
-| Prototipos | Estados, separación autor/validador/aprobador, medición, metas, versionado y bloqueo por hallazgo. |
+| Prototipos | Diferido a una fase posterior; no aplica a las pruebas activas. |
 | Cierre | Ambos caminos `PRODUCTO_APROBADO` y `PRODUCTO_NO_APROBADO` a `FINALIZADO`, requisitos completos y fecha automática. |
 | Frontend | Vitest de formularios/errores/asignación; Playwright de ocho recorridos en escritorio/móvil, teclado, lector de pantalla aplicable y consulta pública. |
 
 ## Fases locales de implementación posteriores
 
-1. Alinear contratos y modelo con la Constitución 4.0.0 y las aclaraciones C1/C2 aprobadas.
+1. Alinear contratos y modelo con la Constitución 5.0.0 y las aclaraciones C1/C2 aprobadas.
 2. Aprobar modelo físico y depositar scripts 002-024 como `PENDIENTE`; ejecución siempre manual.
 3. Construir fundaciones de auditoría, organización y seguridad, incluido Keycloak idempotente, y ejecutar manualmente la semilla 021 tras confirmar 002, 007 y 008.
 4. Construir portafolio, documentos y máquina de estados mediante JPA.
@@ -408,14 +408,130 @@ BUILD de interfaces está bloqueado.
 | Iniciativa-proyecto y proyectos directos | CUMPLE |
 | SQL incremental y compensación | CUMPLE EN DISEÑO; no ejecutado |
 | Pruebas constitucionales | CUMPLE EN PLAN; no ejecutadas |
-| Prototipos antes de UI | CUMPLE COMO GATE; evidencia aún ausente |
+| Prototipos antes de UI | DIFERIDO por la enmienda constitucional 5.0.0 |
 | Decisiones funcionales completas | CUMPLE |
 | Alcance Fase 1 | CUMPLE |
 
-**Resultado**: El diseño preserva la Constitución 4.0.0 y no mantiene aclaraciones materiales C1/C2.
-DDL, OIDC integrado, mediciones, semillas y backfill avanzan únicamente después de sus gates explícitos.
-La semilla 021 se deposita y ejecuta manualmente; este plan no ejecuta SQL. Cada uno de los ocho
-recorridos exige su gate de prototipo y su medición vigente.
+**Resultado**: El diseño preserva la Constitución 5.0.0 y no mantiene aclaraciones materiales C1/C2.
+DDL, OIDC integrado, semillas y backfill avanzan únicamente después de sus gates explícitos. La
+semilla 021 se deposita y ejecuta manualmente; US9 y el incremento 018 quedan diferidos.
+
+## Constitution Check final
+
+*Verificación contra la Constitución 5.0.0 tras el diseño completo. Fuente única de verdad:
+`.specify/memory/constitution.md`.*
+
+### I. Autoridad única para reglas de negocio (Sección IV)
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Servicios Java/JPA como fuente autoritativa de todas las reglas | **CUMPLE** | `TransicionEstadoService`, `CodigoProyectoService`, `AutorizacionEfectivaService`, `DocumentoService`, `ExpedienteInstitucionalService`, `PublicacionDocumentoService`, `MatrizAsignacionService`, `UsuarioProvisioningService` y todos los servicios de portafolio. Sin procedimientos almacenados funcionales paralelos. |
+| Ausencia de duplicación Java/PL/SQL | **CUMPLE** | El plan usa JPA para toda lógica de negocio. Oracle aporta integridad estructural, secuencias y bloqueo pesimista. Los scripts 002-024 son DDL y semillas, no lógica funcional. |
+| Semilla 021 como única excepción de bootstrap | **CUMPLE** | La semilla SQL 021 crea exclusivamente el primer `GlobalAdmin` con `sub` proporcionado por OGTI, aprobación de despliegue y auditoría mínima. Aborta ante cualquier antecedente histórico. Ningún servicio Java reproduce esta inicialización. |
+
+### II. Simplicidad modular (Sección II y Límites de módulos)
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Siete módulos constitucionales: `organizacion`, `seguridad`, `portafolio`, `documentos`, `reportes`, `consulta`, `auditoria` | **CUMPLE** | Estructura de proyecto en [data-model.md](./data-model.md) y tabla de agregados. Cada módulo tiene `controller/`, `service/impl/`, `repository/`, `dto/`, `entity/`, `exception/`, `mapper/`, `event/`. |
+| Sin directorios genéricos `model/`, `client/` ni `integration/` | **CUMPLE** | Plan explícitamente los prohíbe y la matriz de pruebas ArchUnit los verifica. |
+| Comunicación entre módulos exclusivamente por servicios, DTO o eventos internos | **CUMPLE** | Tabla de diseño modular con contratos consumidores y productores. Las referencias entre módulos son identificadores, no asociaciones JPA navegables (data-model.md línea 9). |
+| Controladores delgados que solo validan DTO y delegan | **CUMPLE** | Contratos en [contracts/README.md](./contracts/README.md) y cada módulo provee su `@RestControllerAdvice` acotado. |
+
+### III. Seguridad, privacidad y auditabilidad desde el diseño (Sección III)
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Keycloak fuente autoritativa de identidad y credenciales | **CUMPLE** | `keycloak-js`, OIDC Authorization Code Flow con PKCE, `keycloakId` UK UUID en `UsuarioPiip`. Backend valida emisor, audiencia, firma, vigencia y `sub`. |
+| Oracle fuente autoritativa de roles, permisos y alcance organizacional | **CUMPLE** | `AsignacionFuncional` con `MatrizFuncionPerfilUnidad` concreta,vigencia, revocación, suplencia y `@Version`. Asignación efectiva Oracle revalidada antes de cada operación sensible. |
+| Ausencia de clasificación nunca equivale a `PUBLICO` | **CUMPLE** | Matriz de 23 campos en [data-model.md](./data-model.md) líneas 242-269 define privacidad explícita. DTO allowlist en contracts/README.md líneas 94-103. |
+| Consulta pública: 4 campos y metadatos, sin contenido ni descarga | **CUMPLE** | `PublicPortfolioSummary` y `PublicDocumentMetadata` en contracts. `consulta` sin persistencia propia. Sin endpoint público hacia contenido documental. |
+| OGTI antimalware fuera de PIIP; sin estados, gates ni contratos antimalware | **CUMPLE** | `DOCUMENTO.SCAN_ANTIVIRUS` y `DOCUMENTO.NOMBRE_STORAGE` legacy inactivas, nullable, sin mapeo JPA ni consumidor. |
+| Auditoría inmutable: actor, asignación, perfil, unidad, instante, operación, resultado, correlación | **CUMPLE** | `EventoAuditoria` y `AuditoriaAcceso` append-only. Denegaciones en transacción independiente. Éxitos en transacción de negocio. Sin tokens ni contenido de archivo en registro. |
+
+### IV. Persistencia y documentos (Sección Persistencia y documentos)
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| `PROYECTO` como agregado central; iniciativa y proyecto como registros independientes | **CUMPLE** | `RegistroPortafolio` con `TIPO_REGISTRO` diferenciando ambos sin compartir identidad, código o historial. `RelacionIniciativaProyecto` inmutable vincula el proyecto derivado único. |
+| 13 tipos documentales con condiciones | **CUMPLE** | Matriz en data-model.md líneas 262-276. `TipoDocumento` evoluciona `TIPO_DOCUMENTO` con `contexto` (`PORTAFOLIO`/`INSTITUCIONAL`). |
+| SHA-256, versiones, BLOB Oracle, máximo 100 MB | **CUMPLE** | `DocumentoVersion` con `hashSha256` (64 hex), `tamanoBytes` `1..104857600`, `contenido` BLOB Oracle, `numeroVersion`, cadena inmutable. |
+| Propietario excluyente XOR entre serie documental y expediente/iniciativa | **CUMPLE** | CHECK XOR `registroId` / `expedienteInstitucionalId` en `DocumentoVersion`. Pertenencia inmutable tras formalización. |
+| Documentos formalizados y transiciones inmutables; corrección produce nueva versión | **CUMPLE** | `formalizado` impide actualización o eliminación. Correcciones insertan `CicloEvidencia`, nueva `PlanificacionProyecto` o nueva versión de ciclo. |
+| Sin descarga pública de documentos | **CUMPLE** | `PublicacionDocumento` expone solo título validado sin datos personales, tipo, versión, formato y fecha. Sin enlace ni endpoint hacia contenido. |
+
+### V. Catálogos canónicos y máquina de estados
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| 11 estados canónicos: `PRESENTADO`, `NO_ADMISIBLE`, `NO_APLICABLE`, `INICIATIVA_APROBADA`, `INICIATIVA_ARCHIVADA`, `PROYECTO_EJECUCION`, `SUSPENDIDO`, `CANCELADO`, `PRODUCTO_APROBADO`, `PRODUCTO_NO_APROBADO`, `FINALIZADO` | **CUMPLE** | Data-model.md líneas 222-238. `TransicionEstadoService` en Java. CHECK Oracle solo limita dominio. `TRANSICION_PERMITIDA` legacy no se consulta. |
+| Terminales: `NO_ADMISIBLE`, `NO_APLICABLE`, `INICIATIVA_ARCHIVADA` | **CUMPLE** | Expresado en data-model.md línea 235. La máquina rechaza cualquier salida. |
+| 11 transiciones controladas con decisor, registrador y evidencia | **CUMPLE** | Tabla data-model.md líneas 222-238. Cada una bloquea el registro, revalida asignación, verifica `If-Match`, actualiza estado y fecha automática, inserta historial y auditoría atómicamente. |
+| Proyecto derivado crea vínculo inmutable sin transicionar la iniciativa | **CUMPLE** | `RelacionIniciativaProyecto` FK+UK. Servicio bloquea iniciativa, crea proyecto y vínculo, UK por iniciativa resuelve carrera. Código propio inmutable. |
+| Proyectos directos exigiendo autoridad formal y evidencia | **CUMPLE** | `RegistroPortafolio` con `codigoOrigen` obligatorio con acto/fuente para proyecto directo. Servicio revalida `Autoridad`/`Evaluador` y documento formal. |
+| Separación decisor/registrador en transiciones | **CUMPLE** | Tabla de transiciones indica rol que decide y rol que registra.，两者 pueden diferir. Documento formal obligatorio cuando aplique. |
+
+### VI. 23 campos oficiales
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Matriz completa: obligatoriedad, editabilidad, privacidad y actor responsable por tipo/etapa | **CUMPLE** | Data-model.md líneas 242-273. Cada uno de los 23 campos tiene privacidad,editabilidad y responsables explícitos. Ausencia de clasificación nunca equivale a `PUBLICO`. |
+
+### VII. Reportes institucionales
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Sin reportes mensuales ni trimestrales obligatorios | **CUMPLE** | Solo semestral y extraordinario. data-model.md línea 352. |
+| specsavedefine periodo, contenido, indicadores, filtros, responsables, destinatarios, formato, clasificación, conservación | **CUMPLE** | Data-model.md líneas 348-366. Snapshot canónico, PDF/XLSX referenciando el mismo corte, `RESTRINGIDO` si contiene datos restringidos. |
+
+### VIII. Pruebas (Sección Flujo de entrega, calidad y especificaciones)
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| JUnit 5, Mockito, Oracle Testcontainers obligatorios en backend | **CUMPLE PARCIAL** | `mvn -pl ms-piip -am -Pintegration-tests verify` completó JUnit, Mockito, MockMvc, ArchUnit y JaCoCo. Los IT Oracle no se activaron: `CierreProyectoOracleIT` está `@Disabled` y `DocumentosOracleIT` no declara `@Test`. |
+| Vitest y Playwright obligatorios en frontend | **PENDIENTE DE ENTORNO** | El type-check pasó. Vitest y Playwright no pueden ejecutarse desde este workspace WSL/UNC con runtime Node Windows; requieren un workspace en disco Windows o un runtime Node Linux compatible. |
+| Cobertura mínima 80 % para código de negocio | **CUMPLE** | JaCoCo verificó el umbral configurado `jacoco.service.coverage.minimum=0.80` durante `verify`. |
+| Pruebas de: máquina de estados, RBAC por unidad, correlativos, transacciones, documentos, auditoría, procedimientos almacenados, límites arquitectónicos, aprovisionamiento Keycloak, fallos parciales, modelo de autorización efectivo | **CUMPLE** | Matriz líneas 366-387. |
+| Pruebas no opcionales cuando el cambio afecta seguridad, persistencia, contrato API, gestión documental o comportamiento | **CUMPLE** | Plan línea 384. La ausencia de esta evidencia bloquea el BUILD de cada recorrido. |
+
+### IX. SQL y cambios de esquema
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Scripts SQL manuales versionados bajo `database/` | **CUMPLE** | Plan líneas 287-311. Secuencia 001-024 documentada con dependencias y compensación. |
+| Sin Flyway ni Liquibase | **CUMPLE** | Plan línea 74 y constitución. `shared-data` heritage `db/migration` no se usará. |
+| Ejecución siempre manual, sin cambios automáticos en bases compartidas | **CUMPLE** | Plan línea 317. Gate de revisión humana DB antes de depositar scripts. |
+| Baseline vigente intacto | **CUMPLE** | Plan línea 36. Scripts incrementales solo amplían objetos existentes. |
+| Compensación forward-only documentada | **CUMPLE** | Columna de compensación en tabla de scripts. Nunca destruir auditoría, columnas legacy hasta corte confirmado. |
+
+### X. Alcance de integraciones y exclusiones
+
+| Control | Resultado | Evidencia |
+|---|---|---|
+| Sin sincronizaciones, conectores ni adaptadores funcionales externos | **CUMPLE** | Plan líneas 73-77. contracts/README.md línea 8: snapshot OpenAPI comparado por contract tests antes de integrar clientes. |
+| US9, prototipos, mediciones y gates diferidos a fase posterior | **CUMPLE** | Enmienda constitucional 5.0.0. data-model.md líneas 373-396 con trazabilidad diferida. |
+| Sin despliegue productivo, infraestructura institucional, carga masiva | **CUMPLE** | Plan líneas 24-25 y sección de exclusiones. |
+
+---
+
+## Resultado del Constitution Check final
+
+| Dimensión constitucional | Resultado |
+|---|---|
+| I. Autoridad única | **CUMPLE** |
+| II. Simplicidad modular | **CUMPLE** |
+| III. Seguridad, privacidad y auditabilidad | **CUMPLE** |
+| IV. Persistencia y documentos | **CUMPLE** |
+| V. Catálogos y máquina de estados | **CUMPLE** |
+| VI. 23 campos oficiales | **CUMPLE** |
+| VII. Reportes institucionales | **CUMPLE** |
+| VIII. Pruebas | **CUMPLE PARCIAL** |
+| IX. SQL y cambios de esquema | **CUMPLE** |
+| X. Integraciones y exclusiones | **CUMPLE** |
+
+**Resultado**: La implementación preserva las reglas evaluadas de la Constitución 5.0.0. Permanecen dos verificaciones pendientes: activar los IT Oracle y ejecutar Vitest/Playwright en un entorno con rutas y runtime compatibles. No se deben considerar cerradas hasta registrar esa evidencia.
+
+---
 
 ## Seguimiento de complejidad
 

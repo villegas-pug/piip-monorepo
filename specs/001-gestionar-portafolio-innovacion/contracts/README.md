@@ -83,8 +83,13 @@ documental, tokens, credenciales o rutas físicas.
 | [documentos.md](./documentos.md) | Expedientes, carga, versiones, seguridad, clasificación y publicación. |
 | [reportes.md](./reportes.md) | Generación, aprobación y remisión. |
 | [consulta.md](./consulta.md) | Consulta institucional y pública. |
-| [prototipos.md](./prototipos.md) | Prototipos, validaciones, mediciones y metas. |
 | [auditoria.md](./auditoria.md) | Contrato interno de evidencia inmutable. |
+
+## Contratos diferidos
+
+| Archivo | Capacidad | Estado |
+|---|---|---|
+| [prototipos.md](./prototipos.md) | Prototipos, validaciones, mediciones y metas. | Diferido a una fase posterior por la enmienda constitucional 5.0.0. |
 
 ## Privacidad de DTO
 

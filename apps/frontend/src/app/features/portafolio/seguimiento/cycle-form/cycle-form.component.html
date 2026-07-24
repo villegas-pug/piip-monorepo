@@ -1,0 +1,20 @@
+<section class="cycle-form" aria-labelledby="cycle-form-title">
+  <h2 id="cycle-form-title">Registrar ciclo quincenal</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label for="cycle-periodo">Periodo quincenal</label><input id="cycle-periodo" matInput formControlName="periodo" aria-describedby="cycle-periodo-error" />
+    <small id="cycle-periodo-error">Formato AAAA-Qn-Sn.</small>
+    <label for="cycle-objetivos">Objetivos del ciclo</label><textarea id="cycle-objetivos" matInput formControlName="objetivos"></textarea>
+    <label for="cycle-actividades">Actividades realizadas</label><textarea id="cycle-actividades" matInput formControlName="actividades"></textarea>
+    <label for="cycle-avance">Avance porcentual</label><input id="cycle-avance" matInput type="number" min="0" max="100" formControlName="avance" />
+    <label for="cycle-dificultades">Dificultades</label><textarea id="cycle-dificultades" matInput formControlName="dificultades"></textarea>
+    <label for="cycle-acciones">Próximas acciones</label><textarea id="cycle-acciones" matInput formControlName="proximasAcciones"></textarea>
+    <label for="cycle-evidence">Documento de evidencia apta</label><input id="cycle-evidence" matInput type="number" (change)="selectEvidence({ idDocumento: +$any($event.target).value, tipoDocumental: 'Seguimiento Ágil, Tablero Kanban', aptaComoEvidencia: true })" />
+    <div role="alert" aria-live="assertive">
+      @if (evidenceError(); as error) { <p>{{ error }}</p> }
+      @if (problem(); as detail) { <p><strong>{{ detail.title }}</strong> {{ detail.code }} {{ detail.detail }}</p> }
+    </div>
+    <button mat-flat-button type="submit" [disabled]="saving()">Registrar ciclo</button>
+  </form>
+  @if (correctingCycle(); as cycle) { <form class="cycle-form__correction" [formGroup]="correctionForm" (ngSubmit)="submitCorrection()" role="dialog" aria-label="Corregir ciclo"><h3>Corregir ciclo {{ cycle.periodo }}</h3><label for="cycle-motivo">Motivo de corrección</label><textarea id="cycle-motivo" formControlName="motivo"></textarea><label for="cycle-correction-avance">Avance porcentual</label><input id="cycle-correction-avance" type="number" formControlName="avance" /><button mat-flat-button type="submit">Guardar nueva versión</button><button mat-button type="button" (click)="cancelCorrection()">Cancelar corrección</button></form> }
+  <output aria-live="polite">@if (savedCycle(); as cycle) { Ciclo {{ cycle.periodo }} registrado, versión {{ cycle.numeroVersion }}. }</output>
+</section>

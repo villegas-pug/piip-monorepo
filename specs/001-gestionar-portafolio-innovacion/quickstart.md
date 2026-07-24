@@ -10,11 +10,13 @@ No iniciar BUILD o corte de la capacidad afectada sin:
 
 1. primera versión PEI y primera versión POI con semillas y aprobaciones formales independientes;
 2. matriz inicial con combinaciones función-perfil-unidad concreta aprobadas;
-3. documentos aprobatorios en expedientes institucionales;
-4. prototipo, medición inicial y matriz de metas aprobados para cada uno de los ocho recorridos.
+3. documentos aprobatorios en expedientes institucionales.
 
-Antes de usar Oracle, una persona debe revisar y ejecutar manualmente los scripts incrementales en el
-orden 002-024 del [plan](./plan.md). `database/database-schema.md` solo se actualiza después de una
+US9 y sus gates de prototipos, mediciones y metas están diferidos a una fase posterior por la
+enmienda constitucional 5.0.0; no bloquean los recorridos de la Fase 1 actual.
+
+Antes de usar Oracle, una persona debe revisar y ejecutar manualmente los incrementos activos del
+[plan](./plan.md); 018 está diferido. `database/database-schema.md` solo se actualiza después de una
 confirmación humana de éxito.
 
 ## Prerrequisitos locales
@@ -196,11 +198,9 @@ registro existente y no crear otro.
 5. Aprobar versión/destinatarios y registrar remisión manual.
 6. Comprobar clasificación `RESTRINGIDO` si el snapshot contiene ese nivel.
 
-### 14. Prototipos
+### 14. Prototipos (diferido)
 
-Para cada uno de los ocho recorridos, registrar validadores, escritorio/móvil, accesibilidad,
-medición y metas. Intentar aprobar con autor igual a aprobador, único validador o hallazgo alto; debe
-rechazarse. Un cambio posterior crea versión y exige revalidación.
+US9 se conserva para una fase posterior y no forma parte de la validación local actual.
 
 ## Verificación automatizada futura
 
@@ -235,5 +235,5 @@ como evidencia de aprobación.
 - Contratos OpenAPI concordantes con estos documentos.
 - Versiones iniciales PEI/POI, matriz y expedientes respaldados por aprobaciones formales.
 - Auditoría presente para éxito, denegación y fallo parcial.
-- Ocho gates de prototipo superados antes de sus interfaces.
+- US9 y sus gates de prototipos están diferidos; no condicionan las interfaces de la Fase 1 actual.
 - Todas las pruebas autorizadas aprobadas, sin exposición o descarga documental pública.

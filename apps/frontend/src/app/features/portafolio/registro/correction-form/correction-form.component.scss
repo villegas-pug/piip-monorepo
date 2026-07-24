@@ -1,0 +1,40 @@
+:host {
+  display: block;
+}
+
+.correction-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 1px solid var(--piip-color-border, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+}
+
+.correction-form__help {
+  color: var(--piip-color-text-secondary, rgba(0, 0, 0, 0.7));
+}
+
+.correction-form__server-errors {
+  border-left: 4px solid var(--piip-color-error, #b00020);
+  padding: 0.75rem 1rem;
+  background: var(--piip-color-error-surface, rgba(176, 0, 32, 0.08));
+  border-radius: 4px;
+}
+
+.correction-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+:host ::ng-deep {
+  .mat-mdc-form-field-focus-overlay,
+  .mdc-text-field--focused,
+  .mat-mdc-radio-button:focus-visible .mdc-radio__background {
+    outline: 3px solid var(--piip-color-focus, #1e88e5);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,450 @@
+<a class="skip-link" href="#{{ idMain }}">Saltar al contenido principal</a>
+
+<main
+  [id]="idMain"
+  tabindex="-1"
+  aria-labelledby="institutional-detail-title"
+  class="institutional-detail"
+  [attr.aria-busy]="cargando() ? 'true' : null">
+  <h1 id="institutional-detail-title">Detalle institucional del portafolio</h1>
+  <p class="institutional-detail__help" id="institutional-detail-help">
+    La página muestra únicamente la información que el servidor PIIP autorizó
+    dentro de su ámbito efectivo. La descarga de contenido se solicita por
+    separado y revalida la clasificación en cada petición.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section
+    class="institutional-detail__actions"
+    aria-label="Acciones del detalle">
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="cancelar()"
+      aria-describedby="institutional-detail-actions-help">
+      Volver al shell institucional
+    </button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="reintentar()"
+      [disabled]="cargando()"
+      aria-describedby="institutional-detail-actions-help">
+      Actualizar detalle
+    </button>
+    <p
+      id="institutional-detail-actions-help"
+      class="piip-visually-hidden">
+      Use el botón Actualizar para reintentar la carga conservando la
+      asignación efectiva. Volver le devuelve al shell institucional.
+    </p>
+  </section>
+
+  <section
+    aria-labelledby="institutional-detail-status"
+    class="institutional-detail__status"
+    [attr.aria-live]="cargando() ? 'polite' : null"
+    role="status">
+    <h2 id="institutional-detail-status" class="piip-visually-hidden">Estado de la carga</h2>
+    @if (cargando()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="32"
+        aria-label="Cargando detalle institucional" />
+      <span>Cargando detalle institucional&hellip;</span>
+    } @else if (notModified()) {
+      <span>El detalle no cambió desde la última lectura.</span>
+    } @else {
+      <span>Detalle cargado. Revise cada sección antes de tomar decisiones.</span>
+    }
+  </section>
+
+  <section
+    [id]="idResultsRegion"
+    aria-labelledby="institutional-detail-results-title"
+    class="institutional-detail__results"
+    aria-live="polite">
+    <h2 id="institutional-detail-results-title" class="piip-visually-hidden">
+      Contenido del detalle institucional
+    </h2>
+
+    <article
+      [id]="idCabecera"
+      aria-labelledby="institutional-detail-cabecera-title"
+      class="institutional-detail__section institutional-detail__section--cabecera">
+      <h3 id="institutional-detail-cabecera-title">Identidad del registro</h3>
+      <dl class="institutional-detail__definition">
+        <div>
+          <dt>Tipo de registro</dt>
+          <dd>{{ descripcionTipo(detalle().tipoRegistro) }}</dd>
+        </div>
+        <div>
+          <dt>Código</dt>
+          <dd>{{ detalle().codigo || 'No disponible' }}</dd>
+        </div>
+        @if (detalle().codigoOrigen) {
+          <div>
+            <dt>Código de origen</dt>
+            <dd>{{ detalle().codigoOrigen }}</dd>
+          </div>
+        }
+        <div>
+          <dt>Nombre</dt>
+          <dd>{{ detalle().nombre || 'No disponible' }}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>
+            <span class="institutional-detail__badge" aria-label="Estado actual">
+              {{ descripcionEstado(detalle().estado) }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Fecha de inicio</dt>
+          <dd>
+            @if (detalle().fechaInicio) {
+              <time [attr.datetime]="detalle().fechaInicio">{{ detalle().fechaInicio }}</time>
+            } @else {
+              No disponible
+            }
+          </dd>
+        </div>
+        @if (detalle().fechaCierre) {
+          <div>
+            <dt>Fecha de cierre</dt>
+            <dd>
+              <time [attr.datetime]="detalle().fechaCierre">{{ detalle().fechaCierre }}</time>
+            </dd>
+          </div>
+        }
+      </dl>
+    </article>
+
+    <article
+      [id]="idIdentificacion"
+      aria-labelledby="institutional-detail-identificacion-title"
+      class="institutional-detail__section">
+      <h3 id="institutional-detail-identificacion-title">Identificación funcional</h3>
+      <dl class="institutional-detail__definition">
+        <div>
+          <dt>Tipo de solución</dt>
+          <dd>{{ descripcionSolucion(detalle().tipoSolucion) }}</dd>
+        </div>
+        <div>
+          <dt>Fuente u origen</dt>
+          <dd>{{ descripcionFuente(detalle().fuenteOrigen, detalle().detalleFuente) }}</dd>
+        </div>
+        @if (puedeVerResponsable()) {
+          <div>
+            <dt>Responsable</dt>
+            <dd>{{ detalle().responsableId ?? 'No asignado' }}</dd>
+          </div>
+        } @else {
+          <div>
+            <dt>Responsable</dt>
+            <dd>No visible en su ámbito efectivo</dd>
+          </div>
+        }
+        @if (detalle().unidadEjecutoraId) {
+          <div>
+            <dt>Unidad ejecutora</dt>
+            <dd>
+              {{ detalle().unidadEjecutoraDescripcion || detalle().unidadEjecutoraAbreviatura || detalle().unidadEjecutoraId }}
+            </dd>
+          </div>
+        }
+        @if (detalle().componenteDigital !== undefined) {
+          <div>
+            <dt>Componente digital</dt>
+            <dd>{{ detalle().componenteDigital ? 'Sí' : 'No' }}</dd>
+          </div>
+        }
+        @if (detalle().detalleComponenteDigital) {
+          <div>
+            <dt>Detalle de componente digital</dt>
+            <dd>{{ detalle().detalleComponenteDigital }}</dd>
+          </div>
+        }
+      </dl>
+    </article>
+
+    <article
+      [id]="idDescripcion"
+      aria-labelledby="institutional-detail-descripcion-title"
+      class="institutional-detail__section">
+      <h3 id="institutional-detail-descripcion-title">Descripción y resultados</h3>
+      @if (detalle().problemaPublico) {
+        <h4>Problema público</h4>
+        <p>{{ detalle().problemaPublico }}</p>
+      }
+      @if (detalle().solucionPropuesta) {
+        <h4>Solución propuesta</h4>
+        <p>{{ detalle().solucionPropuesta }}</p>
+      }
+      @if (detalle().resultadosClave) {
+        <h4>Resultados clave</h4>
+        <p>{{ detalle().resultadosClave }}</p>
+      }
+      @if (detalle().nota) {
+        <h4>Nota</h4>
+        <p>{{ detalle().nota }}</p>
+      }
+      @if (!detalle().problemaPublico && !detalle().solucionPropuesta && !detalle().resultadosClave && !detalle().nota) {
+        <p>El registro no tiene descripción ni resultados registrados.</p>
+      }
+    </article>
+
+    @if (unidadesVisibles()) {
+      <article
+        [id]="idUnidades"
+        aria-labelledby="institutional-detail-unidades-title"
+        class="institutional-detail__section">
+        <h3 id="institutional-detail-unidades-title">Unidades de organización</h3>
+        <table aria-describedby="institutional-detail-unidades-help">
+          <caption class="piip-visually-hidden">
+            Listado de unidades responsables del registro dentro del ámbito autorizado.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Unidad</th>
+              <th scope="col">Abreviatura</th>
+              <th scope="col">Principal</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (unidad of detalle().unidades; track trackUnidad($index, unidad)) {
+              <tr>
+                <td>{{ unidad.descripcion || ('Unidad ' + unidad.unidadId) }}</td>
+                <td>{{ unidad.abreviatura || '—' }}</td>
+                <td>
+                  <span aria-label="Unidad principal">
+                    {{ unidad.principal ? 'Sí' : 'No' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p id="institutional-detail-unidades-help" class="piip-visually-hidden">
+          La tabla presenta las unidades responsables del registro, una por fila.
+        </p>
+      </article>
+    }
+
+    @if (participantesVisibles()) {
+      <article
+        [id]="idParticipantes"
+        aria-labelledby="institutional-detail-participantes-title"
+        class="institutional-detail__section">
+        <h3 id="institutional-detail-participantes-title">Personas participantes</h3>
+        <p class="institutional-detail__help">
+          Esta sección solo es visible cuando el actor es Responsable del registro,
+          Evaluador o administrador autorizado.
+        </p>
+        <table aria-describedby="institutional-detail-participantes-help">
+          <caption class="piip-visually-hidden">
+            Listado de personas participantes con su función, institución y vigencia.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Persona</th>
+              <th scope="col">Institución</th>
+              <th scope="col">Función</th>
+              <th scope="col">Vigente</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (persona of detalle().participantes; track trackPersona($index, persona)) {
+              <tr>
+                <td>{{ persona.nombresCompletos }}</td>
+                <td>{{ persona.institucion || '—' }}</td>
+                <td>{{ persona.funcion || '—' }}</td>
+                <td>
+                  <span aria-label="Vigencia de la participación">
+                    {{ persona.vigente ? 'Sí' : 'No' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p id="institutional-detail-participantes-help" class="piip-visually-hidden">
+          Cada fila corresponde a una persona participante. La columna Vigente
+          indica si la participación está activa.
+        </p>
+      </article>
+    }
+
+    @if (documentosVisibles()) {
+      <article
+        [id]="idDocumentos"
+        aria-labelledby="institutional-detail-documentos-title"
+        class="institutional-detail__section">
+        <h3 id="institutional-detail-documentos-title">Documentos del expediente</h3>
+        <p class="institutional-detail__help">
+          Se muestran únicamente los metadatos visibles para la consulta
+          institucional autorizada. El contenido se solicita por separado y
+          revalida la clasificación en cada petición.
+        </p>
+        <table aria-describedby="institutional-detail-documentos-help">
+          <caption class="piip-visually-hidden">
+            Listado de documentos con título, clasificación y estado de publicación.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">Tipo documental</th>
+              <th scope="col">Clasificación validada</th>
+              <th scope="col">Publicado</th>
+              <th scope="col">Contenido</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (documento of detalle().documentos; track trackDocumento($index, documento)) {
+              <tr>
+                <td>{{ documento.titulo }}</td>
+                <td>{{ documento.tipoDocumental || '—' }}</td>
+                <td>{{ descripcionClasificacion(documento.clasificacionValidada) }}</td>
+                <td>
+                  <span aria-label="Publicación confirmada">
+                    {{ documento.publicado ? 'Sí' : 'No' }}
+                  </span>
+                </td>
+                <td>
+                  <span aria-label="Acceso al contenido">
+                    {{ documento.puedeConsultarContenido ? 'Solicitar contenido' : 'No autorizado' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p id="institutional-detail-documentos-help" class="piip-visually-hidden">
+          La columna Clasificación refleja la clasificación validada por el
+          Evaluador. La columna Publicado indica si existe una versión con
+          publicación confirmada. La columnaContenido refleja la autorización
+          efectiva que el servidor PIIP calculó; el cliente no la altera.
+        </p>
+      </article>
+    }
+
+    @if (historialVisible()) {
+      <article
+        [id]="idHistorial"
+        aria-labelledby="institutional-detail-historial-title"
+        class="institutional-detail__section">
+        <h3 id="institutional-detail-historial-title">Historial de transiciones</h3>
+        <table aria-describedby="institutional-detail-historial-help">
+          <caption class="piip-visually-hidden">
+            Historial cronológico de transiciones de estado del registro.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Fecha</th>
+              <th scope="col">Estado anterior</th>
+              <th scope="col">Estado nuevo</th>
+              <th scope="col">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entrada of detalle().historial; track trackHistorial($index, entrada)) {
+              <tr>
+                <td>
+                  @if (entrada.fechaTransicion) {
+                    <time [attr.datetime]="entrada.fechaTransicion">{{ entrada.fechaTransicion }}</time>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  @if (entrada.estadoAnterior) {
+                    {{ descripcionEstado(entrada.estadoAnterior) }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>{{ descripcionEstado(entrada.estadoNuevo) }}</td>
+                <td>{{ entrada.observaciones || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p id="institutional-detail-historial-help" class="piip-visually-hidden">
+          Las transiciones se listan en orden cronológico. La columna
+          Observaciones reproduce la nota registrada por el actor.
+        </p>
+      </article>
+    }
+
+    @if (relacionVisible()) {
+      <article
+        [id]="idRelacion"
+        aria-labelledby="institutional-detail-relacion-title"
+        class="institutional-detail__section">
+        <h3 id="institutional-detail-relacion-title">Relación iniciativa-proyecto</h3>
+        <dl class="institutional-detail__definition">
+          @if (detalle().relacion?.iniciativaId) {
+            <div>
+              <dt>Iniciativa de origen</dt>
+              <dd>{{ detalle().relacion?.iniciativaId }}</dd>
+            </div>
+          }
+          @if (detalle().relacion?.proyectoId) {
+            <div>
+              <dt>Proyecto derivado</dt>
+              <dd>{{ detalle().relacion?.proyectoId }}</dd>
+            </div>
+          }
+          @if (detalle().relacion?.iniciativaActual !== undefined) {
+            <div>
+              <dt>Vigente como iniciativa</dt>
+              <dd>{{ detalle().relacion?.iniciativaActual ? 'Sí' : 'No' }}</dd>
+            </div>
+          }
+          @if (detalle().relacion?.proyectoActual !== undefined) {
+            <div>
+              <dt>Vigente como proyecto</dt>
+              <dd>{{ detalle().relacion?.proyectoActual ? 'Sí' : 'No' }}</dd>
+            </div>
+          }
+        </dl>
+      </article>
+    }
+  </section>
+
+  <section
+    [id]="idErrorRegion"
+    aria-labelledby="institutional-detail-error-title"
+    class="institutional-detail__errors"
+    aria-live="assertive"
+    role="alert">
+    <h2 id="institutional-detail-error-title" class="piip-visually-hidden">Errores del detalle</h2>
+    @if (mensajeError(); as mensaje) {
+      <p>{{ mensaje }}</p>
+      @if (problema()?.code) {
+        <p>
+          Código de error: <code>{{ problema()?.code }}</code>
+        </p>
+      }
+      @if (correlationId()) {
+        <p class="piip-visually-hidden">
+          Identificador de correlación: {{ correlationId() }}
+        </p>
+      }
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="reintentar()"
+        [disabled]="cargando()">
+        Reintentar
+      </button>
+    } @else if (correlationId()) {
+      <p class="piip-visually-hidden">
+        Última correlación: {{ correlationId() }}
+      </p>
+    }
+  </section>
+</main>

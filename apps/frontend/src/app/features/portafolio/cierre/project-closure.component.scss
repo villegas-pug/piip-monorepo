@@ -1,0 +1,4 @@
+:host { display: block; }
+.project-closure { display: grid; gap: 1rem; max-width: 48rem; margin: auto; padding: 1rem; }
+.project-closure form { display: grid; gap: .75rem; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #005fcc; outline-offset: 2px; }

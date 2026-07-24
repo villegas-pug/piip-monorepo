@@ -26,7 +26,7 @@ derivado y suplencias sin duplicar reglas en PL/SQL.
 **Decisión**: Definir `DocumentStorage` en `documentos/service/` y una implementación BLOB Oracle en
 `documentos/service/impl/`. La persistencia del binario es opaca para DTO, entidades y controladores.
 
-**Justificación**: La Constitución 4.0.0 fija Oracle PIIP como almacenamiento de binarios y conserva el
+**Justificación**: La Constitución 5.0.0 fija Oracle PIIP como almacenamiento de binarios y conserva el
 puerto para aislar persistencia, límites, versiones e integridad SHA-256.
 
 **Alternativas consideradas**:
@@ -40,7 +40,7 @@ puerto para aislar persistencia, límites, versiones e integridad SHA-256.
 **Decisión**: No modelar estados, resultados, informes, puertos ni gates antimalware en PIIP. OGTI
 administra análisis, bloqueo, cuarentena y respuesta sobre la infraestructura Oracle.
 
-**Justificación**: La Constitución 4.0.0 separa la seguridad técnica de plataforma de las reglas
+**Justificación**: La Constitución 5.0.0 separa la seguridad técnica de plataforma de las reglas
 funcionales. PIIP conserva hash, clasificación, versión y auditoría documental, pero no consume datos
 antimalware ni condiciona con ellos la evidencia formal.
 
@@ -146,6 +146,6 @@ evidencia funcional.
 - PEI y POI tienen versiones independientes, aprobadas por planeamiento y registradas por
   `GlobalAdmin`.
 
-Quedan pendientes insumos, no decisiones de diseño: valores OIDC por ambiente, dataset sintético
-aprobado, datasets PEI/POI, matriz funcional, mapeos legacy, revisión humana del diccionario físico y
-rotación externa de secretos.
+Quedan pendientes insumos, no decisiones de diseño: valores OIDC por ambiente, datasets PEI/POI,
+matriz funcional, mapeos legacy, revisión humana del diccionario físico y rotación externa de
+secretos. US9 y el dataset sintético asociado están diferidos a una fase posterior.

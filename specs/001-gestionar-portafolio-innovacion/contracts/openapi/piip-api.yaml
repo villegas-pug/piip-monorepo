@@ -1,0 +1,4835 @@
+openapi: 3.0.3
+info:
+  title: PIIP API
+  version: 0.2.0
+  description: >-
+    Snapshot incremental codigo-first. Las operaciones se agregan solo cuando sus controladores,
+    DTO y pruebas de contrato estan implementados y validados.
+servers:
+  - url: /api/v1
+paths:
+  /portafolio/iniciativas:
+    post:
+      tags:
+        - Portafolio - Iniciativas
+      summary: Presentar iniciativa
+      description: >-
+        Registra una iniciativa nueva. El servidor genera el codigo, fija el estado PRESENTADO
+        y devuelve 201 con ETag. La operacion exige Idempotency-Key para reintentos seguros;
+        misma clave y mismo payload devuelven el resultado original, mientras que una clave
+        con payload distinto produce 409 Conflict.
+      operationId: presentarIniciativa
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInitiativeRequest"
+      responses:
+        "201":
+          description: Iniciativa presentada con codigo generado.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitiativeDetail"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Idempotency-Key reutilizada con payload distinto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Regla de negocio incumplida.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/incorporaciones:
+    post:
+      tags:
+        - Portafolio - Incorporacion
+      summary: Registrar incorporacion individual
+      description: >-
+        Registra una incorporacion individual de informacion existente y la fija en estado
+        PENDIENTE. Devuelve 201 con ETag. La deduplicacion por hash y responsable es
+        primaria. Si el cliente envia Idempotency-Key y el servicio de idempotencia esta
+        disponible, misma clave y mismo payload retornan el resultado original; payload
+        distinto produce 409 Conflict. Cualquier conflicto CODIGO o DUPLICADO detectado
+        se abre como INCORPORACION_CONFLICTO_UNRESOLVED y bloquea la validacion hasta su
+        resolucion por el Evaluador.
+      operationId: registrarIncorporacion
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIncorporacionRequest"
+      responses:
+        "201":
+          description: Incorporacion registrada en estado PENDIENTE.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncorporacionDetail"
+        "400":
+          description: Solicitud malformada o falta X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: DUPLICATE_INCORPORATION_HASH o Idempotency-Key con payload distinto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Regla de negocio incumplida.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/incorporaciones/{id}/correcciones:
+    post:
+      tags:
+        - Portafolio - Incorporacion
+      summary: Corregir incorporacion pendiente
+      description: >-
+        Registra una correccion append-only. Solo permitido mientras la incorporacion siga en
+        estado PENDIENTE. La cabecera If-Match permite control de concurrencia optimista.
+        Cada correccion crea una nueva entrada en INCORPORACION_CAMBIO con datos antes,
+        datos despues y motivo. La historia no se destruye.
+      operationId: corregirIncorporacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncorporacionCorreccionRequest"
+      responses:
+        "200":
+          description: Correccion registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncorporacionDetail"
+        "400":
+          description: Solicitud malformada o falta X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: CORRECTION_NOT_OPEN o If-Match no coincide.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: Regla de negocio incumplida.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/incorporaciones/{id}/validaciones:
+    post:
+      tags:
+        - Portafolio - Incorporacion
+      summary: Validar o rechazar incorporacion
+      description: >-
+        El Evaluador transiciona la incorporacion a VALIDADO o RECHAZADO segun el estado
+        canonico de la iniciativa. La operacion se bloquea si existen conflictos sin
+        resolver (INCORPORATION_CONFLICT_UNRESOLVED). La vinculacion de duplicado registra
+        el id del registro original sin mutarlo.
+      operationId: validarIncorporacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncorporacionValidacionRequest"
+      responses:
+        "200":
+          description: Incorporacion transicionada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncorporacionDetail"
+        "400":
+          description: Solicitud malformada o falta X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: INCORPORATION_CONFLICT_UNRESOLVED o INCORPORATION_NOT_PENDING.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/incorporaciones/{id}/conflictos/{conflictoId}/resoluciones:
+    post:
+      tags:
+        - Portafolio - Incorporacion
+      summary: Resolver conflicto de incorporacion
+      description: >-
+        El Evaluador documenta la resolucion de un conflicto abierto. La operacion registra
+        la fecha, el resolutor y el documento de soporte si lo hubiera. Conflicto ya resuelto
+        produce 409 CONFLICT_ALREADY_RESOLVED.
+      operationId: resolverConflictoIncorporacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: conflictoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncorporacionResolucionConflictoRequest"
+      responses:
+        "200":
+          description: Conflicto resuelto.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncorporacionDetail"
+        "404":
+          description: CONFLICT_NOT_FOUND o INCORPORATION_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: CONFLICT_ALREADY_RESOLVED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+  /portafolio/iniciativas/{id}/subsanaciones:
+    post:
+      tags:
+        - Portafolio - Evaluacion
+      summary: Abrir subsanacion unica de iniciativa
+      description: >-
+        El Evaluador abre la unica subsanacion de la iniciativa. La iniciativa debe
+        seguir en estado PRESENTADO. El plazo debe ser estrictamente posterior a la
+        fecha de apertura (invariante determinista CK_SI_PLAZO del incremento 014.1).
+        Una segunda apertura concurrente o explicita produce 409 CORRECTION_ALREADY_USED.
+      operationId: abrirSubsanacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenCorrectionRequest"
+      responses:
+        "201":
+          description: Subsanacion abierta.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubsanacionDetail"
+        "409":
+          description: CORRECTION_ALREADY_USED o estado invalido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: SUBSANATION_PLAZO_INVALID.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/iniciativas/{id}/subsanacion:
+    patch:
+      tags:
+        - Portafolio - Evaluacion
+      summary: Corregir subsanacion abierta
+      description: >-
+        El Responsable titular corrige los campos oficiales 5-12, 22 y 23 mientras
+        la subsanacion este abierta y dentro de plazo. La cabecera If-Match es
+        obligatoria para control de concurrencia optimista. La persistencia es
+        append-only: la fila de SUBSANACION_INICIATIVA nunca se elimina.
+      operationId: editarSubsanacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubsanacionEditCommand"
+      responses:
+        "200":
+          description: Correccion registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubsanacionDetail"
+        "409":
+          description: CORRECTION_NOT_OPEN o estado invalido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED por ETag obsoleto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/iniciativas/{id}/subsanacion/cierre:
+    post:
+      tags:
+        - Portafolio - Evaluacion
+      summary: Cerrar subsanacion
+      description: >-
+        Registra la fecha de atencion de la subsanacion. La fila permanece para
+        auditoria (no se elimina). El Responsable o el Evaluador cierran; la
+        cabecera If-Match controla la concurrencia.
+      operationId: cerrarSubsanacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "200":
+          description: Subsanacion cerrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubsanacionDetail"
+        "409":
+          description: CORRECTION_NOT_OPEN.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED por ETag obsoleto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/iniciativas/{id}/evaluaciones/admisibilidad:
+    post:
+      tags:
+        - Portafolio - Evaluacion
+      summary: Registrar admisibilidad
+      description: >-
+        El Evaluador registra la decision de admision. El documento de Opinion
+        Tecnica de Evaluacion (campo 14) es obligatorio. La iniciativa transita
+        a NO_ADMISIBLE solo si la subsanacion unica esta vencida o nunca se
+        abrio. La Autoridad y el Responsable no pueden evaluar.
+      operationId: registrarAdmisibilidad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissibilityRequest"
+      responses:
+        "200":
+          description: Admision registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluacionDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: ADMISSIBILITY_ALREADY_RECORDED o estado invalido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: ADMISSIBILITY_INCOMPLETE o EVIDENCE_NOT_ELIGIBLE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/iniciativas/{id}/evaluaciones/aplicabilidad:
+    post:
+      tags:
+        - Portafolio - Evaluacion
+      summary: Registrar aplicabilidad
+      description: >-
+        El Evaluador registra la decision de aplicabilidad. El motivo es
+        obligatorio cuando el resultado es NO_APLICABLE. La lista estructurada
+        de competencia, valor publico y caracter innovator se persiste como
+        criterios. La Autoridad y el Responsable no pueden evaluar.
+      operationId: registrarAplicabilidad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicabilityRequest"
+      responses:
+        "200":
+          description: Aplicabilidad registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluacionDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: APPLICABILITY_ALREADY_RECORDED o estado invalido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: APPLICABILITY_INCOMPLETE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/transiciones/{id}:
+    post:
+      tags:
+        - Portafolio - Transiciones
+      summary: Confirmar transicion de estado de iniciativa
+      description: >-
+        Confirma una transicion controlada de la maquina de estados canonica del
+        portafolio (US2). La cabecera If-Match es obligatoria y exige la version
+        actual del registro; sin ella se responde 428 PRECONDITION_REQUIRED;
+        con un ETag que no coincide se responde 412 STATE_CHANGED. La
+        transicion se ejecuta bajo bloqueo pesimista (PESSIMISTIC_WRITE) sobre
+        la fila de PROYECTO para resolver la carrera entre confirmaciones
+        concurrentes; la primera gana y el resto recibe 412. La evidencia
+        documental es obligatoria en todos los destinos canonicos. La
+        auditoria de exito se emite en la misma transaccion de negocio; la de
+        denegacion, en REQUIRES_NEW. Los estados terminales (NO_ADMISIBLE,
+        NO_APLICABLE, INICIATIVA_ARCHIVADA) no admiten transiciones
+        adicionales.
+      operationId: transicionarIniciativa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKeyOptional"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransicionCommand"
+      responses:
+        "200":
+          description: Transicion confirmada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransicionDetail"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED o FORBIDDEN_PROFILE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: STATE_TRANSITION_NOT_ALLOWED o estado terminal.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED por ETag obsoleto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: FORMAL_DECISION_REQUIRED, EVIDENCE_NOT_ELIGIBLE u observacion obligatoria ausente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "428":
+          description: IF_MATCH_REQUIRED por cabecera ausente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+
+  /portafolio/iniciativas/{id}/proyecto-derivado:
+    post:
+      tags:
+        - Portafolio - Proyectos
+      summary: Crear proyecto derivado de iniciativa aprobada
+      description: >-
+        El Responsable autorizado crea el unico proyecto derivado de una iniciativa
+        INICIATIVA_APROBADA. El servidor copia el codigo de origen y el tipo de
+        solucion, genera el codigo propio bajo PESSIMISTIC_WRITE y fija el estado
+        PROYECTO_EJECUCION. El vinculo iniciativa-proyecto es inmutable. La cabecera
+        Idempotency-Key es obligatoria. Un segundo intento de derivado para la misma
+        iniciativa falla con 409 DERIVATION_ALREADY_EXISTS; dos solicitudes concurrentes
+        son serializadas por bloqueo pesimista y la primera confirmacion gana.
+      operationId: crearProyectoDerivado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDerivedProjectRequest"
+      responses:
+        "201":
+          description: Proyecto derivado creado.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED o FORBIDDEN_PROFILE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: DERIVATION_ALREADY_EXISTS o INITIATIVE_NOT_APPROVED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: FORMAL_DOCUMENT_REQUIRED, UNIT_MAIN_CARDINALITY u OFFICIAL_FIELD_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos-directos:
+    post:
+      tags:
+        - Portafolio - Proyectos
+      summary: Crear proyecto directo heredado o excepcional
+      description: >-
+        La Autoridad o el Evaluador con documento formal registra un proyecto directo
+        heredado o excepcional sin iniciativa origen. El servidor fija el estado
+        PROYECTO_EJECUCION, exige codigo propio y se asegura de que solo exista un
+        proyecto directo activo por unidad ejecutora y anio. La cabecera
+        Idempotency-Key es obligatoria. Un segundo directo concurrente para la misma
+        unidad y anio falla con 409 DIRECT_PROJECT_NOT_AUTHORIZED. El Responsable
+        queda excluido por constitucion y recibe 403 ASSIGNMENT_SCOPE_DENIED. Esta
+        ruta NO omite la evaluacion de una iniciativa nueva.
+      operationId: crearProyectoDirecto
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectProjectRequest"
+      responses:
+        "201":
+          description: Proyecto directo creado.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED o FORBIDDEN_PROFILE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: DIRECT_PROJECT_NOT_AUTHORIZED o DIRECT_PROJECT_DUPLICATE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: FORMAL_DOCUMENT_REQUIRED, EVIDENCE_NOT_ELIGIBLE u OFFICIAL_FIELD_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  # =====================================================================
+  # US4 - Seguimiento: planificacion, ciclos, participantes, presentacion,
+  # suspension y cancelacion.
+  # =====================================================================
+
+  /portafolio/proyectos/{id}/planificaciones:
+    post:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Registrar planificacion del proyecto
+      description: >-
+        Registra la primera version de la planificacion del proyecto (alcance, objetivos,
+        entregables y periodos quincenales). La cabecera Idempotency-Key es obligatoria
+        y X-Asignacion-Efectiva-Id identifica la asignacion efectiva del Responsable
+        titular. La planificacion es append-only: las correcciones crean versiones
+        adicionales conservando la fila anterior.
+      operationId: registrarPlanificacion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanificacionRequest"
+      responses:
+        "201":
+          description: Planificacion registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanificacionResponse"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: PLANIFICACION_ALREADY_EXISTS o PROJECT_NOT_IN_EXECUTION.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: VALIDATION_FAILED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+    get:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Listar planificaciones del proyecto
+      operationId: listarPlanificaciones
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+      responses:
+        "200":
+          description: Planificaciones del proyecto.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanificacionResponse"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/ciclos:
+    post:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Registrar primera version de un ciclo quincenal
+      description: >-
+        Registra un ciclo quincenal con periodo AAAA-Qn-Sn (CHECK CK_CP_PERIODO), objetivos,
+        actividades, avance en [0, 100] (CHECK CK_CP_AVANCE), dificultades, proximas
+        acciones y evidencia documental opcional.
+      operationId: registrarCiclo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CicloRequest"
+      responses:
+        "201":
+          description: Ciclo registrado.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CicloResponse"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: CYCLE_DUPLICATED o PROJECT_NOT_IN_EXECUTION.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: INVALID_PERIOD_FORMAT, CYCLE_INCOMPLETE o CYCLE_AVANCE_OUT_OF_RANGE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+    get:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Listar ciclos del proyecto
+      operationId: listarCiclos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+      responses:
+        "200":
+          description: Ciclos del proyecto.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CicloResponse"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/ciclos/{cicloId}/versiones:
+    post:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Corregir ciclo creando nueva version append-only
+      operationId: corregirCiclo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cicloId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorreccionCicloRequest"
+      responses:
+        "201":
+          description: Nueva version registrada.
+          headers:
+            ETag:
+              description: Identificador de version para concurrencia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CicloResponse"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key o X-Asignacion-Efectiva-Id.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: CYCLE_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: CYCLE_PROJECT_MISMATCH o CYCLE_VERSION_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+    get:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Listar versiones de un ciclo
+      operationId: listarVersionesCiclo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cicloId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+      responses:
+        "200":
+          description: Versiones del ciclo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CicloResponse"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/ciclos/{cicloId}/documentos:
+    post:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Adjuntar documento como evidencia del ciclo
+      operationId: adjuntarEvidenciaCiclo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: cicloId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjuntarEvidenciaCicloRequest"
+      responses:
+        "204":
+          description: Evidencia adjuntada.
+        "404":
+          description: CYCLE_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: CYCLE_PROJECT_MISMATCH o EVIDENCE_ALREADY_ATTACHED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: EVIDENCE_TYPE_NOT_ALLOWED, EVIDENCE_NOT_ELIGIBLE o CYCLE_DOCUMENT_TYPE_INVALID.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/participantes/personas:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Participantes
+      summary: Alta de persona como participante (T073)
+      operationId: altaPersonaProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AltaPersonaRequest"
+      responses:
+        "201":
+          description: Participante registrado.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipanteResponse"
+        "409":
+          description: RESPONSIBLE_CARDINALITY.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/participantes:
+    get:
+      tags:
+        - Portafolio - Seguimiento - Participantes
+      summary: Listar histórico de participantes del proyecto
+      description: >-
+        Devuelve las participaciones de personas y unidades, incluidas las bajas lógicas.
+        La consulta exige una asignación efectiva autorizada y nunca elimina el historial.
+      operationId: listarParticipantesHistoricosProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Participaciones vigentes y dadas de baja.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParticipanteResponse"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: PROJECT_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/participantes/unidades:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Participantes
+      summary: Alta de unidad organizacional como participante (T073)
+      operationId: altaUnidadProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AltaUnidadRequest"
+      responses:
+        "201":
+          description: Unidad registrada.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipanteResponse"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/participaciones/{participacionId}/bajas:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Participantes
+      summary: Baja logica de un participante (T073)
+      operationId: bajaParticipanteProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: participacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BajaParticipanteRequest"
+      responses:
+        "204":
+          description: Baja registrada.
+        "409":
+          description: RESPONSIBLE_REPLACEMENT_REQUIRED o RESPONSIBLE_CARDINALITY.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}:
+    patch:
+      tags:
+        - Portafolio - Seguimiento
+      summary: Editar campos editables 17, 19 y 23 (T073)
+      description: >-
+        Edita los campos oficiales editables 17 (Documentacion de la gestion), 19
+        (Resultados clave) y 23 (Nota) durante PROYECTO_EJECUCION. Exige cabecera
+        If-Match. La operacion sin If-Match devuelve 428 IF_MATCH_REQUIRED; con
+        ETag incorrecto devuelve 412 STATE_CHANGED.
+      operationId: editarCamposEditablesProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditarCamposEditablesRequest"
+      responses:
+        "200":
+          description: Campos editados.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanificacionResponse"
+        "412":
+          description: STATE_CHANGED por ETag obsoleto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: FIELD_NOT_EDITABLE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "428":
+          description: IF_MATCH_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/producto-final/presentaciones:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Presentacion
+      summary: Presentar el producto final (T073)
+      operationId: presentarProductoFinal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentacionProductoFinalRequest"
+      responses:
+        "201":
+          description: Presentacion registrada.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentacionProductoFinalResponse"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: PRESENTATION_NOT_ALLOWED_IN_STATE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: PRODUCT_FINAL_TYPE_REQUIRED o EVIDENCE_NOT_ELIGIBLE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{proyectoId}/producto-final/decisiones:
+    post:
+      tags: [Portafolio - Cierre]
+      summary: Decidir el producto final (T080)
+      operationId: decidirProductoFinal
+      parameters:
+        - name: proyectoId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionProductoFinalRequest" }
+      responses:
+        "200":
+          description: Decisión formal registrada y transición confirmada.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DecisionProductoFinalResponse" }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+        "409": { description: STATE_TRANSITION_NOT_ALLOWED. }
+        "412": { description: STATE_CHANGED por ETag obsoleto. }
+        "422": { description: PRODUCT_FINAL_TYPE_REQUIRED, FORMAL_DECISION_REQUIRED, EVIDENCE_NOT_ELIGIBLE u OBSERVATION_REQUIRED. }
+        "428": { description: IF_MATCH_REQUIRED. }
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{proyectoId}/cierres:
+    post:
+      tags: [Portafolio - Cierre]
+      summary: Completar el cierre administrativo del proyecto (T081)
+      operationId: cerrarProyecto
+      parameters:
+        - name: proyectoId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CierreProyectoRequest" }
+      responses:
+        "200":
+          description: Cierre administrativo y transición a FINALIZADO confirmados.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CierreProyectoResponse" }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+        "409": { description: STATE_TRANSITION_NOT_ALLOWED o CLOSURE_ALREADY_EXISTS. }
+        "412": { description: STATE_CHANGED por ETag obsoleto. }
+        "422": { description: CLOSURE_INCOMPLETE o EVIDENCE_NOT_ELIGIBLE. }
+        "428": { description: IF_MATCH_REQUIRED. }
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/suspensiones:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Transiciones
+      summary: Suspender el proyecto (T074)
+      operationId: suspenderProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuspensionRequest"
+      responses:
+        "200":
+          description: Proyecto suspendido.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransicionResponse"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: STATE_TRANSITION_NOT_ALLOWED o SUSPENDED_NO_OUT_TRANSITION.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: EVIDENCE_NOT_ELIGIBLE u OBSERVATION_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "428":
+          description: IF_MATCH_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+
+  /portafolio/proyectos/{id}/cancelaciones:
+    post:
+      tags:
+        - Portafolio - Seguimiento - Transiciones
+      summary: Cancelar el proyecto (T074)
+      operationId: cancelarProyecto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelacionRequest"
+      responses:
+        "200":
+          description: Proyecto cancelado.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransicionResponse"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: STATE_TRANSITION_NOT_ALLOWED o CANCELLED_NO_OUT_TRANSITION.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: EVIDENCE_NOT_ELIGIBLE u OBSERVATION_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "428":
+          description: IF_MATCH_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+        - bearerAuth: []
+  /seguridad/matrices/versiones:
+    get:
+      tags: [Seguridad - Matriz funcional]
+      summary: Consultar historial paginado de matrices
+      operationId: listarVersionesMatriz
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamanio, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Historial autorizado de matrices, content: { application/json: { schema: { $ref: "#/components/schemas/MatrixVersionPage" } } } }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+      security: [{ bearerAuth: [] }]
+    post:
+      tags: [Seguridad - Matriz funcional]
+      summary: Registrar versión de matriz aprobada externamente
+      operationId: crearVersionMatriz
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MatrixVersionRequest" } } }
+      responses:
+        "201": { description: Versión inmutable registrada, content: { application/json: { schema: { $ref: "#/components/schemas/MatrixVersionDetail" } } } }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+        "409": { description: Idempotency-Key o código de versión duplicado. }
+        "422": { description: Documento, aprobador, perfil, unidad o vigencia inválidos. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/funciones:
+    get:
+      tags: [Seguridad - Matriz funcional]
+      summary: Consultar funciones vigentes e históricas autorizadas
+      operationId: listarFuncionesMatriz
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Funciones de matriz autorizadas, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MatrixFunction" } } } } }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/matrices/versiones/{id}/combinaciones:
+    get:
+      tags: [Seguridad - Matriz funcional]
+      summary: Consultar combinaciones de una versión
+      operationId: listarCombinacionesMatriz
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Combinaciones históricas, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MatrixCombination" } } } } }
+        "404": { description: MATRIX_VERSION_NOT_FOUND. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/matrices/combinaciones/{id}/inactivaciones:
+    post:
+      tags: [Seguridad - Matriz funcional]
+      summary: Inactivar combinación mediante una nueva versión
+      operationId: inactivarCombinacionMatriz
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MatrixDeactivationRequest" } } }
+      responses:
+        "201": { description: Nueva versión con la combinación inactiva, content: { application/json: { schema: { $ref: "#/components/schemas/MatrixVersionDetail" } } } }
+        "422": { description: Aprobador, documento o combinación inválidos. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/asignaciones:
+    post:
+      tags: [Seguridad - Asignaciones]
+      summary: Crear una asignación funcional desde una combinación vigente
+      operationId: crearAsignacion
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentRequest" } } } }
+      responses:
+        "201": { description: Asignación creada, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentDetail" } } } }
+        "403": { description: ASSIGNMENT_ADMIN_DENIED. }
+        "422": { description: Documento, combinación o vigencia inválidos. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/asignaciones/{id}:
+    patch:
+      tags: [Seguridad - Asignaciones]
+      summary: Cambiar únicamente la vigencia de una asignación
+      operationId: cambiarAsignacion
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentChangeRequest" } } } }
+      responses: { "200": { description: Asignación actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentDetail" } } } }, "412": { description: STATE_CHANGED. } }
+      security: [{ bearerAuth: [] }]
+  /seguridad/asignaciones/{id}/revocaciones:
+    post:
+      tags: [Seguridad - Asignaciones]
+      summary: Revocar una asignación de forma inmediata
+      operationId: revocarAsignacion
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevocationRequest" } } } }
+      responses: { "200": { description: Asignación revocada, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentDetail" } } } }, "409": { description: LAST_GLOBAL_ADMIN. } }
+      security: [{ bearerAuth: [] }]
+
+  # =====================================================================
+  # D-03 - Suplencias: gestión de assignaciones temporales.
+  # =====================================================================
+
+  /asignaciones/{titularId}/suplencias:
+    post:
+      tags: [Seguridad - Suplencias]
+      summary: Registrar una suplencia para un titular
+      description: >-
+        Crea una asignación suplente temporal vinculada al titular. La fecha de
+        inicio debe ser estrictamente posterior a la fecha actual. El titular
+        original debe tener una asignación vigente. La cabecera Idempotency-Key
+        es obligatoria.
+      operationId: registrarSuplencia
+      parameters:
+        - name: titularId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuplenciaRequest"
+      responses:
+        "201":
+          description: Suplencia creada.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuplenciaDetail"
+        "400":
+          description: Solicitud malformada o falta Idempotency-Key.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: ASSIGNMENT_SCOPE_DENIED o SUPLENTE_NOT_AUTHORIZED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: TITULAR_NOT_ACTIVE o SUPLENCIA_OVERLAP.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "422":
+          description: SUPLENCIA_DATE_INVALID o SUPLENTE_REQUIRES_ASSIGNMENT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: [{ bearerAuth: [] }]
+
+  /suplencias/{id}/terminaciones:
+    post:
+      tags: [Seguridad - Suplencias]
+      summary: Terminar una suplencia de forma anticipada
+      description: >-
+        Registra la terminación anticipada de una suplencia. La fecha de
+        terminación es la fecha servidor. No elimina el registro; permanece
+        para auditoría. La cabecera If-Match es obligatoria.
+      operationId: terminarSuplencia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "200":
+          description: Suplencia terminada.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuplenciaDetail"
+        "404":
+          description: SUPLENCIA_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: SUPLENCIA_ALREADY_TERMINATED o STATE_CHANGED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "412":
+          description: STATE_CHANGED por ETag obsoleto.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "428":
+          description: IF_MATCH_REQUIRED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: [{ bearerAuth: [] }]
+
+  /seguridad/usuarios:
+    post:
+      tags: [Seguridad - Aprovisionamiento]
+      summary: Aprovisionar usuario institucional con Keycloak primero
+      description: >-
+        Crea la identidad deshabilitada en Keycloak con acción de correo y registra el
+        usuario en Oracle PIIP. Si Keycloak tiene éxito y Oracle falla, conserva la
+        identidad deshabilitada y devuelve 202 con estado recuperable; la operación
+        admite reintento sin duplicar la identidad. No existe endpoint, comando ni
+        cliente OIDC de bootstrap del primer GlobalAdmin; esa inicialización pertenece
+        a la semilla SQL 021. Nunca se acepta contraseña, token ni atributo sensible.
+      operationId: aprovisionarUsuario
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateUserRequest" } } } }
+      responses:
+        "202":
+          description: Operación registrada; consultar y reintentar si el estado es recuperable.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProvisioningResult" } } }
+        "400": { description: PROVISIONING_REQUEST_REQUIRED, PROVISIONING_EMAIL_REQUIRED, PROVISIONING_NAME_REQUIRED, PROVISIONING_UNIT_REQUIRED. }
+        "403": { description: ASSIGNMENT_ADMIN_DENIED. }
+        "409": { description: Idempotency-Key con payload distinto. }
+        "422": { description: PROVISIONING_UNIT_NOT_FOUND. }
+        "502": { description: KEYCLOAK_CREATION_FAILED. }
+        "503":
+          description: KEYCLOAK_OPERATION_RECOVERABLE.
+          content: { application/problem+json: { schema: { $ref: "#/components/schemas/KeycloakRecoverableProblem" } } }
+      security: [{ bearerAuth: [] }]
+  /seguridad/usuarios/operaciones/{operacionId}:
+    get:
+      tags: [Seguridad - Aprovisionamiento]
+      summary: Consultar el estado de una operación de aprovisionamiento
+      description: >-
+        Devuelve el estado actual de la operación revalidando la autorización efectiva
+        contra Oracle. Solo el administrador que inició la operación o GlobalAdmin
+        institucional pueden consultarla; UnidadAdmin puede consultarla únicamente
+        dentro de su ámbito. La respuesta incluye si el estado es recuperable.
+      operationId: consultarOperacionAprovisionamiento
+      parameters:
+        - { name: operacionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Estado actual de la operación., content: { application/json: { schema: { $ref: "#/components/schemas/ProvisioningResult" } } } }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+        "404": { description: PROVISIONING_OPERATION_NOT_FOUND. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/usuarios/operaciones/{operacionId}/reintentos:
+    post:
+      tags: [Seguridad - Aprovisionamiento]
+      summary: Reintentar una operación de aprovisionamiento recuperable
+      description: >-
+        Continúa una operación en estado KEYCLOAK_CREADO_DESHABILITADO u ORACLE_PENDIENTE
+        revalidando la autorización efectiva contra Oracle y conservando el sub de
+        Keycloak sin crear otra identidad. Incrementa el contador de intentos y, ante
+        nuevo fallo Oracle, conserva la identidad deshabilitada y devuelve 503.
+      operationId: reintentarAprovisionamiento
+      parameters:
+        - { name: operacionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200": { description: Operación actualizada., content: { application/json: { schema: { $ref: "#/components/schemas/ProvisioningResult" } } } }
+        "403": { description: ASSIGNMENT_ADMIN_DENIED. }
+        "409": { description: PROVISIONING_NOT_RECOVERABLE. }
+        "422": { description: PROVISIONING_UNIT_MISSING. }
+        "503":
+          description: KEYCLOAK_OPERATION_RECOVERABLE.
+          content: { application/problem+json: { schema: { $ref: "#/components/schemas/KeycloakRecoverableProblem" } } }
+      security: [{ bearerAuth: [] }]
+  /seguridad/usuarios/{id}/desactivaciones:
+    post:
+      tags: [Seguridad - Aprovisionamiento]
+      summary: Desactivar un usuario institucional
+      description: >-
+        Bloquea la identidad en Keycloak y PIIP de forma inmediata conservando
+        registros y asignaciones locales para auditoría. El motivo es obligatorio.
+      operationId: desactivarUsuario
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UserStatusRequest" } } } }
+      responses:
+        "200": { description: Usuario desactivado., content: { application/json: { schema: { $ref: "#/components/schemas/UserStatusResult" } } } }
+        "404": { description: PROVISIONING_USER_NOT_FOUND. }
+        "409": { description: PROVISIONING_USER_ALREADY_DISABLED. }
+        "502": { description: KEYCLOAK_DEACTIVATION_FAILED. }
+      security: [{ bearerAuth: [] }]
+  /seguridad/usuarios/{id}/reactivaciones:
+    post:
+      tags: [Seguridad - Aprovisionamiento]
+      summary: Reactivar un usuario institucional
+      description: >-
+        Habilita la identidad en Keycloak y PIIP. No restaura asignaciones revocadas
+        ni vencidas. La autoridad debe coincidir con la que autorizó la desactivación.
+      operationId: reactivarUsuario
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UserStatusRequest" } } } }
+      responses:
+        "200": { description: Usuario reactivado., content: { application/json: { schema: { $ref: "#/components/schemas/UserStatusResult" } } } }
+        "404": { description: PROVISIONING_USER_NOT_FOUND. }
+        "409": { description: PROVISIONING_USER_ALREADY_ACTIVE. }
+        "502": { description: KEYCLOAK_REACTIVATION_FAILED. }
+      security: [{ bearerAuth: [] }]
+
+  # =====================================================================
+  # D-02 - Organización: unidades, objetivos PEI y actividades POI.
+  # =====================================================================
+
+  /organizacion/unidades:
+    get:
+      tags: [Organización]
+      summary: Listar unidades organizacionales vigentes
+      description: >-
+        Devuelve el catálogo de unidades organizacionales activas del MIDAGRI.
+        La consulta no exige asignación efectiva; cualquier usuario autenticado
+        puede consultar el catálogo para poblar selects y controles.
+      operationId: listarUnidades
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Catálogo de unidades.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnidadOrganizacional"
+        "401":
+          description: Autenticación requerida.
+      security: [{ bearerAuth: [] }]
+
+  /organizacion/objetivos-pei:
+    get:
+      tags: [Organización]
+      summary: Listar objetivos estratégicos institucionales (PEI)
+      description: >-
+        Devuelve los objetivos estratégicos institucionales vigentes del PEI
+        activo. La consulta no exige asignación efectiva.
+      operationId: listarObjetivosPei
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Objetivos PEI vigentes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ObjetivoPei"
+        "401":
+          description: Autenticación requerida.
+      security: [{ bearerAuth: [] }]
+
+  /organizacion/actividades-poi:
+    get:
+      tags: [Organización]
+      summary: Listar actividades del Plan Operativo Institucional (POI)
+      description: >-
+        Devuelve las actividades POI asociadas a los objetivos PEI vigentes.
+        Admite filtro opcional por objetivoPeiId. La consulta no exige
+        asignación efectiva.
+      operationId: listarActividadesPoi
+      parameters:
+        - name: objetivoPeiId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Actividades POI.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActividadPoi"
+        "401":
+          description: Autenticación requerida.
+      security: [{ bearerAuth: [] }]
+
+  # =====================================================================
+  # US7 - Consulta institucional por ámbito y clasificación (T098).
+  # =====================================================================
+
+  /consulta/institucional/portafolio:
+    get:
+      tags: [Consulta - Institucional]
+      summary: Buscar portafolio institucional por ámbito y clasificación
+      description: >-
+        Busca registros del portafolio aplicando los filtros canónicos y la
+        paginación dentro del ámbito autorizado. La respuesta nunca incluye
+        entidades JPA ni contenido/descarga documental. Las cabeceras
+        canónicas X-Asignacion-Efectiva-Id y X-Correlation-Id son obligatorias.
+        La respuesta incluye la cabecera ETag agregada de la página para
+        soportar concurrencia optimista con If-None-Match.
+      operationId: buscarPortafolioInstitucional
+      parameters:
+        - { name: tipo, in: query, required: false, schema: { $ref: "#/components/schemas/TipoRegistroConsulta" } }
+        - { name: codigo, in: query, required: false, schema: { type: string } }
+        - { name: nombre, in: query, required: false, schema: { type: string } }
+        - { name: estado, in: query, required: false, schema: { $ref: "#/components/schemas/EstadoIniciativaConsulta" } }
+        - { name: unidadId, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: responsableId, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: fechaDesde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: fechaHasta, in: query, required: false, schema: { type: string, format: date } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: sort, in: query, required: false, schema: { type: string, enum: [codigo, nombre, estado, fechaInicio] } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Página de portafolio institucional dentro del ámbito del actor.
+          headers:
+            ETag: { description: Identificador de versión de la página., schema: { type: string } }
+            X-Correlation-Id: { description: Identificador de correlación., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstitutionalPortfolioPage" }
+        "400": { description: Solicitud malformada. }
+        "401": { description: Asignación efectiva ausente o autenticación requerida. }
+        "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+        "422": { description: Filtros inválidos. }
+      security: [{ bearerAuth: [] }]
+
+  /consulta/institucional/portafolio/{id}:
+    get:
+      tags: [Consulta - Institucional]
+      summary: Ver detalle institucional del registro
+      description: >-
+        Devuelve el detalle institucional de un registro del portafolio. La
+        respuesta nunca expone BLOB, clave física ni URL directa de
+        documentos; el contenido se obtiene por el endpoint
+        /api/v1/documentos/{id}/contenido con la revalidación obligatoria
+        de ámbito y clasificación. Si el registro no pertenece al ámbito
+        del actor se responde 404 sin confirmar su existencia. Soporta
+        concurrencia optimista mediante If-Match y validación de caché
+        mediante If-None-Match.
+      operationId: detallePortafolioInstitucional
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: If-Match, in: header, required: false, schema: { type: string } }
+        - { name: If-None-Match, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Detalle institucional del registro dentro del ámbito del actor.
+          headers:
+            ETag: { description: Identificador de versión del registro., schema: { type: string } }
+            X-Correlation-Id: { description: Identificador de correlación., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstitutionalPortfolioDetail" }
+        "304": { description: Recurso no modificado por ETag. }
+        "400": { description: Solicitud malformada. }
+        "401": { description: Asignación efectiva ausente o autenticación requerida. }
+         "403": { description: ASSIGNMENT_SCOPE_DENIED. }
+         "404": { description: Recurso fuera de ámbito o no visible. }
+         "412": { description: STATE_CHANGED por ETag obsoleto. }
+       security: [{ bearerAuth: [] }]
+
+  /documentos/{id}/contenido:
+    get:
+      tags: [Documentos - Contenido]
+      summary: Descargar contenido institucional
+      description: >-
+        Devuelve el BLOB y los metadatos de un documento a un usuario
+        institucional autorizado. La operación revalida la asignación
+        efectiva, el ámbito y la clasificación validada antes de
+        exponer el contenido; nunca se entrega a la consulta pública
+        ni a usuarios sin asignación efectiva. Soporta concurrencia
+        optimista mediante If-None-Match.
+      operationId: descargarContenidoInstitucional
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: If-None-Match, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - { name: X-Actor-Sub, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: X-Unidad-Recurso-Id, in: header, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Contenido del documento con su clasificación validada.
+          headers:
+            ETag: { description: Versión optimista del documento., schema: { type: string } }
+            X-Clasificacion-Validada: { description: Clasificación validada al servir., schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304": { description: Recurso no modificado por ETag. }
+        "400": { description: Solicitud malformada. }
+        "403": { description: Asignación efectiva insuficiente o clasificación pendiente. }
+        "404": { description: Documento no encontrado en el ámbito. }
+      security: [{ bearerAuth: [] }]
+
+  /documentos/{id}/clasificacion/validacion:
+    post:
+      tags: [Documentos - Clasificación]
+      summary: Validar clasificación inicial
+      description: >-
+        Confirma la clasificación inicial propuesta por el Responsable.
+        La fecha del servidor la aplica el DEFAULT SYSTIMESTAMP del DDL
+        004. Solo un Evaluador puede validar; la operación exige If-Match.
+      operationId: validarClasificacionDocumento
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: If-Match, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - { name: X-Actor-Sub, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: X-Unidad-Recurso-Id, in: header, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ValidarClasificacionRequest" }
+      responses:
+        "200":
+          description: Clasificación validada con fecha del servidor.
+          headers:
+            ETag: { description: Versión optimista del documento., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidacionClasificacionResult" }
+        "400": { description: Solicitud malformada. }
+        "403": { description: Asignación efectiva insuficiente. }
+        "404": { description: Documento no encontrado. }
+        "409": { description: Intento de relajar la clasificación. }
+        "412": { description: ETag ausente o mismatch. }
+        "428": { description: If-Match obligatorio. }
+      security: [{ bearerAuth: [] }]
+
+  /documentos/{id}/clasificacion/reclasificacion:
+    post:
+      tags: [Documentos - Clasificación]
+      summary: Reclasificar documento
+      description: >-
+        Aplica una reclasificación con la decisión formal de la
+        Autoridad. La reclasificación nunca puede ser menos restrictiva
+        y se registra en el historial append-only. Una reclasificación a
+        PUBLICO exige además un documento formal de decisión registrado.
+      operationId: reclasificarDocumento
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: If-Match, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - { name: X-Actor-Sub, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: X-Unidad-Recurso-Id, in: header, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReclasificarDocumentoRequest" }
+      responses:
+        "200":
+          description: Reclasificación aplicada.
+          headers:
+            ETag: { description: Versión optimista del documento., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReclasificacionDocumentoResult" }
+        "400": { description: Solicitud malformada. }
+        "403": { description: Asignación efectiva insuficiente. }
+        "404": { description: Documento no encontrado. }
+        "409": { description: Reclasificación no permitida o sin cambio. }
+        "412": { description: ETag ausente o mismatch. }
+        "428": { description: If-Match obligatorio. }
+      security: [{ bearerAuth: [] }]
+
+  /documentos/{id}/clasificacion/historial:
+    get:
+      tags: [Documentos - Clasificación]
+      summary: Historial de reclasificación
+      description: >-
+        Devuelve el historial append-only de reclasificaciones
+        registradas para el documento, en orden cronológico. No expone
+        contenido ni datos personales innecesarios.
+      operationId: historialReclasificacionDocumento
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - { name: X-Actor-Sub, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: X-Unidad-Recurso-Id, in: header, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Historial devuelto.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ClasificacionHistDetalle" }
+        "403": { description: Asignación efectiva insuficiente. }
+        "404": { description: Documento no encontrado. }
+      security: [{ bearerAuth: [] }]
+
+  /documentos/publicaciones:
+    post:
+      tags: [Documentos - Publicación]
+      summary: Confirmar publicación de una versión PUBLICO
+      description: >-
+        Confirma la publicación de una versión con clasificación PUBLICO
+        validada. La fecha de publicación es exclusivamente del servidor
+        y la operación es idempotente mediante Idempotency-Key. La
+        respuesta nunca expone el BLOB ni una URL de descarga.
+      operationId: confirmarPublicacionDocumento
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - { name: X-Actor-Sub, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+        - { name: X-Unidad-Recurso-Id, in: header, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicarDocumentoRequest" }
+      responses:
+        "201":
+          description: Publicación confirmada con fecha del servidor.
+          headers:
+            ETag: { description: Identificador de la versión., schema: { type: string } }
+            X-Publicacion-Id: { description: Identificador append-only de la publicación., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicacionDocumentoDetail" }
+        "400": { description: Solicitud malformada. }
+        "403": { description: Asignación efectiva insuficiente. }
+        "404": { description: Documento no encontrado. }
+        "409": { description: Publicación duplicada o clave de idempotencia con payload distinto. }
+        "422": { description: Clasificación validada no es PUBLICO o título público inválido. }
+      security: [{ bearerAuth: [] }]
+
+  /consulta/publica/portafolio:
+    get:
+      tags: [Consulta - Pública]
+      summary: Buscar portafolio público
+      description: >-
+        Busca registros del portafolio aplicando filtros mínimos
+        permitidos. La respuesta es anónima y solo incluye los cuatro
+        campos públicos y los metadatos de las publicaciones elegibles.
+        No expone responsable, notas ni contenido.
+      operationId: buscarPortafolioPublico
+      parameters:
+        - { name: tipo, in: query, required: false, schema: { type: string, enum: [INICIATIVA, PROYECTO] } }
+        - { name: codigo, in: query, required: false, schema: { type: string } }
+        - { name: nombre, in: query, required: false, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Página pública anónima de resultados.
+          headers:
+            ETag: { description: Versión de la página., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPortfolioPage" }
+        "400": { description: Solicitud malformada. }
+
+  /consulta/publica/portafolio/{id}:
+    get:
+      tags: [Consulta - Pública]
+      summary: Ver detalle público del registro
+      description: >-
+        Devuelve el detalle público de un registro del portafolio. La
+        respuesta nunca expone contenido ni una URL de descarga. Si el
+        registro no es elegible para consulta pública, se responde 404
+        sin confirmar su existencia.
+      operationId: detallePortafolioPublico
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: If-None-Match, in: header, required: false, schema: { type: string } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Detalle público del registro.
+          headers:
+            ETag: { description: Versión del detalle., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPortfolioDetail" }
+        "304": { description: El detalle no cambió. }
+        "404": { description: Registro no elegible o no visible. }
+
+  /reportes/semestrales/generaciones:
+    post:
+      tags:
+        - Reportes institucionales
+      summary: Generar reporte institucional semestral
+      description: >-
+        Genera el reporte semestral oficial (BR-013, BR-121, BR-122) con cortes
+        30/06 (semestre 1) o 31/12 (semestre 2). El servidor deriva el periodo
+        y la fecha de corte; no se acepta una fecha alternativa. La generacion
+        es idempotente por Idempotency-Key; misma clave y mismo payload
+        devuelven el mismo reporte sin duplicar filas. La operacion exige
+        X-Asignacion-Efectiva-Id con perfil Evaluador efectivo. Devuelve 202
+        con la operacion registrada y, posteriormente, los archivos PDF y XLSX
+        comparten el mismo snapshot, parametros y version de datos.
+      operationId: generarReporteSemestral
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemestralReportRequest"
+      responses:
+        "202":
+          description: Reporte generado; pendiente de aprobacion.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportOperation" }
+        "400":
+          description: Solicitud malformada o falta X-Asignacion-Efectiva-Id o Idempotency-Key.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "409":
+          description: Idempotency-Key reutilizada con payload distinto.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "422":
+          description: SEMESTER_INVALID o REPORT_CUTOFF_INVALID.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/extraordinarios/generaciones:
+    post:
+      tags:
+        - Reportes institucionales
+      summary: Generar reporte institucional extraordinario
+      description: >-
+        Genera un reporte extraordinario (BR-120, BR-121, BR-122, BR-123) con
+        solicitud y aprobacion documentadas obligatorias. Los filtros se
+        limitan a los campos aprobados por BR-123 y no exceden el ambito del
+        generador. La operacion es idempotente por Idempotency-Key. Devuelve
+        202 con la operacion registrada; PDF y XLSX se emiten a partir del
+        mismo snapshot, parametros y version de datos.
+      operationId: generarReporteExtraordinario
+      parameters:
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtraordinarioReportRequest"
+      responses:
+        "202":
+          description: Reporte generado; pendiente de aprobacion.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportOperation" }
+        "400":
+          description: Solicitud malformada o falta X-Asignacion-Efectiva-Id o Idempotency-Key.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "409":
+          description: Idempotency-Key reutilizada con payload distinto.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "422":
+          description: REPORT_REQUEST_APPROVAL_REQUIRED o REPORT_CUTOFF_INVALID.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/generaciones/{id}:
+    get:
+      tags:
+        - Reportes institucionales
+      summary: Consultar reporte institucional
+      description: >-
+        Devuelve el detalle del reporte, sus indicadores BR-122, sus totales
+        BR-121 y sus archivos PDF/XLSX. La respuesta incluye el ETag para
+        control de concurrencia.
+      operationId: consultarReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Reporte encontrado.
+          headers:
+            ETag: { description: Version del reporte., schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteDetail" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "404":
+          description: REPORT_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/generaciones/{id}/archivos/{formato}:
+    get:
+      tags:
+        - Reportes institucionales
+      summary: Descargar archivo institucional
+      description: >-
+        Devuelve el PDF oficial o el XLSX de detalle generado a partir del
+        mismo snapshot, parametros y version de datos. La operacion requiere
+        asignacion efectiva y perfil Evaluador o Autoridad.
+      operationId: descargarArchivoReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: formato, in: path, required: true, schema: { type: string, enum: [PDF, XLSX] } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Archivo emitido.
+          headers:
+            ETag: { description: Hash SHA-256 del archivo., schema: { type: string } }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+        "404":
+          description: REPORT_FILE_NOT_FOUND o REPORT_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "422":
+          description: REPORT_FORMAT_INVALID.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/generaciones/{id}/aprobaciones-remision:
+    post:
+      tags:
+        - Reportes institucionales
+      summary: Aprobar version de reporte institucional
+      description: >-
+        La Oficina de Modernizacion aprueba la version exacta del reporte
+        (BR-127), fija el documento de aprobacion y los destinatarios
+        permitidos (BR-125). La operacion es idempotente por Idempotency-Key.
+        Una segunda aprobacion para la misma version produce 409
+        REPORT_VERSION_ALREADY_APPROVED. Sin plazo de retencion confirmado no
+        existe eliminacion automatica.
+      operationId: aprobarReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReporteAprobacionRequest"
+      responses:
+        "201":
+          description: Aprobacion registrada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteAprobacionDetail" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "409":
+          description: REPORT_VERSION_ALREADY_APPROVED o
+            REPORT_NOT_READY_FOR_APPROVAL.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "422":
+          description: RECIPIENT_TYPE_INVALID o RECIPIENT_TYPE_REQUIRED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/generaciones/{id}/destinatarios:
+    get:
+      tags:
+        - Reportes institucionales
+      summary: Listar destinatarios aprobados
+      description: >-
+        Devuelve los destinatarios aprobados en la ultima version aprobada
+        del reporte (BR-125).
+      operationId: listarDestinatariosReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Destinatarios aprobados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DestinatarioReporteDetail" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "404":
+          description: REPORT_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+  /reportes/generaciones/{id}/remisiones:
+    get:
+      tags:
+        - Reportes institucionales
+      summary: Consultar historial de remisiones
+      description: >-
+        Devuelve las remisiones registradas de un reporte, opcionalmente
+        filtradas por version. Permite reconstruir la trazabilidad sin perder
+        evidencia.
+      operationId: consultarRemisionesReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: idVersion, in: query, required: false, schema: { type: integer } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Remisiones registradas.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteRemisionPage" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "404":
+          description: REPORT_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - Reportes institucionales
+      summary: Registrar remision manual recuperable
+      description: >-
+        Registra la remision manual contra los destinatarios aprobados
+        (BR-125, BR-128). El resultado es declarativo; FALLIDA exige motivo.
+        La remision automatica, el correo y los conectores externos estan
+        fuera del alcance constitucional.
+      operationId: remitirReporte
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/EffectiveAssignmentId"
+        - $ref: "#/components/parameters/EffectiveProfile"
+        - $ref: "#/components/parameters/EffectiveUnitId"
+        - $ref: "#/components/parameters/ActorSub"
+        - $ref: "#/components/parameters/ActorUsuarioId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReporteRemisionRequest"
+      responses:
+        "201":
+          description: Remision registrada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteRemisionPage" }
+        "403":
+          description: REPORT_SCOPE_DENIED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "409":
+          description: REPORT_VERSION_NOT_APPROVED o REPORT_REMITTAL_DUPLICATED.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+        "422":
+          description: RECIPIENT_NOT_APPROVED, REMITTAL_MOTIVE_REQUIRED
+            o REMITTAL_RESULT_INVALID.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetail" }
+      security:
+        - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    EffectiveAssignmentId:
+      name: X-Asignacion-Efectiva-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Identificador de la unica asignacion efectiva de la operacion institucional.
+    EffectiveUnitId:
+      name: X-Unidad-Efectiva-Id
+      in: header
+      required: true
+      schema: { type: integer, format: int64 }
+      description: Unidad exacta del contexto efectivo que Oracle revalida.
+    EffectiveProfile:
+      name: X-Perfil-Efectivo
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Perfil de la asignación efectiva que Oracle revalida para la operación.
+    ActorSub:
+      name: X-Actor-Sub
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Subject estable de la identidad autenticada en Keycloak.
+    ActorUsuarioId:
+      name: X-Actor-Usuario-Id
+      in: header
+      required: false
+      schema:
+        type: integer
+        format: int64
+      description: Identificador del usuario PIIP asociado a la identidad.
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Identificador de correlacion devuelto por el servidor.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        maxLength: 100
+      description: >-
+        Clave de idempotencia. Misma clave y mismo payload devuelven el resultado original;
+        una clave con payload distinto produce 409 Conflict.
+    IdempotencyKeyOptional:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 100
+      description: >-
+        Clave de idempotencia opcional. Si se envia y el servicio de idempotencia esta
+        disponible, misma clave y mismo payload retornan el resultado original; payload
+        distinto produce 409 Conflict. Si no se envia, la deduplicacion por hash y
+        responsable es la proteccion primaria.
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+      description: ETag esperado para control de concurrencia optimista. Si se envia y no coincide, la operacion se rechaza con 409.
+  schemas:
+    AssignmentRequest:
+      type: object
+      required: [usuarioId, matrizCombinacionId, fechaInicio]
+      properties:
+        usuarioId: { type: integer, format: int64 }
+        matrizCombinacionId: { type: integer, format: int64 }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        documentoFormalVersionId: { type: integer, format: int64 }
+    AssignmentChangeRequest:
+      type: object
+      required: [fechaInicio]
+      properties:
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+    RevocationRequest:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: { type: string, minLength: 1, maxLength: 2000 }
+        documentoFormalVersionId: { type: integer, format: int64 }
+    AssignmentDetail:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        usuarioId: { type: integer, format: int64 }
+        matrizCombinacionId: { type: integer, format: int64 }
+        perfil: { type: string }
+        unidadId: { type: integer, format: int64 }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        documentoFormalVersionId: { type: integer, format: int64 }
+        revocadaEn: { type: string, format: date-time }
+        version: { type: integer, format: int64 }
+    ProblemDetail:
+      type: object
+      required: [type, title, status, code, correlationId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+        correlationId:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+    Page:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    TipoRegistro:
+      type: string
+      enum:
+        - INICIATIVA
+        - PROYECTO
+    TipoSolucion:
+      type: string
+      enum:
+        - POTENCIAL_ADAPTABLE
+        - POR_DEFINIR
+    FuenteOrigen:
+      type: string
+      enum:
+        - FICHA_INICIATIVA
+        - CONCURSO_INTERNO
+        - INNOVACION_ABIERTA
+        - PROPUESTA_JEFATURA
+        - OTROS
+    EstadoIniciativa:
+      type: string
+      enum:
+        - PRESENTADO
+        - NO_ADMISIBLE
+        - NO_APLICABLE
+        - INICIATIVA_APROBADA
+        - INICIATIVA_ARCHIVADA
+        - PROYECTO_EJECUCION
+        - SUSPENDIDO
+        - CANCELADO
+        - PRODUCTO_APROBADO
+        - PRODUCTO_NO_APROBADO
+        - FINALIZADO
+    EstadoIncorporacion:
+      type: string
+      enum:
+        - PENDIENTE
+        - VALIDADO
+        - RECHAZADO
+    TipoConflicto:
+      type: string
+      enum:
+        - CODIGO
+        - DUPLICADO
+        - RELACION_INVALIDA
+    CreateInitiativeRequest:
+      type: object
+      required:
+        - nombre
+        - tipoSolucion
+        - fuenteOrigen
+        - problemaPublico
+        - responsableId
+        - objetivoPeiId
+        - actividadPoiId
+        - unidades
+        - componenteDigital
+        - fichaDocumentoVersionId
+      properties:
+        nombre:
+          type: string
+          maxLength: 500
+        tipoSolucion:
+          $ref: "#/components/schemas/TipoSolucion"
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+        detalleFuente:
+          type: string
+          maxLength: 500
+        problemaPublico:
+          type: string
+          maxLength: 2000
+        solucionPropuesta:
+          type: string
+          maxLength: 2000
+        responsableId:
+          type: integer
+          format: int64
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidades:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UnidadResponsableItem"
+        participantesPersona:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParticipantePersonaItem"
+        participantesUnidad:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParticipanteUnidadItem"
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+          maxLength: 500
+        nota:
+          type: string
+          maxLength: 1000
+        fichaDocumentoVersionId:
+          type: integer
+          format: int64
+    UnidadResponsableItem:
+      type: object
+      required: [unidadId, principal]
+      properties:
+        unidadId:
+          type: integer
+          format: int64
+        principal:
+          type: boolean
+    ParticipantePersonaItem:
+      type: object
+      required: [nombresCompletos]
+      properties:
+        personaId:
+          type: integer
+          format: int64
+        nombresCompletos:
+          type: string
+        institucion:
+          type: string
+        funcion:
+          type: string
+    ParticipanteUnidadItem:
+      type: object
+      required: [unidadId]
+      properties:
+        unidadId:
+          type: integer
+          format: int64
+    InitiativeDetail:
+      type: object
+      required: [id, tipoRegistro, codigo, estado, version, etag, fechaInicio]
+      properties:
+        id:
+          type: integer
+          format: int64
+        tipoRegistro:
+          $ref: "#/components/schemas/TipoRegistro"
+        codigo:
+          type: string
+        codigoOrigen:
+          type: string
+        fechaInicio:
+          type: string
+          format: date
+        nombre:
+          type: string
+        tipoSolucion:
+          $ref: "#/components/schemas/TipoSolucion"
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+        detalleFuente:
+          type: string
+        responsableId:
+          type: integer
+          format: int64
+        problemaPublico:
+          type: string
+        solucionPropuesta:
+          type: string
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidades:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnidadResponsableDetail"
+        estado:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+        nota:
+          type: string
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+        fechaCreacion:
+          type: string
+          format: date-time
+    UnidadResponsableDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        unidadId:
+          type: integer
+          format: int64
+        descripcion:
+          type: string
+        abreviatura:
+          type: string
+        principal:
+          type: boolean
+    CreateIncorporacionRequest:
+      type: object
+      required:
+        - fuente
+        - fechaFuente
+        - responsableId
+        - documentoFuenteId
+        - hashOriginal
+      properties:
+        fuente:
+          type: string
+          maxLength: 200
+        fechaFuente:
+          type: string
+          format: date
+        responsableId:
+          type: integer
+          format: int64
+        documentoFuenteId:
+          type: integer
+          format: int64
+        hashOriginal:
+          type: string
+          maxLength: 64
+        datosOriginales:
+          type: string
+        codigoHeredado:
+          type: string
+          maxLength: 50
+    IncorporacionCorreccionRequest:
+      type: object
+      required: [incorporacionId, datosNuevos, motivo]
+      properties:
+        incorporacionId:
+          type: integer
+          format: int64
+        datosNuevos:
+          type: string
+        motivo:
+          type: string
+          maxLength: 2000
+    IncorporacionValidacionRequest:
+      type: object
+      required: [incorporacionId, estadoCanonico]
+      properties:
+        incorporacionId:
+          type: integer
+          format: int64
+        estadoCanonico:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        registroVinculadoId:
+          type: integer
+          format: int64
+        observacion:
+          type: string
+          maxLength: 2000
+    IncorporacionResolucionConflictoRequest:
+      type: object
+      required: [conflictoId, incorporacionId, resolucion]
+      properties:
+        conflictoId:
+          type: integer
+          format: int64
+        incorporacionId:
+          type: integer
+          format: int64
+        resolucion:
+          type: string
+          maxLength: 2000
+        documentoResolucionId:
+          type: integer
+          format: int64
+    IncorporacionDetail:
+      type: object
+      required: [id, fuente, estado, version, etag, hashOriginal]
+      properties:
+        id:
+          type: integer
+          format: int64
+        fuente:
+          type: string
+        fechaFuente:
+          type: string
+          format: date
+        responsableId:
+          type: integer
+          format: int64
+        documentoFuenteId:
+          type: integer
+          format: int64
+        hashOriginal:
+          type: string
+        estado:
+          $ref: "#/components/schemas/EstadoIncorporacion"
+        registroVinculadoId:
+          type: integer
+          format: int64
+        observacion:
+          type: string
+        creadoPor:
+          type: string
+        fechaCreacion:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+    OpenCorrectionRequest:
+      type: object
+      required: [venceEn, incumplimientos]
+      properties:
+        venceEn:
+          type: string
+          format: date
+        incumplimientos:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    SubsanacionEditCommand:
+      type: object
+      required: [objetivoPeiId, actividadPoiId, unidades]
+      properties:
+        nombre:
+          type: string
+          maxLength: 500
+        tipoSolucion:
+          $ref: "#/components/schemas/TipoSolucion"
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+        problemaPublico:
+          type: string
+          maxLength: 2000
+        solucionPropuesta:
+          type: string
+          maxLength: 2000
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidades:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UnidadResponsableEditItem"
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+          maxLength: 500
+        nota:
+          type: string
+          maxLength: 1000
+    UnidadResponsableEditItem:
+      type: object
+      required: [unidadId, principal]
+      properties:
+        unidadId:
+          type: integer
+          format: int64
+        principal:
+          type: boolean
+    SubsanacionDetail:
+      type: object
+      required: [id, iniciativaId, plazo, incumplimientos, aperturaEn, version, etag]
+      properties:
+        id:
+          type: integer
+          format: int64
+        iniciativaId:
+          type: integer
+          format: int64
+        plazo:
+          type: string
+          format: date
+        incumplimientos:
+          type: string
+        aperturaEn:
+          type: string
+          format: date-time
+        atencionEn:
+          type: string
+          format: date-time
+        actorSub:
+          type: string
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+    AdmissibilityRequest:
+      type: object
+      required: [resultado, observacion, documentoOpinionId]
+      properties:
+        resultado:
+          type: string
+          enum: [ADMITIDA, NO_ADMISIBLE]
+        observacion:
+          type: string
+          maxLength: 2000
+        documentoOpinionId:
+          type: integer
+          format: int64
+    ApplicabilityRequest:
+      type: object
+      required: [resultado, criterios]
+      properties:
+        resultado:
+          type: string
+          enum: [APLICABLE, NO_APLICABLE]
+        motivo:
+          type: string
+          maxLength: 2000
+        criterios:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicabilityCriterion"
+    ApplicabilityCriterion:
+      type: object
+      required: [clave, valor, orden]
+      properties:
+        clave:
+          type: string
+          maxLength: 50
+        valor:
+          type: string
+          maxLength: 500
+        orden:
+          type: integer
+          minimum: 1
+          maximum: 999
+    TechnicalOpinionRequest:
+      type: object
+      required: [documentoVersionId]
+      properties:
+        documentoVersionId:
+          type: integer
+          format: int64
+        observaciones:
+          type: string
+          maxLength: 2000
+    EvaluacionDetail:
+      type: object
+      required: [iniciativaId, estadoIniciativa, tipoEvaluacion, fechaEvaluacion, version, etag]
+      properties:
+        iniciativaId:
+          type: integer
+          format: int64
+        estadoIniciativa:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        tipoEvaluacion:
+          type: string
+          enum: [ADMISIBILIDAD, APLICABILIDAD]
+        documentoOpinionId:
+          type: integer
+          format: int64
+        fechaEvaluacion:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+    TransicionCommand:
+      type: object
+      required: [destino]
+      properties:
+        destino:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        observaciones:
+          type: string
+          maxLength: 2000
+        documentoRefId:
+          type: integer
+          format: int64
+        ifMatch:
+          type: string
+          description: ETag esperado del registro. Equivalente a la cabecera HTTP If-Match.
+    TransicionDetail:
+      type: object
+      required: [registroId, estadoAnterior, estadoNuevo, transicionId, fechaTransicion, version, etag]
+      properties:
+        registroId:
+          type: integer
+          format: int64
+        estadoAnterior:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        estadoNuevo:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        transicionId:
+          type: integer
+          format: int64
+        fechaTransicion:
+          type: string
+          format: date-time
+        actorSub:
+          type: string
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+
+    TipoOrigenDirecto:
+      type: string
+      enum:
+        - HEREDADO
+        - EXCEPCION_FORMAL
+    DirectProjectRequest:
+      type: object
+      required:
+        - tipoOrigen
+        - fechaInicio
+        - nombre
+        - objetivoPeiId
+        - actividadPoiId
+        - unidadResponsableId
+        - responsableId
+        - descripcion
+        - componenteDigital
+        - documentoAutorizacionId
+        - evidenciaIds
+        - fuenteOrigen
+      properties:
+        tipoOrigen:
+          $ref: "#/components/schemas/TipoOrigenDirecto"
+        codigoOrigen:
+          type: string
+          maxLength: 50
+        fechaInicio:
+          type: string
+          format: date
+        nombre:
+          type: string
+          maxLength: 500
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidadResponsableId:
+          type: integer
+          format: int64
+        responsableId:
+          type: integer
+          format: int64
+        descripcion:
+          type: string
+          maxLength: 2000
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+          maxLength: 500
+        nota:
+          type: string
+          maxLength: 1000
+        documentoAutorizacionId:
+          type: integer
+          format: int64
+        evidenciaIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            format: int64
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+    CreateDerivedProjectRequest:
+      type: object
+      required:
+        - nombre
+        - objetivoPeiId
+        - actividadPoiId
+        - unidades
+        - titularId
+        - fuenteOrigen
+        - descripcion
+        - componenteDigital
+        - documentoFormalId
+      properties:
+        nombre:
+          type: string
+          maxLength: 500
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidades:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UnidadDerivadaItem"
+        titularId:
+          type: integer
+          format: int64
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+        descripcion:
+          type: string
+          maxLength: 2000
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+          maxLength: 500
+        nota:
+          type: string
+          maxLength: 1000
+        documentoFormalId:
+          type: integer
+          format: int64
+    UnidadDerivadaItem:
+      type: object
+      required: [unidadId, principal]
+      properties:
+        unidadId:
+          type: integer
+          format: int64
+        principal:
+          type: boolean
+    ProjectDetail:
+      type: object
+      required: [id, codigo, estado, tipoRegistro, version, etag, fechaInicio]
+      properties:
+        id:
+          type: integer
+          format: int64
+        iniciativaId:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        codigoOrigen:
+          type: string
+        fechaInicio:
+          type: string
+          format: date
+        nombre:
+          type: string
+        tipoRegistro:
+          $ref: "#/components/schemas/TipoRegistro"
+        estado:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        fuenteOrigen:
+          $ref: "#/components/schemas/FuenteOrigen"
+        detalleFuente:
+          type: string
+        responsableId:
+          type: integer
+          format: int64
+        problemaPublico:
+          type: string
+        solucionPropuesta:
+          type: string
+        objetivoPeiId:
+          type: integer
+          format: int64
+        actividadPoiId:
+          type: integer
+          format: int64
+        unidades:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnidadResponsableDetail"
+        componenteDigital:
+          type: boolean
+        detalleComponenteDigital:
+          type: string
+        nota:
+          type: string
+        documentoFormalId:
+          type: integer
+          format: int64
+        version:
+          type: integer
+          format: int64
+        etag:
+          type: string
+        fechaCreacion:
+          type: string
+          format: date-time
+
+
+    # =====================================================================
+    # US4 - Seguimiento
+    # =====================================================================
+
+    PlanificacionRequest:
+      type: object
+      required: [alcance, objetivos]
+      properties:
+        alcance:
+          type: string
+          maxLength: 2000
+        objetivos:
+          type: string
+          maxLength: 2000
+        entregables:
+          type: string
+          maxLength: 100000
+        periodos:
+          type: string
+          maxLength: 100000
+
+    PlanificacionResponse:
+      type: object
+      required: [idPlanificacion, idProyecto, version, etag]
+      properties:
+        idPlanificacion:
+          type: integer
+          format: int64
+        idProyecto:
+          type: integer
+          format: int64
+        alcance:
+          type: string
+        objetivos:
+          type: string
+        entregables:
+          type: string
+        periodos:
+          type: string
+        version:
+          type: integer
+        idVersionAnterior:
+          type: integer
+          format: int64
+        cerrado:
+          type: string
+          enum: [S, N]
+        etag:
+          type: string
+
+    CicloRequest:
+      type: object
+      required: [periodo, objetivos, actividades, avance]
+      properties:
+        periodo:
+          type: string
+          pattern: "^[0-9]{4}-Q[1-4]-S[1-2]$"
+        objetivos:
+          type: string
+          maxLength: 2000
+        actividades:
+          type: string
+          maxLength: 2000
+        avance:
+          type: integer
+          minimum: 0
+          maximum: 100
+        dificultades:
+          type: string
+          maxLength: 2000
+        proximasAcciones:
+          type: string
+          maxLength: 2000
+
+    CorreccionCicloRequest:
+      type: object
+      required: [motivo, objetivos, actividades, avance]
+      properties:
+        motivo:
+          type: string
+          maxLength: 2000
+        objetivos:
+          type: string
+          maxLength: 2000
+        actividades:
+          type: string
+          maxLength: 2000
+        avance:
+          type: integer
+          minimum: 0
+          maximum: 100
+        dificultades:
+          type: string
+          maxLength: 2000
+        proximasAcciones:
+          type: string
+          maxLength: 2000
+
+    AnexarCicloVersionRequest:
+      type: object
+      required: [motivo, objetivos, actividades, avance]
+      properties:
+        motivo:
+          type: string
+          maxLength: 2000
+        objetivos:
+          type: string
+          maxLength: 2000
+        actividades:
+          type: string
+          maxLength: 2000
+        avance:
+          type: integer
+          minimum: 0
+          maximum: 100
+        dificultades:
+          type: string
+          maxLength: 2000
+        proximasAcciones:
+          type: string
+          maxLength: 2000
+
+    CicloResponse:
+      type: object
+      required: [idCiclo, idProyecto, periodo, numeroVersion, cerrado, etag]
+      properties:
+        idCiclo:
+          type: integer
+          format: int64
+        idProyecto:
+          type: integer
+          format: int64
+        periodo:
+          type: string
+        numeroVersion:
+          type: integer
+        idVersionAnterior:
+          type: integer
+          format: int64
+        objetivos:
+          type: string
+        actividades:
+          type: string
+        avance:
+          type: integer
+        dificultades:
+          type: string
+        proximasAcciones:
+          type: string
+        cerrado:
+          type: string
+          enum: [S, N]
+        fechaCierre:
+          type: string
+          format: date-time
+        etag:
+          type: string
+
+    CicloVersionResponse:
+      type: object
+      required: [idVersion, idCiclo, numeroVersion, etag]
+      properties:
+        idVersion:
+          type: integer
+          format: int64
+        idCiclo:
+          type: integer
+          format: int64
+        numeroVersion:
+          type: integer
+        motivo:
+          type: string
+        objetivos:
+          type: string
+        actividades:
+          type: string
+        avance:
+          type: integer
+        dificultades:
+          type: string
+        proximasAcciones:
+          type: string
+        etag:
+          type: string
+
+    AdjuntarEvidenciaCicloRequest:
+      type: object
+      required: [idDocumento, tipoDocumental]
+      properties:
+        idDocumento:
+          type: integer
+          format: int64
+        tipoDocumental:
+          type: string
+          maxLength: 200
+
+    AltaPersonaRequest:
+      type: object
+      required: [rol]
+      properties:
+        personaId:
+          type: integer
+          format: int64
+        rol:
+          type: string
+          enum: [Responsable, Participante]
+        nombresCompletos:
+          type: string
+          maxLength: 300
+        institucion:
+          type: string
+          maxLength: 200
+        funcion:
+          type: string
+          maxLength: 200
+
+    AltaUnidadRequest:
+      type: object
+      required: [unidadId, rol]
+      properties:
+        unidadId:
+          type: integer
+          format: int64
+        rol:
+          type: string
+          enum: [Responsable, Participante]
+
+    BajaParticipanteRequest:
+      type: object
+      required: [fechaBaja]
+      properties:
+        fechaBaja:
+          type: string
+          format: date
+        motivo:
+          type: string
+          maxLength: 2000
+
+    ParticipanteResponse:
+      type: object
+      required: [idParticipacion, proyectoId, rol, estado, etag]
+      properties:
+        idParticipacion:
+          type: integer
+          format: int64
+        proyectoId:
+          type: integer
+          format: int64
+        personaId:
+          type: integer
+          format: int64
+        unidadId:
+          type: integer
+          format: int64
+        rol:
+          type: string
+        nombresCompletos:
+          type: string
+        institucion:
+          type: string
+        funcion:
+          type: string
+        estado:
+          type: string
+          enum: [VIGENTE, BAJA]
+        fechaAlta:
+          type: string
+          format: date
+        fechaBaja:
+          type: string
+          format: date
+        etag:
+          type: string
+
+    EditarCamposEditablesRequest:
+      type: object
+      properties:
+        documentacionGestion:
+          type: string
+          maxLength: 2000
+        resultadosClave:
+          type: string
+          maxLength: 2000
+        nota:
+          type: string
+          maxLength: 1000
+
+    PresentacionProductoFinalRequest:
+      type: object
+      required: [tipoProductoFinal, idDocumentoSustenta, evidenciaIds]
+      properties:
+        tipoProductoFinal:
+          type: string
+          enum: [PROTOTIPO_CONCEPTUALIZADO, SOLUCION_FUNCIONAL]
+        documentacionGestion:
+          type: string
+          maxLength: 2000
+        resultadosClave:
+          type: string
+          maxLength: 2000
+        nota:
+          type: string
+          maxLength: 1000
+        idDocumentoSustenta:
+          type: integer
+          format: int64
+        evidenciaIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    PresentacionProductoFinalResponse:
+      type: object
+      required: [idPresentacion, idProyecto, version, evidenciaIds, etag]
+      properties:
+        idPresentacion:
+          type: integer
+          format: int64
+        idProyecto:
+          type: integer
+          format: int64
+        version:
+          type: integer
+        idVersionAnterior:
+          type: integer
+          format: int64
+        tipoProductoFinal:
+          type: string
+        documentacionGestion:
+          type: string
+        resultadosClave:
+          type: string
+        nota:
+          type: string
+        idDocumentoSustenta:
+          type: integer
+          format: int64
+        evidenciaIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        etag:
+          type: string
+
+    DecisionProductoFinalRequest:
+      type: object
+      required: [decision, tipoProductoFinal]
+      properties:
+        decision:
+          type: string
+          enum: [APROBAR, NO_APROBAR]
+        documentoId:
+          type: integer
+          format: int64
+          description: Obligatorio cuando decision es APROBAR.
+        evidenciaId:
+          type: integer
+          format: int64
+          description: Obligatorio cuando decision es NO_APROBAR.
+        tipoProductoFinal:
+          type: string
+          enum: [PROTOTIPO_CONCEPTUALIZADO, SOLUCION_FUNCIONAL]
+        observacion:
+          type: string
+          maxLength: 2000
+          description: Obligatoria cuando decision es NO_APROBAR.
+
+    DecisionProductoFinalResponse:
+      type: object
+      required: [idProyecto, estado, tipoProductoFinal, idTransicion, fechaDecision, etag]
+      properties:
+        idProyecto: { type: integer, format: int64 }
+        estado:
+          type: string
+          enum: [PRODUCTO_APROBADO, PRODUCTO_NO_APROBADO]
+        tipoProductoFinal:
+          type: string
+          enum: [PROTOTIPO_CONCEPTUALIZADO, SOLUCION_FUNCIONAL]
+        idTransicion: { type: integer, format: int64 }
+        fechaDecision: { type: string, format: date-time }
+        etag: { type: string }
+
+    CierreProyectoRequest:
+      type: object
+      required: [informeFinal, informeFinalDocumentoId, aprendizajes, conclusion, observacion]
+      properties:
+        informeFinal:
+          type: string
+          minLength: 1
+        informeFinalDocumentoId:
+          type: integer
+          format: int64
+        aprendizajes:
+          type: string
+          minLength: 1
+        conclusion:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        observacion:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    CierreProyectoResponse:
+      type: object
+      required: [idCierre, idProyecto, estado, fechaCierre, etag]
+      properties:
+        idCierre: { type: integer, format: int64 }
+        idProyecto: { type: integer, format: int64 }
+        estado:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        fechaCierre: { type: string, format: date }
+        etag: { type: string }
+
+    SuspensionRequest:
+      type: object
+      required: [idDocumento, observacion]
+      properties:
+        idDocumento:
+          type: integer
+          format: int64
+        observacion:
+          type: string
+          maxLength: 2000
+        ifMatch:
+          type: string
+          maxLength: 200
+
+    CancelacionRequest:
+      type: object
+      required: [idDocumento, observacion]
+      properties:
+        idDocumento:
+          type: integer
+          format: int64
+        observacion:
+          type: string
+          maxLength: 2000
+        ifMatch:
+          type: string
+          maxLength: 200
+
+    TransicionResponse:
+      type: object
+      required: [idTransicion, idProyecto, estadoNuevo, etag]
+      properties:
+        idTransicion:
+          type: integer
+          format: int64
+        idProyecto:
+          type: integer
+          format: int64
+        estadoAnterior:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        estadoNuevo:
+          $ref: "#/components/schemas/EstadoIniciativa"
+        idUsuario:
+          type: integer
+          format: int64
+        fechaTransicion:
+          type: string
+          format: date-time
+        observaciones:
+          type: string
+        idDocumento:
+          type: integer
+          format: int64
+        etag:
+          type: string
+    MatrixFunctionRequest:
+      type: object
+      required: [codigo, descripcion]
+      properties:
+        codigo: { type: string, maxLength: 30 }
+        descripcion: { type: string, maxLength: 500 }
+    MatrixFunction:
+      type: object
+      required: [id, matrizVersionId, codigo, descripcion, activa]
+      properties:
+        id: { type: integer, format: int64 }
+        matrizVersionId: { type: integer, format: int64 }
+        codigo: { type: string }
+        descripcion: { type: string }
+        activa: { type: boolean }
+    MatrixCombinationRequest:
+      type: object
+      required: [funcionCodigo, perfil, unidadId, vigenteDesde, documentoAprobacionVersionId, aprobadorUsuarioId]
+      properties:
+        funcionCodigo: { type: string, maxLength: 30 }
+        perfil: { type: string, maxLength: 50 }
+        unidadId: { type: integer, format: int64 }
+        vigenteDesde: { type: string, format: date }
+        vigenteHasta: { type: string, format: date }
+        documentoAprobacionVersionId: { type: integer, format: int64 }
+        aprobadorUsuarioId: { type: integer, format: int64, description: Usuario PIIP activo con perfil Autoridad en la unidad concreta. }
+    MatrixVersionRequest:
+      type: object
+      required: [codigoVersion, vigenteDesde, documentoAprobacionVersionId, funciones, combinaciones]
+      properties:
+        codigoVersion: { type: string, maxLength: 30 }
+        versionAnteriorId: { type: integer, format: int64 }
+        vigenteDesde: { type: string, format: date }
+        vigenteHasta: { type: string, format: date }
+        documentoAprobacionVersionId: { type: integer, format: int64 }
+        funciones: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MatrixFunctionRequest" } }
+        combinaciones: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MatrixCombinationRequest" } }
+    MatrixDeactivationRequest:
+      type: object
+      required: [codigoNuevaVersion, documentoAprobacionVersionId, aprobadorUsuarioId, motivo]
+      properties:
+        codigoNuevaVersion: { type: string, maxLength: 30 }
+        documentoAprobacionVersionId: { type: integer, format: int64 }
+        aprobadorUsuarioId: { type: integer, format: int64 }
+        motivo: { type: string, maxLength: 2000 }
+    MatrixCombination:
+      type: object
+      required: [id, matrizVersionId, funcion, perfil, unidadId, vigenteDesde, activa]
+      properties:
+        id: { type: integer, format: int64 }
+        matrizVersionId: { type: integer, format: int64 }
+        funcion: { type: string }
+        perfil: { type: string }
+        unidadId: { type: integer, format: int64 }
+        vigenteDesde: { type: string, format: date }
+        vigenteHasta: { type: string, format: date }
+        activa: { type: boolean }
+        documentoAprobacionVersionId: { type: integer, format: int64 }
+        aprobadorUsuarioId: { type: integer, format: int64 }
+        registradorUsuarioId: { type: integer, format: int64 }
+    MatrixVersionDetail:
+      type: object
+      required: [id, codigoVersion, vigenteDesde, activa, funciones, combinaciones]
+      properties:
+        id: { type: integer, format: int64 }
+        codigoVersion: { type: string }
+        versionAnteriorId: { type: integer, format: int64 }
+        documentoAprobacionVersionId: { type: integer, format: int64 }
+        vigenteDesde: { type: string, format: date }
+        vigenteHasta: { type: string, format: date }
+        activa: { type: boolean }
+        funciones: { type: array, items: { $ref: "#/components/schemas/MatrixFunctionRequest" } }
+        combinaciones: { type: array, items: { $ref: "#/components/schemas/MatrixCombination" } }
+    MatrixVersionPage:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/MatrixVersionDetail" } }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+    CreateUserRequest:
+      type: object
+      required: [correoInstitucional, nombreCompleto, unidadId]
+      properties:
+        correoInstitucional: { type: string, format: email, maxLength: 200 }
+        nombreCompleto: { type: string, minLength: 1, maxLength: 300 }
+        unidadId: { type: integer, format: int64 }
+    UserStatusRequest:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: { type: string, minLength: 1, maxLength: 1000 }
+    UserStatusResult:
+      type: object
+      required: [usuarioId, estado]
+      properties:
+        usuarioId: { type: integer, format: int64 }
+        estado: { type: string, enum: [HABILITADO, DESHABILITADO] }
+        keycloakId: { type: string, maxLength: 36 }
+    ProvisioningResult:
+      type: object
+      required: [operacionId, estado, recuperable, intento]
+      properties:
+        operacionId: { type: integer, format: int64 }
+        usuarioId: { type: integer, format: int64 }
+        estado:
+          type: string
+          enum: [INICIADA, KEYCLOAK_CREADO_DESHABILITADO, ORACLE_PENDIENTE, COMPLETADA, FALLIDA_NO_RECUPERABLE]
+        recuperable: { type: boolean }
+        intento: { type: integer, format: int32, minimum: 1 }
+    KeycloakRecoverableProblem:
+      type: object
+      required: [type, title, status, code, operacionId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, enum: [503] }
+        code: { type: string, enum: [KEYCLOAK_OPERATION_RECOVERABLE] }
+        detail: { type: string }
+        operacionId: { type: integer, format: int64 }
+
+    # =================================================================
+    # US7 - Schemas de la consulta institucional (T098).
+    # Son DTOs propios del módulo consulta: nunca exponen entidades
+    # JPA ni contenido/descarga documental.
+    # =================================================================
+
+    TipoRegistroConsulta:
+      type: string
+      enum: [INICIATIVA, PROYECTO]
+
+    TipoSolucionConsulta:
+      type: string
+      enum: [POTENCIAL_ADAPTABLE, POR_DEFINIR]
+
+    FuenteOrigenConsulta:
+      type: string
+      enum: [FICHA_INICIATIVA, CONCURSO_INTERNO, INNOVACION_ABIERTA, PROPUESTA_JEFATURA, OTROS]
+
+    EstadoIniciativaConsulta:
+      type: string
+      enum:
+        - PRESENTADO
+        - NO_ADMISIBLE
+        - NO_APLICABLE
+        - INICIATIVA_APROBADA
+        - INICIATIVA_ARCHIVADA
+        - PROYECTO_EJECUCION
+        - SUSPENDIDO
+        - CANCELADO
+        - PRODUCTO_APROBADO
+        - PRODUCTO_NO_APROBADO
+        - FINALIZADO
+
+    ClasificacionDocumentoConsulta:
+      type: string
+      enum: [PUBLICO, INTERNO, RESTRINGIDO]
+
+    InstitutionalPortfolioUnidad:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        unidadId: { type: integer, format: int64 }
+        descripcion: { type: string }
+        abreviatura: { type: string }
+        nroOrden: { type: integer }
+        principal: { type: boolean }
+
+    InstitutionalPortfolioPersonaParticipante:
+      type: object
+      properties:
+        idParticipacion: { type: integer, format: int64 }
+        participanteId: { type: integer, format: int64 }
+        usuarioId: { type: integer, format: int64 }
+        nombresCompletos: { type: string }
+        institucion: { type: string }
+        funcion: { type: string }
+        clasificacion: { type: string }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        vigente: { type: boolean }
+
+    InstitutionalPortfolioDocument:
+      type: object
+      description: >-
+        Metadatos documentales visibles para la consulta institucional
+        autorizada. No expone BLOB, clave física ni URL directa. El
+        contenido se obtiene por el endpoint
+        /api/v1/documentos/{id}/contenido.
+      properties:
+        documentoId: { type: integer, format: int64 }
+        serieId: { type: integer, format: int64 }
+        numeroVersion: { type: integer }
+        titulo: { type: string }
+        formato: { type: string }
+        mimeType: { type: string }
+        tamanoBytes: { type: integer, format: int64 }
+        hashSha256: { type: string }
+        clasificacionPropuesta: { $ref: "#/components/schemas/ClasificacionDocumentoConsulta" }
+        clasificacionValidada: { $ref: "#/components/schemas/ClasificacionDocumentoConsulta" }
+        tipoDocumental: { type: string }
+        contextoDocumental: { type: string }
+        publicado: { type: boolean }
+        fechaCarga: { type: string, format: date-time }
+        usuarioCargaId: { type: integer, format: int64 }
+        puedeConsultarContenido: { type: boolean }
+        etag: { type: string }
+
+    InstitutionalPortfolioHistoryEntry:
+      type: object
+      properties:
+        transicionId: { type: integer, format: int64 }
+        estadoAnterior: { $ref: "#/components/schemas/EstadoIniciativaConsulta" }
+        estadoNuevo: { $ref: "#/components/schemas/EstadoIniciativaConsulta" }
+        usuarioId: { type: integer, format: int64 }
+        rolEfectivoId: { type: integer }
+        unidadEfectivaId: { type: integer, format: int64 }
+        fechaTransicion: { type: string, format: date-time }
+        observaciones: { type: string }
+        documentoRefId: { type: integer, format: int64 }
+
+    IniciativaProyectoRelacion:
+      type: object
+      properties:
+        iniciativaId: { type: integer, format: int64 }
+        proyectoId: { type: integer, format: int64 }
+        iniciativaActual: { type: boolean }
+        proyectoActual: { type: boolean }
+
+    InstitutionalPortfolioSummary:
+      type: object
+      required: [id, tipoRegistro, codigo, nombre, estado, fechaInicio, etag]
+      properties:
+        id: { type: integer, format: int64 }
+        tipoRegistro: { $ref: "#/components/schemas/TipoRegistroConsulta" }
+        codigo: { type: string }
+        codigoOrigen: { type: string }
+        nombre: { type: string }
+        estado: { type: string }
+        fechaInicio: { type: string, format: date }
+        unidadEjecutoraId: { type: integer, format: int64 }
+        unidadEjecutoraDescripcion: { type: string }
+        unidadEjecutoraAbreviatura: { type: string }
+        responsableId: { type: integer, format: int64, nullable: true }
+        puedeVerResponsable: { type: boolean }
+        version: { type: integer, format: int64 }
+        etag: { type: string }
+
+    InstitutionalPortfolioDetail:
+      type: object
+      required: [id, tipoRegistro, codigo, fechaInicio, etag, version]
+      description: >-
+        Detalle institucional de un registro del portafolio. DTO propio
+        del módulo consulta: no expone entidades JPA, BLOB, clave
+        física ni URL directa. La colección de documentos solo
+        contiene metadatos; el contenido se obtiene por
+        /api/v1/documentos/{id}/contenido.
+      properties:
+        id: { type: integer, format: int64 }
+        tipoRegistro: { $ref: "#/components/schemas/TipoRegistroConsulta" }
+        codigo: { type: string }
+        codigoOrigen: { type: string }
+        fechaInicio: { type: string, format: date }
+        fechaCierre: { type: string, format: date }
+        nombre: { type: string }
+        tipoSolucion: { $ref: "#/components/schemas/TipoSolucionConsulta" }
+        fuenteOrigen: { $ref: "#/components/schemas/FuenteOrigenConsulta" }
+        detalleFuente: { type: string }
+        responsableId: { type: integer, format: int64 }
+        problemaPublico: { type: string }
+        solucionPropuesta: { type: string }
+        objetivoPeiId: { type: integer, format: int64 }
+        actividadPoiId: { type: integer, format: int64 }
+        unidadEjecutoraId: { type: integer, format: int64 }
+        unidadEjecutoraDescripcion: { type: string }
+        unidadEjecutoraAbreviatura: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoIniciativaConsulta" }
+        componenteDigital: { type: boolean }
+        detalleComponenteDigital: { type: string }
+        nota: { type: string }
+        resultadosClave: { type: string }
+        unidades:
+          type: array
+          items: { $ref: "#/components/schemas/InstitutionalPortfolioUnidad" }
+        participantes:
+          type: array
+          description: Solo se incluye cuando el actor es Responsable, Evaluador o administrador autorizado.
+          items: { $ref: "#/components/schemas/InstitutionalPortfolioPersonaParticipante" }
+        documentos:
+          type: array
+          items: { $ref: "#/components/schemas/InstitutionalPortfolioDocument" }
+        historial:
+          type: array
+          items: { $ref: "#/components/schemas/InstitutionalPortfolioHistoryEntry" }
+        relacion: { $ref: "#/components/schemas/IniciativaProyectoRelacion" }
+        actorEsResponsable: { type: boolean }
+        actorEsEvaluador: { type: boolean }
+        actorEsAdministrador: { type: boolean }
+        fechaCreacion: { type: string, format: date-time }
+        version: { type: integer, format: int64 }
+        etag: { type: string }
+
+    InstitutionalPortfolioPage:
+      type: object
+      required: [items, pagina, tamanio, totalElementos, totalPaginas, etag]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/InstitutionalPortfolioSummary" }
+        pagina: { type: integer, minimum: 0 }
+        tamanio: { type: integer, minimum: 1, maximum: 100 }
+        totalElementos: { type: integer, minimum: 0 }
+        totalPaginas: { type: integer, minimum: 0 }
+        etag: { type: string }
+
+    ClasificacionDocumentoClasificacion:
+      type: string
+      enum: [PUBLICO, INTERNO, RESTRINGIDO]
+
+    ResultadoClasificacionEnum:
+      type: string
+      enum: [APLICADA, RECHAZADA, REVERTIDA]
+
+    ValidarClasificacionRequest:
+      type: object
+      required: [clasificacion]
+      properties:
+        clasificacion: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+
+    ValidacionClasificacionResult:
+      type: object
+      required: [documentoId, clasificacionValidada, etag]
+      properties:
+        documentoId: { type: integer, format: int64 }
+        clasificacionAnterior: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        clasificacionValidada: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        fechaValidacion: { type: string, format: date-time }
+        evaluadorId: { type: integer, format: int64 }
+        etag: { type: string }
+
+    ReclasificarDocumentoRequest:
+      type: object
+      required: [clasificacionNueva, documentoDecisionId, autoridadDecisoraId]
+      properties:
+        clasificacionNueva: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        documentoDecisionId: { type: integer, format: int64 }
+        autoridadDecisoraId: { type: integer, format: int64 }
+        motivo: { type: string, maxLength: 2000 }
+
+    ReclasificacionDocumentoResult:
+      type: object
+      required: [documentoId, clasificacionAnterior, clasificacionNueva, etag, historial]
+      properties:
+        documentoId: { type: integer, format: int64 }
+        clasificacionAnterior: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        clasificacionNueva: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        etag: { type: string }
+        historial: { $ref: "#/components/schemas/ClasificacionHistDetalle" }
+
+    ClasificacionHistDetalle:
+      type: object
+      required: [historialId, documentoId, clasificacionNueva, resultado]
+      properties:
+        historialId: { type: integer, format: int64 }
+        documentoId: { type: integer, format: int64 }
+        clasificacionAnterior: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        clasificacionNueva: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        autoridadDecisoraId: { type: integer, format: int64 }
+        evaluadorRegistradorId: { type: integer, format: int64 }
+        documentoDecisionId: { type: integer, format: int64 }
+        motivo: { type: string, maxLength: 2000 }
+        fechaCambio: { type: string, format: date-time }
+        resultado: { $ref: "#/components/schemas/ResultadoClasificacionEnum" }
+
+    PublicarDocumentoRequest:
+      type: object
+      required: [documentoId, tituloPublico, autoridadPublica]
+      properties:
+        documentoId: { type: integer, format: int64 }
+        tituloPublico: { type: string, minLength: 5, maxLength: 500 }
+        autoridadPublica: { type: string, maxLength: 100 }
+        resumenPublico: { type: string, maxLength: 500 }
+
+    PublicacionDocumentoDetail:
+      type: object
+      required: [publicacionId, documentoId, tituloPublico, fechaPublicacion]
+      properties:
+        publicacionId: { type: integer, format: int64 }
+        documentoId: { type: integer, format: int64 }
+        tituloPublico: { type: string }
+        clasificacion: { $ref: "#/components/schemas/ClasificacionDocumentoClasificacion" }
+        evaluadorConfirmadorId: { type: integer, format: int64 }
+        asignacionEfectivaId: { type: integer, format: int64 }
+        fechaPublicacion: { type: string, format: date-time }
+
+    PublicPortfolioDocumento:
+      type: object
+      description: Metadatos públicos de un documento elegible. Nunca incluye BLOB ni URL.
+      properties:
+        tipoDocumental: { type: string }
+        tituloPublico: { type: string }
+        version: { type: integer }
+        formato: { type: string }
+        fechaPublicacion: { type: string, format: date-time }
+
+    PublicPortfolioSummary:
+      type: object
+      description: Resumen público con los cuatro campos públicos aprobados.
+      required: [id, tipoRegistro, codigo, nombre, estado, etag]
+      properties:
+        id: { type: integer, format: int64 }
+        tipoRegistro: { type: string, enum: [INICIATIVA, PROYECTO] }
+        codigo: { type: string }
+        nombre: { type: string }
+        estado: { type: string }
+        fechaInicio: { type: string, format: date }
+        publicaciones:
+          type: array
+          items: { $ref: "#/components/schemas/PublicPortfolioDocumento" }
+        etag: { type: string }
+
+    PublicPortfolioDetail:
+      type: object
+      required: [id, tipoRegistro, codigo, nombre, estado, etag]
+      properties:
+        id: { type: integer, format: int64 }
+        tipoRegistro: { type: string, enum: [INICIATIVA, PROYECTO] }
+        codigo: { type: string }
+        nombre: { type: string }
+        estado: { type: string }
+        publicaciones:
+          type: array
+          items: { $ref: "#/components/schemas/PublicPortfolioDocumento" }
+        etag: { type: string }
+
+    PublicPortfolioPage:
+      type: object
+      required: [items, pagina, tamanio, totalElementos, totalPaginas, etag]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PublicPortfolioSummary" }
+        pagina: { type: integer, minimum: 0 }
+        tamanio: { type: integer, minimum: 1, maximum: 100 }
+        totalElementos: { type: integer, minimum: 0 }
+        totalPaginas: { type: integer, minimum: 0 }
+        etag: { type: string }
+
+    SemestralReportRequest:
+      type: object
+      description: Solicitud de generacion del reporte semestral oficial.
+      required: [anio, semestre]
+      properties:
+        anio: { type: integer, minimum: 2000, maximum: 2100 }
+        semestre: { type: integer, enum: [1, 2] }
+
+    ExtraordinarioReportRequest:
+      type: object
+      description: Solicitud de generacion del reporte extraordinario (BR-120).
+      required: [solicitudDocumentoId, aprobacionOficinaDocumentoId, periodo, fechaCorte, filtros]
+      properties:
+        solicitudDocumentoId: { type: integer, format: int64 }
+        aprobacionOficinaDocumentoId: { type: integer, format: int64 }
+        periodo: { type: string, maxLength: 30 }
+        fechaCorte: { type: string, format: date }
+        filtros: { $ref: "#/components/schemas/ReportFiltros" }
+
+    ReportFiltros:
+      type: object
+      description: Filtros BR-123 aplicados al reporte.
+      properties:
+        tipo: { type: string, maxLength: 30 }
+        estado: { type: string, maxLength: 30 }
+        unidadId: { type: integer, format: int64 }
+        responsableId: { type: integer, format: int64 }
+        fuente: { type: string, maxLength: 30 }
+        tipoSolucion: { type: string, maxLength: 30 }
+        producto: { type: string, maxLength: 40 }
+        unidadesAdicionales:
+          type: array
+          items: { type: string }
+
+    ReportOperation:
+      type: object
+      description: Resultado 202 de una generacion de reporte.
+      required: [reporteId, operacionId, corte, versionDatos, estadoTecnico]
+      properties:
+        reporteId: { type: integer, format: int64 }
+        operacionId: { type: string }
+        corte: { type: string, format: date }
+        versionDatos: { type: integer }
+        estadoTecnico: { type: string, enum: [INICIADA, GENERADA, APROBADA, FALLIDA] }
+        clasificacion: { type: string, enum: [INTERNO, RESTRINGIDO] }
+        hashSnapshot: { type: string, description: Hash SHA-256 del snapshot CLOB JSON. }
+        fechaGeneracion: { type: string, format: date-time }
+
+    IndicadorReporte:
+      type: object
+      description: Indicador BR-122 con numerador, denominador, porcentaje y
+        aplicabilidad. Cuando el denominador es cero, el indicador es
+        "no aplicable" y porcentaje es nulo.
+      required: [nombre, numerador, denominador, aplicable]
+      properties:
+        nombre: { type: string }
+        numerador: { type: integer, format: int64, minimum: 0 }
+        denominador: { type: integer, format: int64, minimum: 0 }
+        porcentaje:
+          type: number
+          format: double
+          nullable: true
+        aplicable: { type: boolean }
+        detalle: { type: string }
+
+    TotalDimension:
+      type: object
+      description: Totales BR-121 agrupados por una dimension canonica.
+      required: [dimension]
+      properties:
+        dimension: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TotalDimensionItem" }
+
+    TotalDimensionItem:
+      type: object
+      required: [clave, etiqueta, total]
+      properties:
+        clave: { type: string }
+        etiqueta: { type: string }
+        total: { type: integer, format: int64, minimum: 0 }
+
+    ReporteArchivoSummary:
+      type: object
+      description: Resumen de un archivo PDF o XLSX emitido. El contenido se
+        descarga por GET /reportes/generaciones/{id}/archivos/{PDF|XLSX}.
+      required: [idArchivo, formato, version, hashSha256]
+      properties:
+        idArchivo: { type: integer, format: int64 }
+        formato: { type: string, enum: [PDF, XLSX] }
+        version: { type: integer }
+        hashSha256: { type: string, description: Hash SHA-256 del archivo. }
+        idDocumentoVersion: { type: integer, format: int64 }
+        creadoPor: { type: string }
+        fechaCreacion: { type: string, format: date-time }
+
+    ReporteDetail:
+      type: object
+      description: Detalle del reporte institucional, snapshot, indicadores,
+        totales y archivos.
+      required: [idReporte, tipo, periodo, fechaCorte, estadoTecnico,
+        versionDatos, clasificacion, etag]
+      properties:
+        idReporte: { type: integer, format: int64 }
+        tipo: { type: string, enum: [SEMESTRAL, EXTRAORDINARIO] }
+        anio: { type: integer }
+        semestre:
+          type: integer
+          nullable: true
+        periodo: { type: string }
+        fechaCorte: { type: string, format: date }
+        versionDatos: { type: integer }
+        estadoTecnico: { type: string, enum: [INICIADA, GENERADA, APROBADA, FALLIDA] }
+        clasificacion: { type: string, enum: [INTERNO, RESTRINGIDO] }
+        hashSnapshot: { type: string }
+        idSnapshot: { type: integer, format: int64 }
+        idGenerador: { type: integer, format: int64 }
+        fechaGeneracion: { type: string, format: date-time }
+        filtros: { $ref: "#/components/schemas/ReportFiltros" }
+        indicadores:
+          type: array
+          items: { $ref: "#/components/schemas/IndicadorReporte" }
+        totales:
+          type: array
+          items: { $ref: "#/components/schemas/TotalDimension" }
+        archivos:
+          type: array
+          items: { $ref: "#/components/schemas/ReporteArchivoSummary" }
+        etag: { type: string }
+
+    ReporteAprobacionRequest:
+      type: object
+      description: Aprobacion formal (BR-127) de la version exacta.
+      required: [idVersion, idDocumentoAprobacion, destinatarios]
+      properties:
+        idVersion: { type: integer, minimum: 1 }
+        idDocumentoAprobacion: { type: integer, format: int64 }
+        destinatarios:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/DestinatarioReporteRequest" }
+
+    DestinatarioReporteRequest:
+      type: object
+      description: Destinatario propuesto por la Oficina de Modernizacion.
+      required: [tipoDestinatario, idEntidad, nombre]
+      properties:
+        tipoDestinatario:
+          type: string
+          enum: [AUTORIDAD_MIDAGRI, OFICINA_MODERNIZACION, PCM_SGP]
+        idEntidad: { type: integer, format: int64 }
+        nombre: { type: string, maxLength: 200 }
+
+    DestinatarioReporteDetail:
+      type: object
+      required: [idDestinatario, idAprobacion, tipoDestinatario, idEntidad, nombre]
+      properties:
+        idDestinatario: { type: integer, format: int64 }
+        idAprobacion: { type: integer, format: int64 }
+        tipoDestinatario: { type: string, enum: [AUTORIDAD_MIDAGRI, OFICINA_MODERNIZACION, PCM_SGP] }
+        idEntidad: { type: integer, format: int64 }
+        nombre: { type: string }
+
+    ReporteAprobacionDetail:
+      type: object
+      required: [idAprobacion, idReporte, idVersion, idOficina, idAprobador,
+        idDocumentoAprobacion, fechaAprobacion, destinatarios]
+      properties:
+        idAprobacion: { type: integer, format: int64 }
+        idReporte: { type: integer, format: int64 }
+        idVersion: { type: integer }
+        idOficina: { type: integer, format: int64 }
+        idAprobador: { type: integer, format: int64 }
+        idDocumentoAprobacion: { type: integer, format: int64 }
+        fechaAprobacion: { type: string, format: date-time }
+        destinatarios:
+          type: array
+          items: { $ref: "#/components/schemas/DestinatarioReporteDetail" }
+
+    ReporteRemisionRequest:
+      type: object
+      description: Remision manual recuperable (BR-128).
+      required: [idVersion, destinatariosIds, resultado]
+      properties:
+        idVersion: { type: integer, minimum: 1 }
+        destinatariosIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { type: integer, format: int64 }
+        resultado: { type: string, enum: [EXITOSA, FALLIDA, PENDIENTE] }
+        motivo: { type: string, maxLength: 2000 }
+
+    ReporteRemisionDetail:
+      type: object
+      required: [idRemision, idReporte, idDestinatario, resultado, fechaRemision]
+      properties:
+        idRemision: { type: integer, format: int64 }
+        idReporte: { type: integer, format: int64 }
+        idDestinatario: { type: integer, format: int64 }
+        resultado: { type: string, enum: [EXITOSA, FALLIDA, PENDIENTE] }
+        motivo: { type: string }
+        fechaRemision: { type: string, format: date-time }
+
+    ReporteRemisionPage:
+      type: object
+      required: [idReporte, remisiones]
+      properties:
+        idReporte: { type: integer, format: int64 }
+        idVersion:
+          type: integer
+          nullable: true
+        remisiones:
+          type: array
+          items: { $ref: "#/components/schemas/ReporteRemisionDetail" }
+
+    # =====================================================================
+    # D-02 - Schemas de organización institucional.
+    # =====================================================================
+
+    UnidadOrganizacional:
+      type: object
+      required: [id, codigo, descripcion, abreviatura, nivel, activa]
+      properties:
+        id: { type: integer, format: int64 }
+        codigo: { type: string }
+        descripcion: { type: string }
+        abreviatura: { type: string }
+        nivel: { type: integer }
+        unidadPadreId: { type: integer, format: int64, nullable: true }
+        activa: { type: boolean }
+
+    ObjetivoPei:
+      type: object
+      required: [id, codigo, descripcion, anio, estado]
+      properties:
+        id: { type: integer, format: int64 }
+        codigo: { type: string }
+        descripcion: { type: string }
+        anio: { type: integer }
+        estado: { type: string, enum: [VIGENTE, VENCIDO] }
+
+    ActividadPoi:
+      type: object
+      required: [id, codigo, descripcion, objetivoPeiId, estado]
+      properties:
+        id: { type: integer, format: int64 }
+        codigo: { type: string }
+        descripcion: { type: string }
+        objetivoPeiId: { type: integer, format: int64 }
+        estado: { type: string, enum: [VIGENTE, VENCIDO] }
+
+    # =====================================================================
+    # D-03 - Schemas de suplencias.
+    # =====================================================================
+
+    SuplenciaRequest:
+      type: object
+      required: [suplenteId, fechaInicio, fechaFin]
+      properties:
+        suplenteId:
+          type: integer
+          format: int64
+          description: Usuario que asume temporalmente la asignación.
+        fechaInicio:
+          type: string
+          format: date
+          description: Fecha de inicio de la suplencia. Debe ser posterior a hoy.
+        fechaFin:
+          type: string
+          format: date
+          description: Fecha de fin de la suplencia. Debe ser posterior a fechaInicio.
+        motivo:
+          type: string
+          maxLength: 500
+
+    SuplenciaDetail:
+      type: object
+      required: [id, titularId, suplenteId, fechaInicio, fechaFin, estado, etag]
+      properties:
+        id: { type: integer, format: int64 }
+        titularId: { type: integer, format: int64 }
+        titularNombre: { type: string }
+        suplenteId: { type: integer, format: int64 }
+        suplenteNombre: { type: string }
+        fechaInicio: { type: string, format: date }
+        fechaFin: { type: string, format: date }
+        terminadaEn: { type: string, format: date-time, nullable: true }
+        estado: { type: string, enum: [ACTIVA, TERMINADA] }
+        version: { type: integer, format: int64 }
+        etag: { type: string }
+
+security:
+  - bearerAuth: []
+

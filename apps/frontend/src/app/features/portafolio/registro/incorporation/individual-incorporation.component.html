@@ -1,0 +1,212 @@
+<section class="incorporation" aria-labelledby="incorporation-title">
+  <h2 id="incorporation-title">Incorporación individual de información existente</h2>
+  <p class="incorporation__help" id="incorporation-help">
+    El Responsable registra la incorporación, <code>UnidadAdmin</code> asiste y el Evaluador valida.
+    Si la API detecta un conflicto, se solicitará su resolución antes de continuar.
+  </p>
+
+  <form
+    [formGroup]="form"
+    (ngSubmit)="enviar()"
+    novalidate
+    class="incorporation__form"
+    aria-labelledby="incorporation-form-title">
+    <h3 id="incorporation-form-title">Datos de la incorporación</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-fuente">Fuente</mat-label>
+      <input
+        matInput
+        id="incorporation-fuente"
+        type="text"
+        formControlName="fuente"
+        required
+        maxlength="200"
+        aria-describedby="incorporation-fuente-help incorporation-fuente-error" />
+      <mat-hint id="incorporation-fuente-help">Obligatorio. Máximo 200 caracteres.</mat-hint>
+      <mat-error id="incorporation-fuente-error">{{ mensajeError('fuente') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-fecha">Fecha de la fuente</mat-label>
+      <input
+        matInput
+        id="incorporation-fecha"
+        type="date"
+        formControlName="fechaFuente"
+        required
+        aria-describedby="incorporation-fecha-error" />
+      <mat-error id="incorporation-fecha-error">{{ mensajeError('fechaFuente') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-responsable">Responsable</mat-label>
+      <input
+        matInput
+        id="incorporation-responsable"
+        type="number"
+        formControlName="responsableId"
+        required
+        min="1"
+        aria-describedby="incorporation-responsable-help incorporation-responsable-error" />
+      <mat-hint id="incorporation-responsable-help">Identificador del Responsable titular.</mat-hint>
+      <mat-error id="incorporation-responsable-error">{{ mensajeError('responsableId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-documento">Documento fuente (id)</mat-label>
+      <input
+        matInput
+        id="incorporation-documento"
+        type="number"
+        formControlName="documentoFuenteId"
+        required
+        min="1"
+        aria-describedby="incorporation-documento-help incorporation-documento-error" />
+      <mat-hint id="incorporation-documento-help">Identificador de la versión documental aprobada.</mat-hint>
+      <mat-error id="incorporation-documento-error">{{ mensajeError('documentoFuenteId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-hash">Hash SHA-256 (64 caracteres hexadecimales)</mat-label>
+      <input
+        matInput
+        id="incorporation-hash"
+        type="text"
+        formControlName="hashOriginal"
+        required
+        maxlength="64"
+        pattern="[a-fA-F0-9]{64}"
+        aria-describedby="incorporation-hash-help incorporation-hash-error" />
+      <mat-hint id="incorporation-hash-help">El servidor recalcula y verifica; este valor se mantiene para auditoría.</mat-hint>
+      <mat-error id="incorporation-hash-error">{{ mensajeError('hashOriginal') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-datos">Datos originales (opcional)</mat-label>
+      <textarea
+        matInput
+        id="incorporation-datos"
+        formControlName="datosOriginales"
+        rows="4"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="incorporation-codigo">Código heredado (opcional)</mat-label>
+      <input
+        matInput
+        id="incorporation-codigo"
+        type="text"
+        formControlName="codigoHeredado"
+        maxlength="50" />
+    </mat-form-field>
+
+    <div role="alert" aria-live="assertive" class="incorporation__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+      }
+    </div>
+
+    <div class="incorporation__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="submitting()"
+        aria-describedby="incorporation-help">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Registrar incorporación
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (incorporation(); as detalle) {
+    <output class="incorporation__result" aria-live="polite">
+      <h3>Incorporación registrada</h3>
+      <p>Identificador: <strong>{{ detalle.id }}</strong></p>
+      <p>Estado: <strong>{{ detalle.estado }}</strong></p>
+      <p>Hash registrado: <code>{{ detalle.hashOriginal }}</code></p>
+    </output>
+  }
+
+  @if (conflictoDetectado(); as conflicto) {
+    <section
+      class="incorporation__conflict"
+      role="region"
+      aria-labelledby="incorporation-conflict-title">
+      <h3 id="incorporation-conflict-title">Conflicto detectado</h3>
+      <p>{{ conflicto.detail ?? conflicto.title }}</p>
+      <p><small>Código: {{ conflicto.code }} · Correlación: {{ conflicto.correlationId }}</small></p>
+
+      @if (tipoConflicto(); as tipo) {
+        <p>
+          Tipo de conflicto: <strong>{{ tipo }}</strong>
+        </p>
+      }
+
+      <form
+        [formGroup]="resolutionForm"
+        (ngSubmit)="enviarResolucion()"
+        novalidate
+        class="incorporation__resolution"
+        aria-labelledby="incorporation-conflict-title">
+        <mat-form-field appearance="outline">
+          <mat-label for="incorporation-conflicto-id">Identificador del conflicto</mat-label>
+          <input
+            matInput
+            id="incorporation-conflicto-id"
+            type="number"
+            formControlName="conflictoId"
+            required
+            min="1"
+            aria-describedby="incorporation-conflicto-id-error" />
+          <mat-error id="incorporation-conflicto-id-error">{{ mensajeErrorResolucion('conflictoId') }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label for="incorporation-resolucion">Resolución documentada</mat-label>
+          <textarea
+            matInput
+            id="incorporation-resolucion"
+            formControlName="resolucion"
+            required
+            maxlength="2000"
+            rows="4"
+            aria-describedby="incorporation-resolucion-help incorporation-resolucion-error"></textarea>
+          <mat-hint id="incorporation-resolucion-help">Obligatorio. Máximo 2000 caracteres.</mat-hint>
+          <mat-error id="incorporation-resolucion-error">{{ mensajeErrorResolucion('resolucion') }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label for="incorporation-resolucion-doc">Documento de soporte (opcional)</mat-label>
+          <input
+            matInput
+            id="incorporation-resolucion-doc"
+            type="number"
+            formControlName="documentoResolucionId"
+            min="1" />
+        </mat-form-field>
+
+        <div class="incorporation__actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="submitting()">
+            @if (submitting()) {
+              <mat-progress-spinner diameter="18" mode="indeterminate" />
+            } @else {
+              Documentar resolución
+            }
+          </button>
+          <button mat-stroked-button type="button" (click)="reintentar()">Reintentar incorporación</button>
+        </div>
+      </form>
+    </section>
+  }
+</section>

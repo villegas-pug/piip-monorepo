@@ -1,0 +1,362 @@
+<form
+  [formGroup]="form"
+  (ngSubmit)="enviar()"
+  novalidate
+  aria-labelledby="initiative-form-title"
+  class="initiative-form">
+  <h2 id="initiative-form-title">Presentación de iniciativa</h2>
+  <p class="initiative-form__help" id="initiative-form-help">
+    Complete los campos oficiales 5 a 12, 22 y 23 de la matriz institucional. Los campos
+    1, 2, 3, 4 y 13 los genera el backend al confirmar la presentación.
+  </p>
+
+  <app-effective-assignment-selector />
+
+  <section aria-labelledby="initiative-form-section-identidad" class="initiative-form__section">
+    <h3 id="initiative-form-section-identidad">Identidad de la iniciativa</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-nombre">Nombre de la iniciativa</mat-label>
+      <input
+        matInput
+        id="initiative-nombre"
+        type="text"
+        formControlName="nombre"
+        required
+        maxlength="500"
+        aria-describedby="initiative-nombre-help initiative-nombre-error" />
+      <mat-hint id="initiative-nombre-help">Obligatorio. Máximo 500 caracteres.</mat-hint>
+      <mat-error id="initiative-nombre-error">{{ mensajeError('nombre') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-tipo-solucion">Tipo de solución</mat-label>
+      <mat-select
+        id="initiative-tipo-solucion"
+        formControlName="tipoSolucion"
+        required
+        aria-describedby="initiative-tipo-solucion-error">
+        @for (opcion of tipoSolucionOpciones; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-error id="initiative-tipo-solucion-error">{{ mensajeError('tipoSolucion') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-fuente">Fuente u origen</mat-label>
+      <mat-select
+        id="initiative-fuente"
+        formControlName="fuenteOrigen"
+        required
+        aria-describedby="initiative-fuente-help initiative-fuente-error">
+        @for (opcion of fuenteOrigenOpciones; track opcion) {
+          <mat-option [value]="opcion">{{ opcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint id="initiative-fuente-help">Si selecciona OTROS debe describir la fuente.</mat-hint>
+      <mat-error id="initiative-fuente-error">{{ mensajeError('fuenteOrigen') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-detalle-fuente">Detalle de la fuente</mat-label>
+      <input
+        matInput
+        id="initiative-detalle-fuente"
+        type="text"
+        formControlName="detalleFuente"
+        maxlength="500"
+        aria-describedby="initiative-detalle-fuente-help" />
+      <mat-hint id="initiative-detalle-fuente-help">Obligatorio solo cuando la fuente es OTROS. Máximo 500 caracteres.</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-descripcion" class="initiative-form__section">
+    <h3 id="initiative-form-section-descripcion">Descripción</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-problema">Problema público</mat-label>
+      <textarea
+        matInput
+        id="initiative-problema"
+        formControlName="problemaPublico"
+        required
+        maxlength="2000"
+        rows="4"
+        aria-describedby="initiative-problema-help initiative-problema-error"></textarea>
+      <mat-hint id="initiative-problema-help">Obligatorio. Máximo 2000 caracteres.</mat-hint>
+      <mat-error id="initiative-problema-error">{{ mensajeError('problemaPublico') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-solucion">Solución propuesta</mat-label>
+      <textarea
+        matInput
+        id="initiative-solucion"
+        formControlName="solucionPropuesta"
+        maxlength="2000"
+        rows="4"
+        aria-describedby="initiative-solucion-help"></textarea>
+      <mat-hint id="initiative-solucion-help">Opcional. Máximo 2000 caracteres.</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-planeamiento" class="initiative-form__section">
+    <h3 id="initiative-form-section-planeamiento">Responsable y planeamiento</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-responsable">Responsable titular</mat-label>
+      <input
+        matInput
+        id="initiative-responsable"
+        type="number"
+        formControlName="responsableId"
+        required
+        min="1"
+        aria-describedby="initiative-responsable-help initiative-responsable-error" />
+      <mat-hint id="initiative-responsable-help">Identificador de la persona titular. Exactamente uno.</mat-hint>
+      <mat-error id="initiative-responsable-error">{{ mensajeError('responsableId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-pei">Objetivo PEI</mat-label>
+      <mat-select
+        id="initiative-pei"
+        formControlName="objetivoPeiId"
+        required
+        aria-describedby="initiative-pei-help initiative-pei-error">
+        @for (objetivo of objetivosPei(); track objetivo.id) {
+          <mat-option [value]="objetivo.id">{{ objetivo.codigo }} · {{ objetivo.descripcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint id="initiative-pei-help">Catálogo vigente. Exactamente uno.</mat-hint>
+      <mat-error id="initiative-pei-error">{{ mensajeError('objetivoPeiId') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-poi">Actividad POI</mat-label>
+      <mat-select
+        id="initiative-poi"
+        formControlName="actividadPoiId"
+        required
+        aria-describedby="initiative-poi-help initiative-poi-error">
+        @for (actividad of actividadesPoi(); track actividad.id) {
+          <mat-option [value]="actividad.id">{{ actividad.codigo }} · {{ actividad.descripcion }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint id="initiative-poi-help">Catálogo vigente. Exactamente una.</mat-hint>
+      <mat-error id="initiative-poi-error">{{ mensajeError('actividadPoiId') }}</mat-error>
+    </mat-form-field>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-unidades" class="initiative-form__section">
+    <h3 id="initiative-form-section-unidades">Unidades responsables</h3>
+    <p id="initiative-form-unidades-help">Una o más unidades, exactamente una principal.</p>
+
+    <div
+      formArrayName="unidades"
+      role="group"
+      aria-describedby="initiative-form-unidades-help"
+      class="initiative-form__array">
+      @for (unidad of unidades.controls; track $index; let indice = $index) {
+        <fieldset [formGroupName]="indice" class="initiative-form__array-item">
+          <legend>Unidad {{ indice + 1 }}</legend>
+
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'initiative-unidad-' + indice">Unidad</mat-label>
+            <mat-select
+              [id]="'initiative-unidad-' + indice"
+              formControlName="unidadId"
+              required
+              [attr.aria-describedby]="'initiative-unidad-' + indice + '-error'">
+              @for (unidadCatalogo of unidadesCatalogo(); track unidadCatalogo.id) {
+                <mat-option [value]="unidadCatalogo.id">{{ unidadCatalogo.codigo }} · {{ unidadCatalogo.nombre }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-checkbox
+            [id]="'initiative-unidad-principal-' + indice"
+            formControlName="principal"
+            (change)="marcarUnidadPrincipal(indice)">
+            Unidad principal
+          </mat-checkbox>
+
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            (click)="removerUnidad(indice)"
+            [attr.aria-label]="'Quitar unidad ' + (indice + 1)">
+            <mat-icon>delete</mat-icon>
+            Quitar
+          </button>
+        </fieldset>
+      }
+    </div>
+
+    @if (unidades.length === 0 || form.controls.unidades.errors?.['unidadesInvalidas']) {
+      <p class="initiative-form__error" id="initiative-form-unidades-error" role="alert">
+        {{ mensajeError('unidades') }}
+      </p>
+    }
+
+    <button mat-stroked-button type="button" (click)="agregarUnidad()">
+      <mat-icon>add</mat-icon>
+      Agregar unidad
+    </button>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-participantes" class="initiative-form__section">
+    <h3 id="initiative-form-section-participantes">Participantes (opcional)</h3>
+    <p id="initiative-form-participantes-help">Personas adicionales. Los equipos se representan por sus integrantes.</p>
+
+    <div
+      formArrayName="participantesPersona"
+      role="group"
+      aria-describedby="initiative-form-participantes-help"
+      class="initiative-form__array">
+      @for (participante of participantes.controls; track $index; let indice = $index) {
+        <fieldset [formGroupName]="indice" class="initiative-form__array-item">
+          <legend>Participante {{ indice + 1 }}</legend>
+
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'initiative-participante-nombres-' + indice">Nombres completos</mat-label>
+            <input
+              matInput
+              [id]="'initiative-participante-nombres-' + indice"
+              type="text"
+              formControlName="nombresCompletos"
+              required
+              maxlength="200" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'initiative-participante-institucion-' + indice">Institución</mat-label>
+            <input
+              matInput
+              [id]="'initiative-participante-institucion-' + indice"
+              type="text"
+              formControlName="institucion"
+              maxlength="200" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'initiative-participante-funcion-' + indice">Función</mat-label>
+            <input
+              matInput
+              [id]="'initiative-participante-funcion-' + indice"
+              type="text"
+              formControlName="funcion"
+              maxlength="200" />
+          </mat-form-field>
+
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            (click)="removerParticipante(indice)"
+            [attr.aria-label]="'Quitar participante ' + (indice + 1)">
+            <mat-icon>delete</mat-icon>
+            Quitar
+          </button>
+        </fieldset>
+      }
+    </div>
+
+    <button mat-stroked-button type="button" (click)="agregarParticipante()">
+      <mat-icon>person_add</mat-icon>
+      Agregar participante
+    </button>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-digital" class="initiative-form__section">
+    <h3 id="initiative-form-section-digital">Componente digital</h3>
+
+    <mat-radio-group
+      formControlName="componenteDigital"
+      aria-labelledby="initiative-form-section-digital"
+      required>
+      <mat-radio-button [value]="false">No</mat-radio-button>
+      <mat-radio-button [value]="true">Sí</mat-radio-button>
+    </mat-radio-group>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-detalle-digital">Detalle del componente digital</mat-label>
+      <input
+        matInput
+        id="initiative-detalle-digital"
+        type="text"
+        formControlName="detalleComponenteDigital"
+        maxlength="500"
+        aria-describedby="initiative-detalle-digital-help" />
+      <mat-hint id="initiative-detalle-digital-help">Obligatorio cuando la respuesta es Sí. Máximo 500 caracteres.</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-nota" class="initiative-form__section">
+    <h3 id="initiative-form-section-nota">Nota (opcional)</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label for="initiative-nota">Nota institucional</mat-label>
+      <textarea
+        matInput
+        id="initiative-nota"
+        formControlName="nota"
+        maxlength="1000"
+        rows="3"></textarea>
+      <mat-hint>Máximo 1000 caracteres.</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <section aria-labelledby="initiative-form-section-ficha" class="initiative-form__section">
+    <h3 id="initiative-form-section-ficha">Ficha documental</h3>
+    <p id="initiative-form-ficha-help">Obligatoria. PDF, Office Open XML, JPEG o PNG. Hasta 100 MB. El servidor calcula el SHA-256.</p>
+
+    <input
+      type="file"
+      id="initiative-ficha"
+      (change)="onFichaSeleccionada($event)"
+      accept=".pdf,.docx,.xlsx,.pptx,.jpg,.jpeg,.png"
+      aria-describedby="initiative-form-ficha-help" />
+
+    @if (fichaArchivo(); as archivo) {
+      <p class="initiative-form__hint">Archivo seleccionado: {{ archivo.name }} ({{ archivo.size }} bytes)</p>
+    }
+    @if (fichaError(); as error) {
+      <p class="initiative-form__error" role="alert">{{ error }}</p>
+    }
+  </section>
+
+  <div role="alert" aria-live="assertive" class="initiative-form__server-errors">
+    @if (problem(); as problemDetail) {
+      <h4>{{ problemDetail.title }}</h4>
+      <p>{{ problemDetail.detail }}</p>
+      <p><small>Código: {{ problemDetail.code }} · Correlación: {{ problemDetail.correlationId }}</small></p>
+    }
+  </div>
+
+  <div class="initiative-form__actions">
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+      [disabled]="submitting()"
+      aria-describedby="initiative-form-help">
+      @if (submitting()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" />
+      } @else {
+        Presentar iniciativa
+      }
+    </button>
+  </div>
+
+  @if (submittedInitiative(); as detalle) {
+    <output class="initiative-form__result" aria-live="polite">
+      <h3>Iniciativa presentada</h3>
+      <p>Código generado: <strong>{{ detalle.codigo }}</strong></p>
+      <p>Estado: <strong>{{ detalle.estado }}</strong></p>
+      <p>Fecha de inicio: <strong>{{ detalle.fechaInicio }}</strong></p>
+    </output>
+  }
+</form>

@@ -1,0 +1,288 @@
+<section class="derived-project" aria-labelledby="derived-project-title">
+  <h2 id="derived-project-title">Crear proyecto derivado</h2>
+  <p class="derived-project__help" id="derived-project-help">
+    El Responsable autorizado crea el unico proyecto derivado de una iniciativa en estado
+    <code>INICIATIVA_APROBADA</code>. El documento formal de aprobacion o autorizacion de inicio
+    es obligatorio.
+  </p>
+
+  @if (iniciativa(); as ctx) {
+    <output class="derived-project__contexto" aria-live="polite">
+      <p><strong>Codigo:</strong> {{ ctx.codigo }}</p>
+      <p><strong>Estado:</strong> {{ ctx.estado }}</p>
+      @if (ctx.nombre) {
+        <p><strong>Nombre:</strong> {{ ctx.nombre }}</p>
+      }
+      <p><strong>Version:</strong> {{ ctx.version }} &middot; <strong>ETag:</strong> {{ etagActual() }}</p>
+    </output>
+  }
+
+  @if (estadoBloqueante(); as estado) {
+    <div role="status" aria-live="polite" class="derived-project__estado-bloqueante">
+      La iniciativa se encuentra en estado <strong>{{ estado }}</strong>. La creacion del proyecto
+      derivado solo se permite cuando la iniciativa esta en
+      <code>INICIATIVA_APROBADA</code>.
+    </div>
+  }
+
+  <form
+    [formGroup]="form"
+    (ngSubmit)="enviar()"
+    novalidate
+    [id]="formId"
+    class="derived-project__form"
+    aria-labelledby="derived-form-titulo">
+    <h3 id="derived-form-titulo">Datos del proyecto derivado</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idNombre">Nombre</mat-label>
+      <input
+        matInput
+        type="text"
+        [id]="idNombre"
+        formControlName="nombre"
+        required
+        maxlength="500"
+        [attr.aria-describedby]="idNombre + '-help ' + idNombre + '-error'" />
+      <mat-hint [id]="idNombre + '-help'">Obligatorio. Maximo 500 caracteres.</mat-hint>
+      <mat-error [id]="idNombre + '-error'">{{ mensajeError('nombre') }}</mat-error>
+    </mat-form-field>
+
+    <div class="derived-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idObjetivoPei">Objetivo PEI (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idObjetivoPei"
+          formControlName="objetivoPeiId"
+          required
+          min="1"
+          [attr.aria-describedby]="idObjetivoPei + '-help ' + idObjetivoPei + '-error'" />
+        <mat-hint [id]="idObjetivoPei + '-help'">Campo oficial 6.</mat-hint>
+        <mat-error [id]="idObjetivoPei + '-error'">{{ mensajeError('objetivoPeiId') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idActividadPoi">Actividad POI (id)</mat-label>
+        <input
+          matInput
+          type="number"
+          [id]="idActividadPoi"
+          formControlName="actividadPoiId"
+          required
+          min="1"
+          [attr.aria-describedby]="idActividadPoi + '-help ' + idActividadPoi + '-error'" />
+        <mat-hint [id]="idActividadPoi + '-help'">Campo oficial 7.</mat-hint>
+        <mat-error [id]="idActividadPoi + '-error'">{{ mensajeError('actividadPoiId') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <fieldset class="derived-project__units" formArrayName="unidades" aria-labelledby="derived-unidades-titulo">
+      <legend id="derived-unidades-titulo">Unidades responsables</legend>
+      <p class="derived-project__units-help" [id]="idNombre + '-help'">
+        Debe existir al menos una unidad y exactamente una principal.
+      </p>
+
+      @for (unidad of unidades.controls; track $index; let i = $index) {
+        <div class="derived-project__unit" [formGroupName]="i">
+          <mat-form-field appearance="outline">
+            <mat-label [attr.for]="'derived-unidad-' + i">Unidad (id)</mat-label>
+            <input
+              matInput
+              type="number"
+              [id]="'derived-unidad-' + i"
+              formControlName="unidadId"
+              min="1"
+              [attr.aria-describedby]="'derived-unidad-' + i + '-help'" />
+            <mat-hint [id]="'derived-unidad-' + i + '-help'">Identificador de la unidad.</mat-hint>
+          </mat-form-field>
+
+          <mat-checkbox formControlName="principal">Principal</mat-checkbox>
+
+          <button
+            mat-stroked-button
+            type="button"
+            [attr.aria-label]="'Quitar unidad ' + (i + 1)"
+            (click)="quitarUnidad(i)">
+            Quitar
+          </button>
+        </div>
+      }
+
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="agregar-unidad"
+        (click)="agregarUnidad()">
+        Agregar unidad
+      </button>
+
+      @if (mensajeError('unidades')) {
+        <p class="derived-project__units-error" role="alert">
+          {{ mensajeError('unidades') }}
+        </p>
+      }
+    </fieldset>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idTitular">Titular (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idTitular"
+        formControlName="titularId"
+        required
+        min="1"
+        [attr.aria-describedby]="idTitular + '-help ' + idTitular + '-error'" />
+      <mat-hint [id]="idTitular + '-help'">Campo oficial 8 (responsable titular).</mat-hint>
+      <mat-error [id]="idTitular + '-error'">{{ mensajeError('titularId') }}</mat-error>
+    </mat-form-field>
+
+    <div class="derived-project__row">
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idFuente">Fuente de origen</mat-label>
+        <mat-select
+          [id]="idFuente"
+          formControlName="fuenteOrigen"
+          required
+          [attr.aria-describedby]="idFuente + '-help ' + idFuente + '-error'">
+          @for (opcion of fuenteOrigenOpciones; track opcion) {
+            <mat-option [value]="opcion">{{ opcion }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint [id]="idFuente + '-help'">Discriminador del catalogo canonico.</mat-hint>
+        <mat-error [id]="idFuente + '-error'">{{ mensajeError('fuenteOrigen') }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idDetalleFuente">Detalle de la fuente</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idDetalleFuente"
+          formControlName="detalleFuente"
+          maxlength="500"
+          [attr.aria-describedby]="idDetalleFuente + '-help ' + idDetalleFuente + '-error'" />
+        <mat-hint [id]="idDetalleFuente + '-help'">Obligatorio solo cuando la fuente es OTROS.</mat-hint>
+        <mat-error [id]="idDetalleFuente + '-error'">{{ mensajeError('detalleFuente') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDescripcion">Descripcion</mat-label>
+      <textarea
+        matInput
+        [id]="idDescripcion"
+        formControlName="descripcion"
+        required
+        maxlength="2000"
+        rows="4"
+        [attr.aria-describedby]="idDescripcion + '-help ' + idDescripcion + '-error'"></textarea>
+      <mat-hint [id]="idDescripcion + '-help'">Obligatoria. Maximo 2000 caracteres.</mat-hint>
+      <mat-error [id]="idDescripcion + '-error'">{{ mensajeError('descripcion') }}</mat-error>
+    </mat-form-field>
+
+    <div class="derived-project__row">
+      <mat-checkbox [id]="idComponenteDigital" formControlName="componenteDigital">
+        Componente digital
+      </mat-checkbox>
+
+      <mat-form-field appearance="outline">
+        <mat-label [attr.for]="idDetalleDigital">Detalle del componente digital</mat-label>
+        <input
+          matInput
+          type="text"
+          [id]="idDetalleDigital"
+          formControlName="detalleComponenteDigital"
+          maxlength="500"
+          [attr.aria-describedby]="idDetalleDigital + '-help ' + idDetalleDigital + '-error'" />
+        <mat-hint [id]="idDetalleDigital + '-help'">Obligatorio al activar el flag.</mat-hint>
+        <mat-error [id]="idDetalleDigital + '-error'">{{ mensajeError('detalleComponenteDigital') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idNota">Nota</mat-label>
+      <textarea
+        matInput
+        [id]="idNota"
+        formControlName="nota"
+        maxlength="1000"
+        rows="3"
+        [attr.aria-describedby]="idNota + '-help ' + idNota + '-error'"></textarea>
+      <mat-hint [id]="idNota + '-help'">Opcional. Maximo 1000 caracteres.</mat-hint>
+      <mat-error [id]="idNota + '-error'">{{ mensajeError('nota') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label [attr.for]="idDocumentoFormal">{{ tituloDocumentoFormal }} (id)</mat-label>
+      <input
+        matInput
+        type="number"
+        [id]="idDocumentoFormal"
+        formControlName="documentoFormalId"
+        required
+        min="1"
+        [attr.aria-describedby]="idDocumentoFormal + '-help ' + idDocumentoFormal + '-error'" />
+      <mat-hint [id]="idDocumentoFormal + '-help'">Version documental aprobada (campo 15).</mat-hint>
+      <mat-error [id]="idDocumentoFormal + '-error'">{{ mensajeError('documentoFormalId') }}</mat-error>
+    </mat-form-field>
+
+    <div role="alert" aria-live="assertive" class="derived-project__server-errors">
+      @if (problem(); as problemDetail) {
+        <h4>{{ problemDetail.title }}</h4>
+        <p>{{ problemDetail.detail }}</p>
+        <p><small>Codigo: {{ problemDetail.code }} &middot; Correlacion: {{ problemDetail.correlationId }}</small></p>
+        @if (violacionesPara('documentoFormalId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="derived-project__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('titularId'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="derived-project__violacion">{{ v.message }}</p>
+          }
+        }
+        @if (violacionesPara('unidades'); as violaciones) {
+          @for (v of violaciones; track v.message) {
+            <p class="derived-project__violacion">{{ v.message }}</p>
+          }
+        }
+      }
+    </div>
+
+    <div class="derived-project__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        data-action="crear-derivado"
+        [disabled]="submitting() || !permiteCrearDerivado()">
+        @if (submitting()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          Crear proyecto derivado
+        }
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-action="cancelar-derivado"
+        [attr.aria-controls]="formId"
+        (click)="cancelarCreacion()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+
+  <output class="derived-project__result" aria-live="polite">
+    @if (proyectoCreado(); as detalle) {
+      <h3>Proyecto derivado creado</h3>
+      <p>Codigo: <strong>{{ detalle.codigo }}</strong></p>
+      <p>Estado: <strong>{{ detalle.estado }}</strong></p>
+      <p>Fecha de inicio: <code>{{ detalle.fechaInicio }}</code></p>
+      <p>ETag: <code>{{ detalle.etag }}</code></p>
+    }
+  </output>
+</section>

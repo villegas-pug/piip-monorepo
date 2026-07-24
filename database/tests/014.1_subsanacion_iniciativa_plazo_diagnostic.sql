@@ -1,0 +1,291 @@
+-- ============================================================================
+-- PIIP MIDAGRI - Diagnostico de solo lectura 014.1 - Huella de 014 y
+-- precondiciones para 014.1
+-- Archivo    : 014.1_subsanacion_iniciativa_plazo_diagnostic.sql
+-- Esquema    : KALLPA_PIIP
+-- Modulo     : portafolio
+-- Proposito  : antes de ejecutar manualmente 014.1, verificar la huella
+--              parcial confirmada de 014, la presencia de los 32 objetos
+--              vigentes previos y la ausencia de las tablas/constraints
+--              que 014.1 va a crear.
+--
+-- ADVERTENCIA: este script es exclusivamente de solo lectura. No contiene DDL,
+-- DML, COMMIT, ROLLBACK, SAVEPOINT ni cambios persistentes de sesion.
+-- No ejecutar contra ambientes compartidos sin autorizacion humana.
+-- Ejecucion : manual por DBA autorizado, con salida DBMS_OUTPUT habilitada.
+-- ============================================================================
+
+SET SERVEROUTPUT ON SIZE UNLIMITED
+SET FEEDBACK ON
+SET VERIFY OFF
+
+PROMPT [014.1-diagnostic] Tablas vigentes previas y tablas parciales de 014...
+
+DECLARE
+    v_total PLS_INTEGER;
+BEGIN
+    FOR r IN (
+        SELECT TABLE_NAME
+          FROM USER_TABLES
+         WHERE TABLE_NAME IN (
+                'UNIDAD_EJECUTORA','USUARIO','ROL','USUARIO_ROL_UNIDAD',
+                'PROYECTO','PROYECTO_UNIDAD_ORGANICA','TRANSICION_PERMITIDA',
+                'TIPO_DOCUMENTO','DOCUMENTO','TRANSICION_ESTADO',
+                'SECUENCIA_CODIGO','AUDITORIA_ACCESO','AUDITORIA_EVENTO',
+                'SOLICITUD_IDEMPOTENTE',
+                'EXPEDIENTE_INSTITUCIONAL','DOCUMENTO_SERIE',
+                'CAT_OBJETIVO_PEI_VERSION','CAT_OBJETIVO_PEI',
+                'CAT_ACTIVIDAD_POI_VERSION','CAT_ACTIVIDAD_POI',
+                'MATRIZ_FUNCIONAL_VERSION','MATRIZ_FUNCION',
+                'MATRIZ_FUNCION_PERFIL_UNIDAD',
+                'USUARIO_ROL_UNIDAD_EVENTO','SUPLENCIA_FUNCIONAL',
+                'OPERACION_APROVISIONAMIENTO',
+                'DOCUMENTO_CLASIFICACION_HIST','DOCUMENTO_PUBLICACION',
+                'INICIATIVA_PROYECTO','PROYECTO_RESPONSABLE',
+                'PROYECTO_CAMPO_CLASIFICACION','PROYECTO_CAMPO_CLASIF_HIST',
+                'EVALUACION_INICIATIVA','SUBSANACION_INICIATIVA'
+               )
+         ORDER BY TABLE_NAME
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('TABLA_VIGENTE=' || r.TABLE_NAME);
+    END LOOP;
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_TABLES
+     WHERE TABLE_NAME IN (
+            'EVALUACION_INICIATIVA','SUBSANACION_INICIATIVA',
+            'APLICABILIDAD_INICIATIVA','APLICABILIDAD_CRITERIO'
+           );
+    DBMS_OUTPUT.PUT_LINE('TOTAL_TABLAS_014=' || TO_CHAR(v_total) || '/4');
+END;
+/
+
+PROMPT [014.1-diagnostic] Constraints previos de EVALUACION_INICIATIVA y SUBSANACION_INICIATIVA (8 + 4 = 12)...
+
+DECLARE
+    v_total PLS_INTEGER;
+    v_encontrados PLS_INTEGER := 0;
+    v_incidencias VARCHAR2(4000);
+BEGIN
+    FOR r IN (
+        WITH esperados (NOMBRE_ESPERADO, TABLA_ESPERADA, TIPO_ESPERADO) AS (
+            SELECT 'PK_EVALUACION_INICIATIVA',  'EVALUACION_INICIATIVA',  'P' FROM DUAL UNION ALL
+            SELECT 'UK_EI_INICIATIVA',          'EVALUACION_INICIATIVA',  'U' FROM DUAL UNION ALL
+            SELECT 'FK_EI_INICIATIVA',          'EVALUACION_INICIATIVA',  'R' FROM DUAL UNION ALL
+            SELECT 'FK_EI_EVALUADOR',           'EVALUACION_INICIATIVA',  'R' FROM DUAL UNION ALL
+            SELECT 'FK_EI_ROL_EFECTIVO',        'EVALUACION_INICIATIVA',  'R' FROM DUAL UNION ALL
+            SELECT 'FK_EI_UNIDAD_EFECTIVA',     'EVALUACION_INICIATIVA',  'R' FROM DUAL UNION ALL
+            SELECT 'FK_EI_DOCUMENTO_OPINION',   'EVALUACION_INICIATIVA',  'R' FROM DUAL UNION ALL
+            SELECT 'CK_EI_OBSERVACION_LONGITUD','EVALUACION_INICIATIVA',  'C' FROM DUAL UNION ALL
+            SELECT 'PK_SUBSANACION_INICIATIVA', 'SUBSANACION_INICIATIVA', 'P' FROM DUAL UNION ALL
+            SELECT 'UK_SI_INICIATIVA',          'SUBSANACION_INICIATIVA', 'U' FROM DUAL UNION ALL
+            SELECT 'FK_SI_INICIATIVA',          'SUBSANACION_INICIATIVA', 'R' FROM DUAL UNION ALL
+            SELECT 'FK_SI_ACTOR',               'SUBSANACION_INICIATIVA', 'R' FROM DUAL
+        )
+        SELECT e.NOMBRE_ESPERADO,
+               e.TABLA_ESPERADA,
+               e.TIPO_ESPERADO,
+               c.CONSTRAINT_NAME AS NOMBRE_REAL,
+               c.CONSTRAINT_TYPE,
+               c.STATUS
+          FROM esperados e
+          LEFT JOIN USER_CONSTRAINTS c
+            ON c.TABLE_NAME = e.TABLA_ESPERADA
+           AND c.CONSTRAINT_NAME = e.NOMBRE_ESPERADO
+         ORDER BY e.TABLA_ESPERADA, e.NOMBRE_ESPERADO
+    ) LOOP
+        IF r.NOMBRE_REAL IS NOT NULL THEN
+            v_encontrados := v_encontrados + 1;
+        ELSE
+            v_incidencias := v_incidencias || r.NOMBRE_ESPERADO || '[MISSING];';
+        END IF;
+        DBMS_OUTPUT.PUT_LINE(
+            'ESPERADO=' || r.NOMBRE_ESPERADO ||
+            ';TABLA=' || r.TABLA_ESPERADA ||
+            ';TIPO_ESPERADO=' || r.TIPO_ESPERADO ||
+            ';ENCONTRADO=' || CASE WHEN r.NOMBRE_REAL IS NULL THEN 'N' ELSE 'S' END ||
+            ';TIPO=' || NVL(r.CONSTRAINT_TYPE, '<NULL>') ||
+            ';ESTADO=' || NVL(r.STATUS, '<NULL>')
+        );
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('TOTAL_CONSTRAINTS_ENCONTRADOS=' || TO_CHAR(v_encontrados) || '/12');
+    DBMS_OUTPUT.PUT_LINE('INCIDENCIAS_PREVIAS=' || NVL(v_incidencias, '<NINGUNA>'));
+END;
+/
+
+PROMPT [014.1-diagnostic] Columnas de EVALUACION_INICIATIVA y SUBSANACION_INICIATIVA...
+
+DECLARE
+    v_total PLS_INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_total
+      FROM USER_TAB_COLUMNS
+     WHERE TABLE_NAME = 'EVALUACION_INICIATIVA';
+    DBMS_OUTPUT.PUT_LINE('COLUMNAS_EVALUACION_INICIATIVA=' || TO_CHAR(v_total));
+    FOR r IN (
+        SELECT COLUMN_NAME, DATA_TYPE, NULLABLE
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'EVALUACION_INICIATIVA'
+         ORDER BY COLUMN_ID
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'TABLA=EVALUACION_INICIATIVA;COLUMNA=' || r.COLUMN_NAME ||
+            ';TIPO=' || r.DATA_TYPE ||
+            ';NULLABLE=' || r.NULLABLE
+        );
+    END LOOP;
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_TAB_COLUMNS
+     WHERE TABLE_NAME = 'SUBSANACION_INICIATIVA';
+    DBMS_OUTPUT.PUT_LINE('COLUMNAS_SUBSANACION_INICIATIVA=' || TO_CHAR(v_total));
+    FOR r IN (
+        SELECT COLUMN_NAME, DATA_TYPE, NULLABLE
+          FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = 'SUBSANACION_INICIATIVA'
+         ORDER BY COLUMN_ID
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'TABLA=SUBSANACION_INICIATIVA;COLUMNA=' || r.COLUMN_NAME ||
+            ';TIPO=' || r.DATA_TYPE ||
+            ';NULLABLE=' || r.NULLABLE
+        );
+    END LOOP;
+END;
+/
+
+PROMPT [014.1-diagnostic] Secuencias vigentes previas a 014.1 (esperadas 29)...
+
+DECLARE
+    v_total PLS_INTEGER;
+BEGIN
+    FOR r IN (
+        SELECT SEQUENCE_NAME, INCREMENT_BY, CACHE_SIZE, CYCLE_FLAG
+          FROM USER_SEQUENCES
+         WHERE SEQUENCE_NAME IN (
+                'SEQ_UNIDAD_EJECUTORA','SEQ_USUARIO','SEQ_USUARIO_ROL_UNIDAD',
+                'SEQ_PROYECTO','SEQ_PROYECTO_UO','SEQ_DOCUMENTO',
+                'SEQ_TRANSICION_ESTADO','SEQ_SECUENCIA_CODIGO',
+                'SEQ_AUDITORIA_ACCESO','SEQ_AUDITORIA_EVENTO',
+                'SEQ_SOLICITUD_IDEMPOTENTE',
+                'SEQ_EXPEDIENTE_INSTITUCIONAL','SEQ_DOCUMENTO_SERIE',
+                'SEQ_DOCUMENTO_CLASIF_HIST','SEQ_DOCUMENTO_PUBLICACION',
+                'SEQ_OBJETIVO_PEI_VERSION','SEQ_OBJETIVO_PEI',
+                'SEQ_ACTIVIDAD_POI_VERSION','SEQ_ACTIVIDAD_POI',
+                'SEQ_MATRIZ_VERSION','SEQ_MATRIZ_FUNCION','SEQ_MATRIZ_COMBINACION',
+                'SEQ_URU_EVENTO','SEQ_SUPLENCIA_FUNCIONAL',
+                'SEQ_OPERACION_APROVISIONAMIENTO',
+                'SEQ_EVALUACION_INICIATIVA','SEQ_SUBSANACION_INICIATIVA',
+                'SEQ_APLICABILIDAD_INICIATIVA','SEQ_APLICABILIDAD_CRITERIO'
+               )
+         ORDER BY SEQUENCE_NAME
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'SECUENCIA_PREVIA=' || r.SEQUENCE_NAME ||
+            ';INCREMENT_BY=' || TO_CHAR(r.INCREMENT_BY) ||
+            ';CACHE_SIZE=' || TO_CHAR(r.CACHE_SIZE) ||
+            ';CYCLE=' || r.CYCLE_FLAG
+        );
+    END LOOP;
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_SEQUENCES
+     WHERE SEQUENCE_NAME IN (
+            'SEQ_UNIDAD_EJECUTORA','SEQ_USUARIO','SEQ_USUARIO_ROL_UNIDAD',
+            'SEQ_PROYECTO','SEQ_PROYECTO_UO','SEQ_DOCUMENTO',
+            'SEQ_TRANSICION_ESTADO','SEQ_SECUENCIA_CODIGO',
+            'SEQ_AUDITORIA_ACCESO','SEQ_AUDITORIA_EVENTO',
+            'SEQ_SOLICITUD_IDEMPOTENTE',
+            'SEQ_EXPEDIENTE_INSTITUCIONAL','SEQ_DOCUMENTO_SERIE',
+            'SEQ_DOCUMENTO_CLASIF_HIST','SEQ_DOCUMENTO_PUBLICACION',
+            'SEQ_OBJETIVO_PEI_VERSION','SEQ_OBJETIVO_PEI',
+            'SEQ_ACTIVIDAD_POI_VERSION','SEQ_ACTIVIDAD_POI',
+            'SEQ_MATRIZ_VERSION','SEQ_MATRIZ_FUNCION','SEQ_MATRIZ_COMBINACION',
+            'SEQ_URU_EVENTO','SEQ_SUPLENCIA_FUNCIONAL',
+            'SEQ_OPERACION_APROVISIONAMIENTO',
+            'SEQ_EVALUACION_INICIATIVA','SEQ_SUBSANACION_INICIATIVA',
+            'SEQ_APLICABILIDAD_INICIATIVA','SEQ_APLICABILIDAD_CRITERIO'
+           );
+    DBMS_OUTPUT.PUT_LINE('TOTAL_SECUENCIAS_PREVIAS=' || TO_CHAR(v_total) || '/29');
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_SEQUENCES
+     WHERE SEQUENCE_NAME IN (
+            'SEQ_INICIATIVA_PROYECTO','SEQ_PROYECTO_RESPONSABLE',
+            'SEQ_PROY_CAMPO_CLASIF','SEQ_PROY_CAMPO_CLASIF_HIST',
+            'SEQ_PARTICIPANTE_PERSONA','SEQ_PROY_PART_PERSONA','SEQ_PROY_PART_UNIDAD',
+            'SEQ_PLANIFICACION_PROYECTO','SEQ_CICLO_PROYECTO','SEQ_CICLO_EVIDENCIA',
+            'SEQ_PRODUCTO_PARCIAL','SEQ_PRESENTACION_PRODUCTO_FINAL',
+            'SEQ_VALIDACION_RESULTADO','SEQ_CIERRE_PROYECTO',
+            'SEQ_INCORPORACION_REGISTRO','SEQ_INCORPORACION_CAMBIO',
+            'SEQ_INCORPORACION_CONFLICTO',
+            'SEQ_REPORTE_INSTITUCIONAL','SEQ_REPORTE_SNAPSHOT','SEQ_REPORTE_ARCHIVO',
+            'SEQ_REPORTE_APROBACION','SEQ_REPORTE_DESTINATARIO','SEQ_REPORTE_REMISION'
+           );
+    DBMS_OUTPUT.PUT_LINE('TOTAL_SECUENCIAS_NO_VIGENTES_DETECTADAS=' || TO_CHAR(v_total) || ' (esperado 0)');
+END;
+/
+
+PROMPT [014.1-diagnostic] Ausencia de objetos futuros estrictos de 014 (015, 016, 017)...
+
+DECLARE
+    v_total PLS_INTEGER;
+    v_detalle VARCHAR2(4000);
+BEGIN
+    -- 014 solo tiene como sucesores estrictos a 015, 016 y 017 dentro
+    -- del alcance fisico activo. Los objetos de 001-014 ya estan
+    -- vigentes y no deben figurar aqui. Los diferidos 018-021 quedan
+    -- fuera del alcance fisico.
+    FOR r IN (
+        SELECT TABLE_NAME
+          FROM USER_TABLES
+         WHERE TABLE_NAME IN (
+                'PLANIFICACION_PROYECTO','CICLO_PROYECTO','CICLO_EVIDENCIA',
+                'PRODUCTO_PARCIAL','PRESENTACION_PRODUCTO_FINAL',
+                'VALIDACION_RESULTADO','CIERRE_PROYECTO',
+                'INCORPORACION_REGISTRO','INCORPORACION_CAMBIO',
+                'INCORPORACION_CONFLICTO',
+                'REPORTE_INSTITUCIONAL','REPORTE_SNAPSHOT','REPORTE_ARCHIVO',
+                'REPORTE_APROBACION','REPORTE_DESTINATARIO','REPORTE_REMISION'
+               )
+         ORDER BY TABLE_NAME
+    ) LOOP
+        v_detalle := v_detalle || r.TABLE_NAME || ';';
+        DBMS_OUTPUT.PUT_LINE('OBJETO_FUTURO_DETECTADO=' || r.TABLE_NAME);
+    END LOOP;
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_TABLES
+     WHERE TABLE_NAME IN (
+            'PLANIFICACION_PROYECTO','CICLO_PROYECTO','CICLO_EVIDENCIA',
+            'PRODUCTO_PARCIAL','PRESENTACION_PRODUCTO_FINAL',
+            'VALIDACION_RESULTADO','CIERRE_PROYECTO',
+            'INCORPORACION_REGISTRO','INCORPORACION_CAMBIO',
+            'INCORPORACION_CONFLICTO',
+            'REPORTE_INSTITUCIONAL','REPORTE_SNAPSHOT','REPORTE_ARCHIVO',
+            'REPORTE_APROBACION','REPORTE_DESTINATARIO','REPORTE_REMISION'
+           );
+    DBMS_OUTPUT.PUT_LINE('TOTAL_OBJETOS_FUTUROS_ESTRICTO=' || TO_CHAR(v_total) || ' (esperado 0)');
+    DBMS_OUTPUT.PUT_LINE('DETALLE_OBJETOS_FUTUROS=' || NVL(v_detalle, '<NINGUNO>'));
+END;
+/
+
+PROMPT [014.1-diagnostic] CK_SI_PLAZO y aplicabilidad ausentes esperados...
+
+DECLARE
+    v_total PLS_INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_total
+      FROM USER_CONSTRAINTS
+     WHERE TABLE_NAME = 'SUBSANACION_INICIATIVA'
+       AND CONSTRAINT_NAME = 'CK_SI_PLAZO';
+    DBMS_OUTPUT.PUT_LINE('CK_SI_PLAZO_PRESENTE=' || TO_CHAR(v_total) || ' (esperado 0)');
+
+    SELECT COUNT(*) INTO v_total
+      FROM USER_TABLES
+     WHERE TABLE_NAME IN ('APLICABILIDAD_INICIATIVA','APLICABILIDAD_CRITERIO');
+    DBMS_OUTPUT.PUT_LINE('TABLAS_APLICABILIDAD_PRESENTES=' || TO_CHAR(v_total) || ' (esperado 0)');
+
+    DBMS_OUTPUT.PUT_LINE('Diagnostico 014.1 completado; no se realizaron cambios.');
+END;
+/
