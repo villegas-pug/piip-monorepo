@@ -21,10 +21,10 @@ export class AuthCallbackComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     try {
       if (await this.auth.isAuthenticated()) {
-        await this.router.navigateByUrl('/');
+        await this.router.navigateByUrl('/institucional');
         return;
       }
-      this.message.set('No fue posible completar la autenticación institucional.');
+      await this.auth.login();
     } catch {
       this.message.set('No fue posible completar la autenticación institucional.');
     }

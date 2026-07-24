@@ -53,7 +53,7 @@ ejecución correcta. Los agentes nunca ejecutan estos scripts.
 
 | Orden | Script | Tipo | Módulo | Estado | Confirmación | Compensación |
 |---:|---|---|---|---|---|---|
-| No hay scripts PENDIENTES activos en la Fase 1.
+| 028 | `database/dml/seed/002_seed_globaladmin.sql` | Actualización DML: vincular usuario GlobalAdmin bootstrap a Keycloak real | seguridad | VIGENTE | 2026-07-24 — ejecución manual confirmada. Salida: "002 completada exitosamente. Usuario: Rovi Dev, Keycloak sub: ed3742bc-f2c2-4884-ae09-07e3f9ab98fc, Rol: GlobalAdmin, Unidad: MIDAGRI, Matriz: MFV-001, Funcion: ADMIN" | Solo UPDATE idempotente sobre usuario bootstrap de 021.1. No crea registros nuevos. Re-ejecutable si falla.
 
 ## Objetos diferidos por la enmienda 5.0.0
 

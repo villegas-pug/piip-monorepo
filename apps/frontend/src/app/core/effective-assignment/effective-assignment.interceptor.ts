@@ -7,8 +7,9 @@ export class EffectiveAssignmentContext {
   private readonly selectedAssignmentId = signal<string | undefined>(undefined);
   readonly assignmentId = this.selectedAssignmentId.asReadonly();
 
-  select(assignmentId: string | undefined): void {
-    this.selectedAssignmentId.set(assignmentId?.trim() || undefined);
+  select(assignmentId: string | number | undefined): void {
+    const id = typeof assignmentId === 'string' ? assignmentId.trim() : assignmentId;
+    this.selectedAssignmentId.set(id ? String(id) : undefined);
   }
 
   clear(): void {

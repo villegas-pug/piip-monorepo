@@ -45,7 +45,7 @@ export class EffectiveAssignmentService {
       .pipe(tap((options) => this.assignmentOptions.set(Object.freeze([...options]))));
   }
 
-  select(assignmentId: string): void {
+  select(assignmentId: string | number): void {
     if (this.options().some(({ id }) => id === assignmentId)) {
       this.context.select(assignmentId);
     }

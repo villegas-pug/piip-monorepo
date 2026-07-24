@@ -12,7 +12,8 @@
 //   - La verificación de la "correspondencia con el recurso" queda en el backend.
 //   - El guard evita navegación a formularios sin contexto seleccionado y mejora la UX.
 
-import { inject } from '@angular/core';
+import { isPlatformServer } from '@angular/common';
+import { inject, PLATFORM_ID } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { EffectiveAssignmentService } from './effective-assignment.service';
@@ -25,8 +26,13 @@ const FALLBACK_INSTITUTIONAL_HOME = '/institucional';
  * asignación efectiva. Redirige al shell institucional para que pueda elegirla.
  */
 export const effectiveAssignmentGuard: CanActivateFn = () => {
+  const platformId = inject(PLATFORM_ID);
   const assignments = inject(EffectiveAssignmentService);
   const router = inject(Router);
+
+  if (isPlatformServer(platformId)) {
+    return true;
+  }
 
   if (assignments.selectedId()) {
     return true;

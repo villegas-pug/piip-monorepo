@@ -72,7 +72,7 @@ export class AuthService {
     const KeycloakAdapter = await this.keycloakFactory();
     const keycloak = new KeycloakAdapter({
       clientId: config.clientId,
-      oidcProvider: `${config.issuer}/.well-known/openid-configuration`
+      oidcProvider: config.issuer
     });
 
     this.keycloak = keycloak;
@@ -86,7 +86,7 @@ export class AuthService {
       responseMode: 'query',
       redirectUri: config.redirectUri,
       scope: config.scopes.join(' '),
-      checkLoginIframe: false
+      checkLoginIframe: true
     });
   }
 
